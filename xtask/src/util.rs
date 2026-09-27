@@ -87,6 +87,15 @@ pub fn parallel<T: Send>(threads: usize, jobs: Vec<Job<'_, T>>) -> Vec<T> {
     results.into_iter().map(|(_, r)| r).collect()
 }
 
+/// A deterministic shuffle (Fisher-Yates over splitmix64).
+pub fn shuffle<T>(items: &mut [T], seed: u64) {
+    let mut rng = payloads::Rng::new(seed);
+    for i in (1..items.len()).rev() {
+        let j = rng.below(i as u64 + 1) as usize;
+        items.swap(i, j);
+    }
+}
+
 /// Write `rows` into the result file at `path`, replacing earlier rows whose
 /// `keys` fields match a new row's, and stamp provenance. Partial reruns
 /// therefore update in place instead of dropping what they did not rerun.

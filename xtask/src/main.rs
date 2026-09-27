@@ -7,6 +7,7 @@ mod build;
 mod container;
 mod counted;
 mod differential;
+mod endtoend;
 mod matrix;
 mod provenance;
 mod util;
@@ -20,6 +21,8 @@ cargo xtask <task> [--sets a,b] [--variants v,w] [--workloads x,y] [--jobs N]
   count         callgrind instructions and estimated cycles (container)
   alloc         allocations per operation
   hw            hardware instruction and cycle counters (Linux)
+  e2e-count     callgrind per HTTP request, codec share (container)
+  e2e-time      loopback throughput and open-loop p99 [--reps 5] [--seconds 30]
   conformance   the differential suite, every set at every variant
 ";
 
@@ -34,6 +37,8 @@ fn main() -> Result<()> {
         "count" => counted::count(rest),
         "alloc" => counted::alloc(rest),
         "hw" => counted::hw(rest),
+        "e2e-count" => endtoend::count(rest),
+        "e2e-time" => endtoend::time(rest),
         "conformance" => differential::conformance(rest),
         _ => {
             eprint!("{HELP}");

@@ -37,6 +37,22 @@ done
 description = "Unit and integration tests"
 run = "cargo nextest run --workspace --locked --no-tests=pass --features sonic-rs,simd-json,flexon-rt,jiter,hifijson,struson && cargo nextest run --workspace --locked --no-tests=pass --features flexon-ct"
 
+[tasks.image]
+description = "Build the valgrind container image"
+run = "cargo xtask image"
+
+[tasks.count]
+description = "callgrind counts (Linux, in the container)"
+run = "cargo xtask count"
+
+[tasks.alloc]
+description = "Allocations per operation"
+run = "cargo xtask alloc"
+
+[tasks.hw]
+description = "Hardware counters (Linux)"
+run = "cargo xtask hw"
+
 [tasks.check]
 description = "Everything a change must pass before handoff"
 depends = ["format:check", "lint", "test"]

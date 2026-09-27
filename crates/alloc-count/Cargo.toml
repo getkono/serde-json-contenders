@@ -1,0 +1,10 @@
+[package]
+name = "alloc-count"
+description = "A counting global allocator: blocks, bytes, reallocations, peak live bytes."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

@@ -19,6 +19,7 @@ flexon-rt = ["dep:flexon", "flexon/runtime-detection"]
 flexon-ct = ["dep:flexon", "flexon/simd"]
 jiter = ["dep:jiter"]
 hifijson = ["dep:hifijson"]
+struson = ["dep:struson"]
 # serde_json's own optional behaviours, as build variants of the baseline.
 float-roundtrip = ["serde_json/float_roundtrip"]
 arbitrary-precision = ["serde_json/arbitrary_precision"]
@@ -32,6 +33,7 @@ simd-json = { workspace = true, optional = true }
 flexon = { workspace = true, optional = true }
 jiter = { workspace = true, optional = true }
 hifijson = { workspace = true, optional = true }
+struson = { workspace = true, optional = true }
 
 [lints]
 workspace = true

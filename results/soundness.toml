@@ -1,0 +1,44 @@
+# Open issues touching soundness, reviewed by hand on 2026-09-27.
+#
+# Found with `gh search issues --repo <repo> --state open` for each of:
+# unsound, soundness, "undefined behavior", miri, "use after free",
+# "out of bounds", overflow, segfault. Every hit is listed under `reviewed`
+# with the reason it is or is not a soundness issue for the entry points
+# measured here; only `open` entries fail rule 3.
+
+[serde_json]
+open = []
+reviewed = [
+  "serde-rs/json#750 PrettyFormatter::with_indent can emit non-UTF-8 to an io::Write — the issue states it is not unsound; pretty output is not used",
+  "serde-rs/json#1262, #313, #464, #753, #974 — feature requests and bugs, not memory safety",
+]
+
+[sonic-rs]
+open = []
+reviewed = [
+  "cloudwego/sonic-rs#232 get_many overflows the stack on deep nesting — a process abort (safe Rust stack overflow), in the lazy get_many API, not in serde from_slice; the depth section measures from_slice directly",
+  "cloudwego/sonic-rs#201 get_many inconsistency — behaviour, not memory safety",
+]
+
+[simd-json]
+open = []
+reviewed = [
+  "simd-lite/simd-json#446 tracking issue to re-enable Miri: the UB it lists (alloc(0) #442, aliasing #443, SSSE3 without detection #444, missing UTF-8 validation #445) was fixed before 0.18.1; Miri is still off in its CI, so this repository's Miri run is the evidence",
+  "simd-lite/simd-json#469 feature request",
+]
+
+[flexon]
+open = []
+reviewed = ["no open issues matched; 0.4.9 does not compile on stable Rust (E0499), so 0.4.8 is measured"]
+
+[jiter]
+open = []
+reviewed = ["no open issues matched"]
+
+[hifijson]
+open = []
+reviewed = ["no open issues matched; the crate forbids unsafe code"]
+
+[struson]
+open = []
+reviewed = ["no open issues matched these terms; #21 (verify use after error) concerns logic in a crate that forbids unsafe code"]

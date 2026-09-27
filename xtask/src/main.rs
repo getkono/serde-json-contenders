@@ -14,6 +14,7 @@ mod footprint;
 mod fuzzing;
 mod matrix;
 mod provenance;
+mod report;
 mod timed;
 mod util;
 
@@ -37,6 +38,7 @@ cargo xtask <task> [--sets a,b] [--variants v,w] [--workloads x,y] [--jobs N]
   conformance   the differential suite, every set at every variant
   fuzz          differential fuzzing [--seconds 1800]
   miri          conformance subset under Miri
+  report        regenerate README results [--check]
 ";
 
 fn main() -> Result<()> {
@@ -61,6 +63,7 @@ fn main() -> Result<()> {
         "conformance" => differential::conformance(rest),
         "fuzz" => fuzzing::fuzz(rest),
         "miri" => fuzzing::miri(rest),
+        "report" => report::report(rest),
         _ => {
             eprint!("{HELP}");
             anyhow::bail!("unknown task {task}")

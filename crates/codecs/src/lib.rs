@@ -80,6 +80,7 @@ registry! {
     #[cfg(any(feature = "flexon-rt", feature = "flexon-ct"))] backend::flexon::FlexonMut,
     #[cfg(feature = "jiter")] backend::jiter::Jiter,
     #[cfg(feature = "hifijson")] backend::hifijson::Hifijson,
+    #[cfg(feature = "struson")] backend::struson::Struson,
 }
 
 #[cfg(all(feature = "flexon-rt", feature = "flexon-ct"))]

@@ -13,3 +13,5 @@ pub mod jiter;
 pub mod simd_json;
 #[cfg(feature = "sonic-rs")]
 pub mod sonic_rs;
+#[cfg(feature = "struson")]
+pub mod struson;

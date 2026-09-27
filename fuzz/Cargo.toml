@@ -1,0 +1,53 @@
+[package]
+name = "fuzz"
+description = "Differential fuzzing of each candidate against serde_json."
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+# A workspace of its own: fuzzing needs nightly and sanitizer flags that must
+# never reach the measured builds.
+[workspace]
+
+# The reference parses exactly, so a candidate's floats are compared with the
+# correctly rounded value rather than with serde_json's default approximation.
+[features]
+sonic-rs = ["codecs/sonic-rs"]
+simd-json = ["codecs/simd-json"]
+flexon-rt = ["codecs/flexon-rt"]
+flexon-ct = ["codecs/flexon-ct"]
+jiter = ["codecs/jiter"]
+hifijson = ["codecs/hifijson"]
+struson = ["codecs/struson"]
+
+[dependencies]
+arbitrary = { version = "1", features = ["derive"] }
+bytes = "1"
+codecs = { path = "../crates/codecs", features = ["float-roundtrip"] }
+libfuzzer-sys = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "=1.0.151", features = ["float_roundtrip"] }
+
+[[bin]]
+name = "decode_value"
+path = "fuzz_targets/decode_value.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "decode_struct"
+path = "fuzz_targets/decode_struct.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "roundtrip"
+path = "fuzz_targets/roundtrip.rs"
+test = false
+doc = false
+bench = false

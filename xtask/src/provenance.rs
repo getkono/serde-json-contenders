@@ -55,8 +55,17 @@ pub fn now() -> String {
 #[must_use]
 pub fn stamp() -> Value {
     let git = |args: &[&str]| first_line(Command::new("git").current_dir(root()).args(args));
-    let dirty = capture(Command::new("git").current_dir(root()).args(["status", "--porcelain"]))
-        .map_or(true, |(_, out, _)| !out.trim().is_empty());
+    // Results and the README they generate are what a run writes; any other
+    // change means the measured code is not the committed code.
+    let dirty = capture(Command::new("git").current_dir(root()).args([
+        "status",
+        "--porcelain",
+        "--",
+        ".",
+        ":!results",
+        ":!README.md",
+    ]))
+    .map_or(true, |(_, out, _)| !out.trim().is_empty());
     json!({
         "timestamp": now(),
         "git_commit": git(&["rev-parse", "HEAD"]),

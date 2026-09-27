@@ -3,5 +3,7 @@
 
 pub mod serde_json;
 
+#[cfg(feature = "simd-json")]
+pub mod simd_json;
 #[cfg(feature = "sonic-rs")]
 pub mod sonic_rs;

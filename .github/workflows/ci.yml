@@ -38,6 +38,7 @@ jobs:
       - run: mise run format:check
       - run: mise run lint
       - run: mise run test
+      - run: mise run report:check
 
   conformance:
     name: Conformance (${{ matrix.os }})
@@ -57,3 +58,21 @@ jobs:
         with:
           name: conformance-${{ matrix.os }}
           path: results/*/conformance/
+
+  reproduce:
+    name: Counts reproduce (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - name: Recount the Kynos shapes and compare with the committed counts
+        run: |
+          arch=$(uname -m)
+          if [ ! -f "results/callgrind/$arch.json" ]; then
+            echo "no committed counts for $arch yet"; exit 0
+          fi
+          cargo xtask count --check --workloads json-small,echo-post,json-large --variants portable --jobs 4

@@ -105,6 +105,38 @@ run = "cargo xtask fuzz"
 description = "Conformance subset under Miri (nightly)"
 run = "cargo xtask miri"
 
+[tasks.report]
+description = "Regenerate the README's results from results/"
+run = "cargo xtask report"
+
+[tasks."report:check"]
+description = "Fail if the README's results are not what results/ generates"
+run = "cargo xtask report --check"
+
 [tasks.check]
 description = "Everything a change must pass before handoff"
-depends = ["format:check", "lint", "test"]
+depends = ["format:check", "lint", "test", "report:check"]
+
+[tasks.all]
+# `all` measures, so on a laptop it skips what that OS cannot run and says so.
+description = "Every measurement this host can take, then the report"
+run = """
+set -e
+cargo xtask doctor
+cargo xtask conformance
+cargo xtask alloc
+cargo xtask size
+cargo xtask msrv
+cargo xtask compile-time
+cargo xtask time
+cargo xtask e2e-time
+if [ "$(uname -s)" = Linux ]; then
+  cargo xtask count
+  cargo xtask e2e-count
+  cargo xtask hw
+else
+  echo "all: callgrind and hardware counters need Linux; skipped on $(uname -s)"
+fi
+cargo xtask footprint
+cargo xtask report
+"""

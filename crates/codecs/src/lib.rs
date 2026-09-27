@@ -73,4 +73,5 @@ macro_rules! registry {
 
 registry! {
     backend::serde_json::SerdeJson,
+    #[cfg(feature = "sonic-rs")] backend::sonic_rs::SonicRs,
 }

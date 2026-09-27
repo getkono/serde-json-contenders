@@ -2,3 +2,6 @@
 //! feature is on; `serde_json` is always compiled, as the reference.
 
 pub mod serde_json;
+
+#[cfg(feature = "sonic-rs")]
+pub mod sonic_rs;

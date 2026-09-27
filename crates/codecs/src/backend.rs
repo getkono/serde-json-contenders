@@ -5,6 +5,8 @@ pub mod serde_json;
 
 #[cfg(any(feature = "flexon-rt", feature = "flexon-ct"))]
 pub mod flexon;
+#[cfg(feature = "hifijson")]
+pub mod hifijson;
 #[cfg(feature = "jiter")]
 pub mod jiter;
 #[cfg(feature = "simd-json")]

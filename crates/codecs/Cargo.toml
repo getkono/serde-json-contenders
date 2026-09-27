@@ -17,6 +17,7 @@ simd-json = ["dep:simd-json"]
 # the two configurations are separate builds and cannot coexist.
 flexon-rt = ["dep:flexon", "flexon/runtime-detection"]
 flexon-ct = ["dep:flexon", "flexon/simd"]
+jiter = ["dep:jiter"]
 # serde_json's own optional behaviours, as build variants of the baseline.
 float-roundtrip = ["serde_json/float_roundtrip"]
 arbitrary-precision = ["serde_json/arbitrary_precision"]
@@ -28,6 +29,7 @@ serde_json.workspace = true
 sonic-rs = { workspace = true, optional = true }
 simd-json = { workspace = true, optional = true }
 flexon = { workspace = true, optional = true }
+jiter = { workspace = true, optional = true }
 
 [lints]
 workspace = true

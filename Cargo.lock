@@ -16,6 +16,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "alloc-count"
+version = "0.0.0"
+
+[[package]]
 name = "allocator-api2"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -9,6 +9,8 @@ hk = "1.53.0"
 # The load generator for end-to-end timing, pinned: a generator that upgrades
 # itself under a parser changes what a percentile means.
 "github:hatoo/oha" = "1.16.0"
+# Fuzzing and Miri only; built from source because it has no macOS binary.
+"cargo:cargo-fuzz" = "0.13.2"
 
 [hooks]
 postinstall = 'test -n "$CI" || hk install --mise'
@@ -94,6 +96,14 @@ run = "cargo xtask msrv"
 [tasks.footprint]
 description = "Crates added, unsafe counts, advisories"
 run = "cargo xtask footprint"
+
+[tasks.fuzz]
+description = "Differential fuzzing (nightly), 30 minutes per target"
+run = "cargo xtask fuzz"
+
+[tasks.miri]
+description = "Conformance subset under Miri (nightly)"
+run = "cargo xtask miri"
 
 [tasks.check]
 description = "Everything a change must pass before handoff"

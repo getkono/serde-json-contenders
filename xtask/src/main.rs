@@ -11,6 +11,7 @@ mod differential;
 mod doctor;
 mod endtoend;
 mod footprint;
+mod fuzzing;
 mod matrix;
 mod provenance;
 mod timed;
@@ -34,6 +35,8 @@ cargo xtask <task> [--sets a,b] [--variants v,w] [--workloads x,y] [--jobs N]
   msrv          does each backend build on Rust 1.85
   footprint     crates added, their unsafe counts, RustSec advisories
   conformance   the differential suite, every set at every variant
+  fuzz          differential fuzzing [--seconds 1800]
+  miri          conformance subset under Miri
 ";
 
 fn main() -> Result<()> {
@@ -56,6 +59,8 @@ fn main() -> Result<()> {
         "msrv" => cost::msrv(rest),
         "footprint" => footprint::footprint(rest),
         "conformance" => differential::conformance(rest),
+        "fuzz" => fuzzing::fuzz(rest),
+        "miri" => fuzzing::miri(rest),
         _ => {
             eprint!("{HELP}");
             anyhow::bail!("unknown task {task}")

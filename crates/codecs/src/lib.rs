@@ -78,6 +78,7 @@ registry! {
     #[cfg(feature = "simd-json")] backend::simd_json::SimdJsonBuffers,
     #[cfg(any(feature = "flexon-rt", feature = "flexon-ct"))] backend::flexon::Flexon,
     #[cfg(any(feature = "flexon-rt", feature = "flexon-ct"))] backend::flexon::FlexonMut,
+    #[cfg(feature = "jiter")] backend::jiter::Jiter,
 }
 
 #[cfg(all(feature = "flexon-rt", feature = "flexon-ct"))]

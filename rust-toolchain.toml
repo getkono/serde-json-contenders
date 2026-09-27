@@ -1,0 +1,6 @@
+# The toolchain Kynos pins. Every measurement names a compiler, so this is part
+# of the result, not a convenience.
+[toolchain]
+channel = "1.97.1"
+profile = "minimal"
+components = ["clippy", "rustfmt", "llvm-tools-preview"]

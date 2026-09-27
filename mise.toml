@@ -1,0 +1,42 @@
+# mise is the task interface. The Rust toolchain is pinned in
+# rust-toolchain.toml as well, which rustup resolves from any directory.
+
+[tools]
+rust = { version = "1.97.1", profile = "minimal", components = ["clippy", "rustfmt", "llvm-tools-preview"] }
+hk = "1.53.0"
+"github:nextest-rs/nextest" = { version = "cargo-nextest-0.9.140", exe = "cargo-nextest" }
+"github:convco/convco" = "0.7.0"
+# itself under a parser changes what a percentile means.
+
+[hooks]
+postinstall = 'test -n "$CI" || hk install --mise'
+
+[env]
+# A compiler cache would make compile-time measure the cache.
+RUSTC_WRAPPER = ""
+
+[tasks.format]
+description = "Format the workspace"
+run = "cargo fmt --all && cargo fmt --manifest-path fuzz/Cargo.toml"
+
+[tasks."format:check"]
+description = "Check formatting"
+run = "cargo fmt --all -- --check && cargo fmt --manifest-path fuzz/Cargo.toml -- --check"
+
+[tasks.lint]
+description = "Clippy, warnings denied, once per backend feature set (they cannot all unify: flexon-rt and flexon-ct refuse each other)"
+run = """
+set -e
+for f in ""; do
+  echo "clippy: features=[$f]"
+  cargo clippy --workspace --all-targets --locked --features "$f" -- -D warnings
+done
+"""
+
+[tasks.test]
+description = "Unit and integration tests"
+run = "cargo nextest run --workspace --locked"
+
+[tasks.check]
+description = "Everything a change must pass before handoff"
+depends = ["format:check", "lint", "test"]

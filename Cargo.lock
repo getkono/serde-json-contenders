@@ -59,6 +59,7 @@ name = "codecs"
 version = "0.0.0"
 dependencies = [
  "bytes",
+ "flexon",
  "serde",
  "serde_json",
  "simd-json",
@@ -110,6 +111,18 @@ dependencies = [
  "rkyv",
  "serde",
  "simdutf8",
+]
+
+[[package]]
+name = "flexon"
+version = "0.4.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "35d85ce71ccafd5d243cbe6a9604018fe717eec969a8590841a0a02e4263f346"
+dependencies = [
+ "itoa",
+ "serde_core",
+ "simdutf8",
+ "zmij",
 ]
 
 [[package]]

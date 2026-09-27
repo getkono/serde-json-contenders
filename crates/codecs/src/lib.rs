@@ -76,4 +76,11 @@ registry! {
     #[cfg(feature = "sonic-rs")] backend::sonic_rs::SonicRs,
     #[cfg(feature = "simd-json")] backend::simd_json::SimdJson,
     #[cfg(feature = "simd-json")] backend::simd_json::SimdJsonBuffers,
+    #[cfg(any(feature = "flexon-rt", feature = "flexon-ct"))] backend::flexon::Flexon,
+    #[cfg(any(feature = "flexon-rt", feature = "flexon-ct"))] backend::flexon::FlexonMut,
 }
+
+#[cfg(all(feature = "flexon-rt", feature = "flexon-ct"))]
+compile_error!(
+    "flexon-rt and flexon-ct are separate builds: flexon's runtime detection disables its compile-time paths"
+);

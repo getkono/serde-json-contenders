@@ -13,6 +13,10 @@ publish.workspace = true
 [features]
 sonic-rs = ["dep:sonic-rs"]
 simd-json = ["dep:simd-json"]
+# flexon's default `runtime-detection` disables its compile-time SIMD paths, so
+# the two configurations are separate builds and cannot coexist.
+flexon-rt = ["dep:flexon", "flexon/runtime-detection"]
+flexon-ct = ["dep:flexon", "flexon/simd"]
 # serde_json's own optional behaviours, as build variants of the baseline.
 float-roundtrip = ["serde_json/float_roundtrip"]
 arbitrary-precision = ["serde_json/arbitrary_precision"]
@@ -23,6 +27,7 @@ serde.workspace = true
 serde_json.workspace = true
 sonic-rs = { workspace = true, optional = true }
 simd-json = { workspace = true, optional = true }
+flexon = { workspace = true, optional = true }
 
 [lints]
 workspace = true

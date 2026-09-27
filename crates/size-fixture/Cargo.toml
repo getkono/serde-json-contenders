@@ -1,0 +1,25 @@
+[package]
+name = "size-fixture"
+description = "Programs whose .text is compared: what linking a JSON backend costs a binary."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# One backend per build; with none, the fixture uses serde_json.
+[features]
+sonic-rs = ["codecs/sonic-rs"]
+simd-json = ["codecs/simd-json"]
+flexon-rt = ["codecs/flexon-rt"]
+flexon-ct = ["codecs/flexon-ct"]
+jiter = ["codecs/jiter"]
+hifijson = ["codecs/hifijson"]
+struson = ["codecs/struson"]
+
+[dependencies]
+bytes.workspace = true
+codecs.workspace = true
+payloads.workspace = true
+
+[lints]
+workspace = true

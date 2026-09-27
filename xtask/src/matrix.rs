@@ -91,6 +91,13 @@ pub const SETS: &[Set] = &[
     },
 ];
 
+/// Look a set up by name.
+pub fn set(name: &str) -> anyhow::Result<&'static Set> {
+    SETS.iter()
+        .find(|s| s.name == name)
+        .ok_or_else(|| anyhow::anyhow!("no set named {name}"))
+}
+
 /// Label a backend as reported: the float-roundtrip baseline is its own row.
 #[must_use]
 pub fn label(set: &Set, backend: &str) -> String {
@@ -150,6 +157,14 @@ pub fn variants() -> Vec<Variant> {
     }
 }
 
+/// Look a variant up by name.
+pub fn variant(name: &str) -> anyhow::Result<Variant> {
+    variants()
+        .into_iter()
+        .find(|v| v.name == name)
+        .ok_or_else(|| anyhow::anyhow!("no variant {name} on this arch"))
+}
+
 fn host_has_avx512() -> bool {
     #[cfg(target_arch = "x86_64")]
     {
@@ -205,3 +220,10 @@ pub const SHAPES: &[Shape] = &[
         arrival: "shared",
     },
 ];
+
+/// The shapes the timed and end-to-end protocols run: the decode a server
+/// does (owned, one shared frame) and the encode it does (`to_vec`).
+pub const TIMED_SHAPES: &[Shape] = &[SHAPES[0], SHAPES[4]];
+
+/// The workloads the decision rule is evaluated on.
+pub const KYNOS: &[&str] = &["json-small", "echo-post", "json-large"];

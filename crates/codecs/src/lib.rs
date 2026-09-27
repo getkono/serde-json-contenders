@@ -74,4 +74,6 @@ macro_rules! registry {
 registry! {
     backend::serde_json::SerdeJson,
     #[cfg(feature = "sonic-rs")] backend::sonic_rs::SonicRs,
+    #[cfg(feature = "simd-json")] backend::simd_json::SimdJson,
+    #[cfg(feature = "simd-json")] backend::simd_json::SimdJsonBuffers,
 }

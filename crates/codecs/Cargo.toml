@@ -12,6 +12,7 @@ publish.workspace = true
 # is checked against.
 [features]
 sonic-rs = ["dep:sonic-rs"]
+simd-json = ["dep:simd-json"]
 # serde_json's own optional behaviours, as build variants of the baseline.
 float-roundtrip = ["serde_json/float_roundtrip"]
 arbitrary-precision = ["serde_json/arbitrary_precision"]
@@ -21,6 +22,7 @@ bytes.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sonic-rs = { workspace = true, optional = true }
+simd-json = { workspace = true, optional = true }
 
 [lints]
 workspace = true

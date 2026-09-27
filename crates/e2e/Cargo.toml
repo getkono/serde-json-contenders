@@ -1,0 +1,35 @@
+[package]
+name = "e2e"
+description = "Whole HTTP requests through hyper, to size the codec's share of one."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Forwarded one-to-one to `codecs`, exactly as `cell` does. A measurement build
+# enables exactly one.
+[features]
+sonic-rs = ["codecs/sonic-rs"]
+simd-json = ["codecs/simd-json"]
+flexon-rt = ["codecs/flexon-rt"]
+flexon-ct = ["codecs/flexon-ct"]
+jiter = ["codecs/jiter"]
+hifijson = ["codecs/hifijson"]
+struson = ["codecs/struson"]
+float-roundtrip = ["codecs/float-roundtrip"]
+
+[dependencies]
+bytes.workspace = true
+codecs.workspace = true
+http.workspace = true
+http-body-util.workspace = true
+hyper.workspace = true
+hyper-util.workspace = true
+payloads.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+# `signal` for SIGTERM in `e2e-server`.
+tokio = { workspace = true, features = ["signal"] }
+
+[lints]
+workspace = true

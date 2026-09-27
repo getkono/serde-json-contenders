@@ -6,7 +6,9 @@ rust = { version = "1.97.1", profile = "minimal", components = ["clippy", "rustf
 hk = "1.53.0"
 "github:nextest-rs/nextest" = { version = "cargo-nextest-0.9.140", exe = "cargo-nextest" }
 "github:convco/convco" = "0.7.0"
+# The load generator for end-to-end timing, pinned: a generator that upgrades
 # itself under a parser changes what a percentile means.
+"github:hatoo/oha" = "1.16.0"
 
 [hooks]
 postinstall = 'test -n "$CI" || hk install --mise'
@@ -60,6 +62,14 @@ run = "cargo xtask alloc"
 [tasks.hw]
 description = "Hardware counters (Linux)"
 run = "cargo xtask hw"
+
+[tasks."e2e:count"]
+description = "Per-request callgrind counts and codec share (Linux, container)"
+run = "cargo xtask e2e-count"
+
+[tasks."e2e:time"]
+description = "Loopback throughput and open-loop p99"
+run = "cargo xtask e2e-time"
 
 [tasks.check]
 description = "Everything a change must pass before handoff"

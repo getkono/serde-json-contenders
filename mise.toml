@@ -41,6 +41,14 @@ run = "cargo nextest run --workspace --locked --features sonic-rs,simd-json,flex
 description = "Build the valgrind container image"
 run = "cargo xtask image"
 
+[tasks.conformance]
+description = "Differential conformance of every backend, every build variant"
+run = "cargo xtask conformance"
+
+[tasks."conformance:quick"]
+description = "Conformance at the portable variant only"
+run = "cargo xtask conformance --variants portable"
+
 [tasks.count]
 description = "callgrind counts (Linux, in the container)"
 run = "cargo xtask count"

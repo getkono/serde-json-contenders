@@ -38,3 +38,22 @@ jobs:
       - run: mise run format:check
       - run: mise run lint
       - run: mise run test
+
+  conformance:
+    name: Conformance (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - uses: Swatinem/rust-cache@v2
+      # Findings are the product, so this job fails only when the suite
+      # itself cannot run; the gate outcomes are in the uploaded reports.
+      - run: cargo xtask conformance --variants portable
+      - uses: actions/upload-artifact@v4
+        with:
+          name: conformance-${{ matrix.os }}
+          path: results/*/conformance/

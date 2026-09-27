@@ -1,0 +1,8 @@
+/target
+/fuzz/target
+/fuzz/artifacts
+/results/raw/
+*.profraw
+callgrind.out.*
+/fuzz/artifacts
+/fuzz/coverage

@@ -1,0 +1,42 @@
+amends "package://github.com/jdx/hk/releases/download/v1.53.0/hk@1.53.0#/Config.pkl"
+
+local fmt = new Step {
+    glob = "**/*.rs"
+    check = "cargo fmt --all --check"
+    fix = "cargo fmt --all"
+}
+
+// Default features only, to stay fast; `mise run lint` and CI cover every
+// backend's feature set.
+local clippy = new Step {
+    glob = List("**/*.rs", "**/Cargo.toml")
+    check = "cargo clippy --workspace --all-targets -- -D warnings"
+}
+
+// Merge and revert subjects are not conventional; convco's range check skips
+// them, so this does too.
+local conventional = new Step {
+    check = "git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1 || git rev-parse -q --verify REVERT_HEAD >/dev/null 2>&1 || convco check --from-stdin --strip < {{commit_msg_file}}"
+}
+
+hooks {
+    ["pre-commit"] {
+        fix = true
+        stash = "git"
+        steps {
+            ["fmt"] = fmt
+            ["clippy"] = clippy
+        }
+    }
+    ["commit-msg"] {
+        steps {
+            ["conventional"] = conventional
+        }
+    }
+    ["check"] {
+        steps {
+            ["fmt"] = fmt
+            ["clippy"] = clippy
+        }
+    }
+}

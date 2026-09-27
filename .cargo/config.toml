@@ -1,0 +1,4 @@
+# Only an alias. Build flags are set per build by `xtask`, never here, because a
+# flag set here would apply to every variant and erase the comparison.
+[alias]
+xtask = "run --quiet --package xtask --"

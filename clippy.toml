@@ -1,0 +1,2 @@
+# Crate names appear in prose throughout; they are identifiers, not typos.
+doc-valid-idents = ["..", "serde_json", "simd_json", "sonic_rs", "JSONTestSuite", "SIMD", "AVX2", "AVX-512", "NEON", "PCLMULQDQ", "SWAR", "DHAT", "RustSec"]

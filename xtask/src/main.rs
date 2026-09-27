@@ -6,6 +6,7 @@
 mod build;
 mod container;
 mod counted;
+mod differential;
 mod matrix;
 mod provenance;
 mod util;
@@ -19,6 +20,7 @@ cargo xtask <task> [--sets a,b] [--variants v,w] [--workloads x,y] [--jobs N]
   count         callgrind instructions and estimated cycles (container)
   alloc         allocations per operation
   hw            hardware instruction and cycle counters (Linux)
+  conformance   the differential suite, every set at every variant
 ";
 
 fn main() -> Result<()> {
@@ -32,6 +34,7 @@ fn main() -> Result<()> {
         "count" => counted::count(rest),
         "alloc" => counted::alloc(rest),
         "hw" => counted::hw(rest),
+        "conformance" => differential::conformance(rest),
         _ => {
             eprint!("{HELP}");
             anyhow::bail!("unknown task {task}")

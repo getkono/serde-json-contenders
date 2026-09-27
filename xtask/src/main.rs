@@ -8,10 +8,12 @@ mod container;
 mod cost;
 mod counted;
 mod differential;
+mod doctor;
 mod endtoend;
 mod footprint;
 mod matrix;
 mod provenance;
+mod timed;
 mod util;
 
 use anyhow::Result;
@@ -20,9 +22,11 @@ const HELP: &str = "\
 cargo xtask <task> [--sets a,b] [--variants v,w] [--workloads x,y] [--jobs N]
 
   image         build the valgrind container image
+  doctor        verify every build compiled and runs its claimed SIMD paths
   count         callgrind instructions and estimated cycles (container)
   alloc         allocations per operation
   hw            hardware instruction and cycle counters (Linux)
+  time          timed sampling [--rounds 3] [--core 2] [--trust solo|canonical]
   e2e-count     callgrind per HTTP request, codec share (container)
   e2e-time      loopback throughput and open-loop p99 [--reps 5] [--seconds 30]
   size          .text of a fixture per backend, minus the floor
@@ -40,9 +44,11 @@ fn main() -> Result<()> {
     };
     match task.as_str() {
         "image" => container::image(),
+        "doctor" => doctor::doctor(rest),
         "count" => counted::count(rest),
         "alloc" => counted::alloc(rest),
         "hw" => counted::hw(rest),
+        "time" => timed::time(rest),
         "e2e-count" => endtoend::count(rest),
         "e2e-time" => endtoend::time(rest),
         "size" => cost::size(rest),

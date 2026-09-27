@@ -43,6 +43,10 @@ run = "cargo nextest run --workspace --locked --features sonic-rs,simd-json,flex
 description = "Build the valgrind container image"
 run = "cargo xtask image"
 
+[tasks.doctor]
+description = "Verify every build compiles and runs its claimed SIMD paths on this host"
+run = "cargo xtask doctor"
+
 [tasks.conformance]
 description = "Differential conformance of every backend, every build variant"
 run = "cargo xtask conformance"
@@ -62,6 +66,10 @@ run = "cargo xtask alloc"
 [tasks.hw]
 description = "Hardware counters (Linux)"
 run = "cargo xtask hw"
+
+[tasks.time]
+description = "Timed sampling; pass --trust canonical only on a quieted machine"
+run = "cargo xtask time"
 
 [tasks."e2e:count"]
 description = "Per-request callgrind counts and codec share (Linux, container)"

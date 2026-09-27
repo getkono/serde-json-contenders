@@ -1,0 +1,34 @@
+[package]
+name = "cell"
+description = "The one binary every per-operation measurement runs."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Forwarded one-to-one to `codecs`. A measurement build enables exactly one.
+[features]
+sonic-rs = ["codecs/sonic-rs"]
+simd-json = ["codecs/simd-json", "dep:simd-json"]
+flexon-rt = ["codecs/flexon-rt"]
+flexon-ct = ["codecs/flexon-ct"]
+jiter = ["codecs/jiter"]
+hifijson = ["codecs/hifijson"]
+struson = ["codecs/struson"]
+float-roundtrip = ["codecs/float-roundtrip"]
+
+[dependencies]
+alloc-count.workspace = true
+bytes.workspace = true
+codecs.workspace = true
+payloads.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+simd-json = { workspace = true, optional = true }
+libc = "0.2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+perf-event2 = "0.7"
+
+[lints]
+workspace = true

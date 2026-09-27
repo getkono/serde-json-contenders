@@ -1,0 +1,24 @@
+[package]
+name = "codecs"
+description = "One adapter per JSON backend, each held to the same Backend contract."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# One feature per candidate *crate*. A measurement build enables exactly one,
+# so no candidate can change another's (or the baseline's) feature set through
+# unification. serde_json is always present: it is the reference every result
+# is checked against.
+[features]
+# serde_json's own optional behaviours, as build variants of the baseline.
+float-roundtrip = ["serde_json/float_roundtrip"]
+arbitrary-precision = ["serde_json/arbitrary_precision"]
+
+[dependencies]
+bytes.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

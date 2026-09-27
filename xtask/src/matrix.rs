@@ -91,6 +91,13 @@ pub const SETS: &[Set] = &[
     },
 ];
 
+/// Look a set up by name.
+pub fn set(name: &str) -> anyhow::Result<&'static Set> {
+    SETS.iter()
+        .find(|s| s.name == name)
+        .ok_or_else(|| anyhow::anyhow!("no set named {name}"))
+}
+
 /// Label a backend as reported: the float-roundtrip baseline is its own row.
 #[must_use]
 pub fn label(set: &Set, backend: &str) -> String {

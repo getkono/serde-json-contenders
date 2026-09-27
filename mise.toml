@@ -71,6 +71,22 @@ run = "cargo xtask e2e-count"
 description = "Loopback throughput and open-loop p99"
 run = "cargo xtask e2e-time"
 
+[tasks.size]
+description = "Binary .text cost per backend"
+run = "cargo xtask size"
+
+[tasks.compile-time]
+description = "Clean and incremental compile times"
+run = "cargo xtask compile-time"
+
+[tasks.msrv]
+description = "Build each backend on Rust 1.85"
+run = "cargo xtask msrv"
+
+[tasks.footprint]
+description = "Crates added, unsafe counts, advisories"
+run = "cargo xtask footprint"
+
 [tasks.check]
 description = "Everything a change must pass before handoff"
 depends = ["format:check", "lint", "test"]

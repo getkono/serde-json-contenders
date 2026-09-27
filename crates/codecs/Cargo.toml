@@ -1,0 +1,39 @@
+[package]
+name = "codecs"
+description = "One adapter per JSON backend, each held to the same Backend contract."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# One feature per candidate *crate*. A measurement build enables exactly one,
+# so no candidate can change another's (or the baseline's) feature set through
+# unification. serde_json is always present: it is the reference every result
+# is checked against.
+[features]
+sonic-rs = ["dep:sonic-rs"]
+simd-json = ["dep:simd-json"]
+# flexon's default `runtime-detection` disables its compile-time SIMD paths, so
+# the two configurations are separate builds and cannot coexist.
+flexon-rt = ["dep:flexon", "flexon/runtime-detection"]
+flexon-ct = ["dep:flexon", "flexon/simd"]
+jiter = ["dep:jiter"]
+hifijson = ["dep:hifijson"]
+struson = ["dep:struson"]
+# serde_json's own optional behaviours, as build variants of the baseline.
+float-roundtrip = ["serde_json/float_roundtrip"]
+arbitrary-precision = ["serde_json/arbitrary_precision"]
+
+[dependencies]
+bytes.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sonic-rs = { workspace = true, optional = true }
+simd-json = { workspace = true, optional = true }
+flexon = { workspace = true, optional = true }
+jiter = { workspace = true, optional = true }
+hifijson = { workspace = true, optional = true }
+struson = { workspace = true, optional = true }
+
+[lints]
+workspace = true

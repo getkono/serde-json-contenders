@@ -1,0 +1,319 @@
+{
+  "e2e_gain": 0.1,
+  "entries": [
+    {
+      "backend": "serde_json",
+      "crate": "serde_json",
+      "deserves_to_exist": true,
+      "exists_evidence": "the baseline",
+      "reason": "footprint not yet recorded",
+      "recommended": "pending",
+      "rules": [
+        {
+          "detail": "baseline",
+          "outcome": "pass"
+        },
+        {
+          "detail": "reference",
+          "outcome": "pass"
+        },
+        {
+          "detail": "footprint not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "baseline",
+          "outcome": "pass"
+        }
+      ]
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "crate": "serde_json",
+      "deserves_to_exist": true,
+      "exists_evidence": "Correctly rounded float parsing, which the default parser is not (see conformance, numbers).",
+      "reason": "x86-64 counts not yet recorded",
+      "recommended": "pending",
+      "rules": [
+        {
+          "detail": "x86-64 counts not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "reference",
+          "outcome": "pass"
+        },
+        {
+          "detail": "footprint not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "end-to-end timing not yet recorded",
+          "outcome": "pending"
+        }
+      ]
+    },
+    {
+      "backend": "sonic-rs",
+      "crate": "sonic-rs",
+      "deserves_to_exist": true,
+      "exists_evidence": "Lazy path lookups without a full parse (`get`, `get_many`, `LazyValue`); errors carry a byte offset as well as line and column.",
+      "reason": "x86-64 counts not yet recorded",
+      "recommended": "pending",
+      "rules": [
+        {
+          "detail": "x86-64 counts not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "conformance not yet run",
+          "outcome": "pending"
+        },
+        {
+          "detail": "footprint not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "end-to-end timing not yet recorded",
+          "outcome": "pending"
+        }
+      ]
+    },
+    {
+      "backend": "simd-json",
+      "crate": "simd-json",
+      "deserves_to_exist": true,
+      "exists_evidence": "Borrowing decode of escaped strings, unescaped in place; a tape API (`to_tape`) for traversal without building values.",
+      "reason": "x86-64 counts not yet recorded",
+      "recommended": "pending",
+      "rules": [
+        {
+          "detail": "x86-64 counts not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "conformance not yet run",
+          "outcome": "pending"
+        },
+        {
+          "detail": "footprint not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "end-to-end timing not yet recorded",
+          "outcome": "pending"
+        }
+      ]
+    },
+    {
+      "backend": "simd-json-buffers",
+      "crate": "simd-json",
+      "deserves_to_exist": true,
+      "exists_evidence": "Reusing `Buffers` across calls removes the per-call scratch allocations plain `from_slice` makes.",
+      "reason": "x86-64 counts not yet recorded",
+      "recommended": "pending",
+      "rules": [
+        {
+          "detail": "x86-64 counts not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "conformance not yet run",
+          "outcome": "pending"
+        },
+        {
+          "detail": "footprint not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "end-to-end timing not yet recorded",
+          "outcome": "pending"
+        }
+      ]
+    },
+    {
+      "backend": "flexon-rt",
+      "crate": "flexon",
+      "deserves_to_exist": true,
+      "exists_evidence": "`from_mut_slice` borrows escaped strings in place; JSON-pointer access. Its latest release (0.4.9) does not compile on stable Rust.",
+      "reason": "x86-64 counts not yet recorded",
+      "recommended": "pending",
+      "rules": [
+        {
+          "detail": "x86-64 counts not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "conformance not yet run",
+          "outcome": "pending"
+        },
+        {
+          "detail": "footprint not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "end-to-end timing not yet recorded",
+          "outcome": "pending"
+        }
+      ]
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "crate": "flexon",
+      "deserves_to_exist": true,
+      "exists_evidence": "In-place parse lets escaped strings borrow.",
+      "reason": "x86-64 counts not yet recorded",
+      "recommended": "pending",
+      "rules": [
+        {
+          "detail": "x86-64 counts not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "conformance not yet run",
+          "outcome": "pending"
+        },
+        {
+          "detail": "footprint not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "end-to-end timing not yet recorded",
+          "outcome": "pending"
+        }
+      ]
+    },
+    {
+      "backend": "flexon-ct",
+      "crate": "flexon",
+      "deserves_to_exist": true,
+      "exists_evidence": "The compile-time SIMD configuration of flexon; same API as `flexon-rt`.",
+      "reason": "x86-64 counts not yet recorded",
+      "recommended": "pending",
+      "rules": [
+        {
+          "detail": "x86-64 counts not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "conformance not yet run",
+          "outcome": "pending"
+        },
+        {
+          "detail": "footprint not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "end-to-end timing not yet recorded",
+          "outcome": "pending"
+        }
+      ]
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "crate": "flexon",
+      "deserves_to_exist": true,
+      "exists_evidence": "In-place parse lets escaped strings borrow.",
+      "reason": "x86-64 counts not yet recorded",
+      "recommended": "pending",
+      "rules": [
+        {
+          "detail": "x86-64 counts not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "conformance not yet run",
+          "outcome": "pending"
+        },
+        {
+          "detail": "footprint not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "end-to-end timing not yet recorded",
+          "outcome": "pending"
+        }
+      ]
+    },
+    {
+      "backend": "jiter",
+      "crate": "jiter",
+      "deserves_to_exist": true,
+      "exists_evidence": "Partial mode parses truncated documents (built for streamed model output); decode only.",
+      "reason": "x86-64 counts not yet recorded",
+      "recommended": "pending",
+      "rules": [
+        {
+          "detail": "x86-64 counts not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "conformance not yet run",
+          "outcome": "pending"
+        },
+        {
+          "detail": "footprint not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "end-to-end timing not yet recorded",
+          "outcome": "pending"
+        }
+      ]
+    },
+    {
+      "backend": "hifijson",
+      "crate": "hifijson",
+      "deserves_to_exist": true,
+      "exists_evidence": "No `unsafe`; lexes any byte iterator (`IterLexer`), so input need not be in memory; numbers kept as text.",
+      "reason": "reference point: no borrowed slice decode plus `to_vec`-style encoder",
+      "recommended": "fail",
+      "rules": [
+        {
+          "detail": "x86-64 counts not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "conformance not yet run",
+          "outcome": "pending"
+        },
+        {
+          "detail": "footprint not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "end-to-end timing not yet recorded",
+          "outcome": "pending"
+        }
+      ]
+    },
+    {
+      "backend": "struson",
+      "crate": "struson",
+      "deserves_to_exist": true,
+      "exists_evidence": "No `unsafe`; a true streaming reader and writer with JSON-path seeking and positions in errors.",
+      "reason": "reference point: no borrowed slice decode plus `to_vec`-style encoder",
+      "recommended": "fail",
+      "rules": [
+        {
+          "detail": "x86-64 counts not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "conformance not yet run",
+          "outcome": "pending"
+        },
+        {
+          "detail": "footprint not yet recorded",
+          "outcome": "pending"
+        },
+        {
+          "detail": "end-to-end timing not yet recorded",
+          "outcome": "pending"
+        }
+      ]
+    }
+  ],
+  "epsilon": 0.05,
+  "schema": 1
+}

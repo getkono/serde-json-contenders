@@ -431,7 +431,30 @@ fn host_mode(args: &[String], mode: &str, shapes: &[Shape], host: &str, threads:
 
 #[cfg(test)]
 mod tests {
-    use super::valgrind_error;
+    use super::{Cell, callgrind_cell, valgrind_error};
+    use crate::matrix::{SETS, SHAPES};
+
+    /// A cell that yields no counts still has its callgrind output removed:
+    /// valgrind is absent (a spawn error) or cannot run the missing binary (a
+    /// failed run), and either way the row records an error and the file goes.
+    #[test]
+    fn removes_the_callgrind_output_of_a_failed_cell() {
+        let dir = std::env::temp_dir().join(format!("sjc-callgrind-cell-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let out_file = dir.join("callgrind.out");
+        std::fs::write(&out_file, "stale").unwrap();
+        let cell = Cell {
+            set: &SETS[0],
+            backend: "serde_json",
+            workload: "json-small",
+            shape: SHAPES[0],
+        };
+        let row = callgrind_cell(&dir.join("no-such-cell"), &cell, &out_file, "portable");
+        let removed = !out_file.exists();
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(row["error"].is_string(), "{row}");
+        assert!(removed, "callgrind output survived a failed cell");
+    }
 
     #[test]
     fn names_the_instruction_valgrind_could_not_decode() {

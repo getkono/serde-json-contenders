@@ -400,10 +400,27 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
 }
 
 fn rule3(data: &Data, e: &Entry) -> Outcome {
+    // A memory error the sanitizer caught while fuzzing is a soundness defect
+    // whatever else is recorded, so it fails before a missing footprint.
+    let mut problems: Vec<String> = data
+        .fuzz
+        .iter()
+        .filter(|r| r["set"] == e.set && r["sanitizer_report"].is_string())
+        .map(|r| {
+            format!(
+                "sanitizer report fuzzing {} ({})",
+                r["target"].as_str().unwrap_or("?"),
+                r["config"].as_str().unwrap_or("?")
+            )
+        })
+        .collect();
     let Some(row) = data.footprint.iter().find(|r| r["set"] == e.set) else {
-        return Outcome::Pending("footprint not yet recorded".into());
+        return if problems.is_empty() {
+            Outcome::Pending("footprint not yet recorded".into())
+        } else {
+            Outcome::Fail(problems.join("; "))
+        };
     };
-    let mut problems = Vec::new();
     for c in row["crates"].as_array().into_iter().flatten() {
         for a in c["advisories"].as_array().into_iter().flatten() {
             if a["affects_pinned_version"] == true {
@@ -591,4 +608,50 @@ pub fn to_json(verdicts: &[Verdict]) -> Value {
             "exists_evidence": v.exists.1,
         })).collect::<Vec<_>>(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::{Data, ENTRIES, Entry, Outcome, rule2, rule3};
+
+    fn sonic() -> &'static Entry {
+        ENTRIES.iter().find(|e| e.set == "sonic-rs").unwrap_or(&ENTRIES[0])
+    }
+
+    fn with_fuzz(rows: Vec<serde_json::Value>, footprint: bool) -> Data {
+        Data {
+            fuzz: rows,
+            footprint: if footprint {
+                vec![json!({ "set": "sonic-rs", "crates": [] })]
+            } else {
+                Vec::new()
+            },
+            ..Data::default()
+        }
+    }
+
+    #[test]
+    fn a_sanitizer_report_fails_rule3_even_without_a_footprint() {
+        let e = sonic();
+        let row = json!({ "set": e.set, "config": "portable", "target": "decode_value",
+            "divergence_found": false, "sanitizer_report": "==1==ERROR: AddressSanitizer: SEGV" });
+        for footprint in [false, true] {
+            assert_eq!(
+                rule3(&with_fuzz(vec![row.clone()], footprint), e),
+                Outcome::Fail("sanitizer report fuzzing decode_value (portable)".into())
+            );
+        }
+    }
+
+    #[test]
+    fn a_divergence_fails_rule2_not_rule3() {
+        let e = sonic();
+        let row = json!({ "set": e.set, "config": "v3", "target": "roundtrip",
+            "divergence_found": true, "sanitizer_report": null });
+        let data = with_fuzz(vec![row], true);
+        assert!(matches!(rule3(&data, e), Outcome::Pass(_)));
+        assert_eq!(rule2(&data, e), Outcome::Fail("fuzz roundtrip (v3)".into()));
+    }
 }

@@ -62,8 +62,124 @@ pub fn render(data: &Data, verdicts: &[Verdict]) -> String {
     conformance(&mut out, data);
     end_to_end(&mut out, data);
     timed(&mut out, data);
+    let notes = limitations(data);
+    if !notes.is_empty() {
+        out.push_str("### Limitations\n\n");
+        for note in notes {
+            let _ = writeln!(out, "- {note}");
+        }
+        out.push('\n');
+    }
     provenance(&mut out, data);
     out
+}
+
+/// What the recorded hosts and run lengths leave unmeasured, each derived from
+/// `results/` so a new host or a longer run retires its own note.
+fn limitations(data: &Data) -> Vec<String> {
+    let mut notes = Vec::new();
+    if data.hosts.is_empty() {
+        return notes;
+    }
+    let x86: Vec<&str> = data
+        .hosts
+        .iter()
+        .filter(|h| h.arch() == "x86_64")
+        .map(|h| h.provenance["cpu"].as_str().unwrap_or(&h.slug))
+        .collect();
+    if !x86.iter().any(|cpu| cpu.to_lowercase().contains("intel")) {
+        notes.push(if x86.is_empty() {
+            "No x86-64 host is recorded, so no Intel host either.".to_owned()
+        } else {
+            format!(
+                "No Intel host: every host-measured x86-64 number is from {}.",
+                x86.join(", ")
+            )
+        });
+    }
+    if !data.hosts.iter().any(|h| h.os() == "macos") {
+        notes.push(
+            "No macOS host: macOS timed and allocation numbers are pending a rerun on a quiet machine.".to_owned(),
+        );
+    }
+    let mut classes: Vec<String> = data
+        .hosts
+        .iter()
+        .flat_map(|h| h.time.rows.values().chain(h.e2e_time.iter()))
+        .map(|r| r["trust"].as_str().unwrap_or("?").to_owned())
+        .collect();
+    classes.sort();
+    classes.dedup();
+    if classes.iter().all(|c| c == "solo") && !classes.is_empty() {
+        let load = data
+            .hosts
+            .iter()
+            .filter_map(|h| h.time.provenance["loadavg"].as_str())
+            .map(|l| l.split_whitespace().take(3).collect::<Vec<_>>().join(" "))
+            .collect::<Vec<_>>();
+        notes.push(format!(
+            "Every timed number (timed sampling and end to end) is `solo` class: taken on a shared machine{}, not a quieted one, so a difference inside its A/A band is noise.",
+            if load.is_empty() {
+                String::new()
+            } else {
+                format!(" (load average {} at the start of timing)", load.join("; "))
+            }
+        ));
+    }
+    for h in &data.hosts {
+        let mut runs = Vec::new();
+        let rounds = h
+            .time
+            .rows
+            .values()
+            .filter_map(|r| r["rounds"].as_array().map(Vec::len))
+            .min();
+        if let Some(n) = rounds {
+            runs.push(format!(
+                "timed sampling {}",
+                counted_run(n as u64, " rounds", crate::timed::ROUNDS)
+            ));
+        }
+        let reps = h
+            .e2e_time
+            .iter()
+            .filter_map(|r| r["reps"].as_array().map(Vec::len))
+            .min();
+        let secs = h.e2e_time.iter().filter_map(|r| r["seconds"].as_u64()).min();
+        if let (Some(n), Some(s)) = (reps, secs) {
+            runs.push(format!(
+                "end to end {} of {} per load phase",
+                counted_run(n as u64, " reps", crate::endtoend::REPS),
+                counted_run(s, " s", crate::endtoend::SECONDS)
+            ));
+        }
+        let builds = h.compile.iter().filter_map(|r| r["reps"].as_u64()).min();
+        if let Some(n) = builds {
+            runs.push(format!(
+                "compile time {}",
+                counted_run(n, " builds", crate::cost::COMPILE_REPS as u64)
+            ));
+        }
+        if !runs.is_empty() {
+            notes.push(format!("Run lengths on {}: {}.", h.slug, runs.join("; ")));
+        }
+    }
+    if let Some(s) = data.fuzz.iter().filter_map(|r| r["seconds"].as_u64()).min() {
+        notes.push(format!(
+            "Fuzzing ran {} per target and configuration.",
+            counted_run(s, " s", crate::fuzzing::SECONDS)
+        ));
+    }
+    notes
+}
+
+/// `n` and its unit, flagged when `n` is below the collector's default.
+fn counted_run(n: u64, unit: &str, default: u64) -> String {
+    if n < default {
+        format!("{n}{unit} (reduced from the default {default})")
+    } else {
+        format!("{n}{unit}")
+    }
 }
 
 fn verdict_table(out: &mut String, verdicts: &[Verdict]) {
@@ -630,4 +746,62 @@ fn provenance(out: &mut String, data: &Data) {
     }
     let _ = POINTS;
     out.push('\n');
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::limitations;
+    use crate::report::data::{Data, Host, Key, Table};
+
+    fn host(slug: &str, cpu: &str, trust: &str, (rounds, seconds): (usize, u64)) -> Host {
+        let mut time = Table::default();
+        time.rows.insert(
+            Key::new("native", "serde_json", "json-small", "decode"),
+            json!({ "trust": trust, "rounds": vec![json!({}); rounds] }),
+        );
+        time.provenance = json!({ "loadavg": "41.20 38.00 35.10 3/900 1" });
+        Host {
+            slug: slug.into(),
+            time,
+            e2e_time: vec![json!({ "trust": trust, "reps": [{}, {}, {}, {}, {}], "seconds": seconds })],
+            provenance: json!({ "cpu": cpu }),
+            ..Host::default()
+        }
+    }
+
+    #[test]
+    fn states_missing_hosts_solo_class_and_reductions() {
+        let data = Data {
+            hosts: vec![host("x86_64-linux-amd-x", "AMD X", "solo", (2, 10))],
+            fuzz: vec![json!({ "seconds": 1800 })],
+            ..Data::default()
+        };
+        let notes = limitations(&data).join("\n");
+        assert!(notes.contains("No Intel host: every host-measured x86-64 number is from AMD X."));
+        assert!(notes.contains("No macOS host"));
+        assert!(notes.contains("`solo` class"));
+        assert!(notes.contains("load average 41.20 38.00 35.10"));
+        assert!(notes.contains("timed sampling 2 rounds (reduced from the default 3)"));
+        assert!(notes.contains("end to end 5 reps of 10 s (reduced from the default 30) per load phase"));
+        assert!(notes.contains("Fuzzing ran 1800 s per target"));
+        assert!(!notes.contains("1800 s (reduced"));
+    }
+
+    #[test]
+    fn retires_notes_the_results_answer() {
+        let data = Data {
+            hosts: vec![
+                host("x86_64-linux-intel-y", "Intel Y", "canonical", (3, 30)),
+                host("aarch64-macos-apple-m", "Apple M", "canonical", (3, 30)),
+            ],
+            ..Data::default()
+        };
+        let notes = limitations(&data).join("\n");
+        assert!(!notes.contains("No Intel host"));
+        assert!(!notes.contains("No macOS host"));
+        assert!(!notes.contains("solo"));
+        assert!(!notes.contains("reduced"));
+    }
 }

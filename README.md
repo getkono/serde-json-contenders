@@ -112,7 +112,7 @@ The differential suite is `crates/conformance`. It compares every backend with s
 
 Beyond the differential suite:
 
-- **Fuzzing**: differential fuzzing (cargo-fuzz, `nightly-2026-09-25`, 30 minutes per target per backend) covers arbitrary bytes into `Value`, arbitrary bytes into an attribute-heavy struct, and arbitrary values round-tripped through both encoders.
+- **Fuzzing**: differential fuzzing (cargo-fuzz, `nightly-2026-09-25`, AddressSanitizer) covers arbitrary bytes into `Value`, arbitrary bytes into an attribute-heavy struct, and arbitrary values round-tripped through both encoders. Every target runs for 30 minutes per backend and build configuration on two libFuzzer workers, and continues past each divergence, so the whole 30 minutes is fuzzed and nothing behind the first finding is missed. Each run records how many inputs crashed, the smallest of them, its assertion, and any memory error the sanitizer reported. A divergence fails rule 2 (conformance); a sanitizer report fails rule 3 (soundness).
 - **Miri**: runs a subset of the suite wherever the backend's intrinsics allow it.
 
 A backend that disagrees silently with serde_json on anything that gates fails. Two rules decide what counts as a disagreement:
@@ -175,7 +175,7 @@ A backend is **recommended for Kynos** only if all four hold:
 
 1. **Frontier.** On at least one Kynos shape, it is non-dominated among eligible entries and more than 5 % better than serde_json on decode or encode CPU or heap. This must hold at x86-64 `v3` (estimated cycles) or `native` (hardware cycles), *and* on aarch64 `native`.
 2. **Conformance.** No gating disagreement at any variant, no fuzz divergence, and no undefined behaviour under Miri.
-3. **Soundness.** No advisory affecting the pinned version, and no open soundness issue.
+3. **Soundness.** No advisory affecting the pinned version, no open soundness issue, and no memory error reported by the sanitizer while fuzzing.
 4. **End to end.** At least 10 % better throughput or p99 on `echo-post` or `json-large`, outside the A/A band, and consistent with the counted codec share.
 
 Separately from Kynos, a library **deserves to exist** if either of these holds:

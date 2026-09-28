@@ -122,7 +122,7 @@ fn limitations(data: &Data) -> Vec<String> {
             if load.is_empty() {
                 String::new()
             } else {
-                format!(" (load average {} at the start of timing)", load.join("; "))
+                format!(" (1, 5 and 15 minute load average {} as timed sampling finished)", load.join("; "))
             }
         ));
     }

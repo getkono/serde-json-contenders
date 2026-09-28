@@ -304,7 +304,7 @@ fn callgrind_cell(cell_bin: &std::path::Path, cell: &Cell, out_file: &std::path:
             let result = cell_json(&stdout);
             merge(&mut row, &result);
             if !ok && result.is_null() {
-                row["error"] = json!(tail(&stderr));
+                row["error"] = json!(valgrind_error(&stderr));
             }
             if result["verdict"] == "exact" || result["verdict"] == "inexact" {
                 let iters = result["iters"].as_u64().unwrap_or(1).max(1);
@@ -321,17 +321,35 @@ fn callgrind_cell(cell_bin: &std::path::Path, cell: &Cell, out_file: &std::path:
                     }
                     Err(e) => row["error"] = json!(format!("callgrind output: {e}")),
                 }
-                let _ = std::fs::remove_file(out_file);
             }
         }
         Err(e) => row["error"] = json!(e.to_string()),
     }
+    let _ = std::fs::remove_file(out_file);
     row
 }
 
 fn tail(text: &str) -> String {
     let lines: Vec<&str> = text.lines().collect();
     lines[lines.len().saturating_sub(5)..].join("\n")
+}
+
+/// Why valgrind failed a cell: the instruction it could not decode, when that
+/// is the reason, else the end of its stderr. On an undecodable instruction
+/// valgrind ends its output with the same bug-report boilerplate every time,
+/// so the tail alone would not say which instruction or why.
+fn valgrind_error(stderr: &str) -> String {
+    let undecodable: Vec<&str> = stderr
+        .lines()
+        .filter(|l| l.contains("unhandled instruction") || l.contains("Unrecognised instruction"))
+        .map(str::trim)
+        .take(2)
+        .collect();
+    if undecodable.is_empty() {
+        tail(stderr)
+    } else {
+        undecodable.join("\n")
+    }
 }
 
 fn merge(row: &mut Value, extra: &Value) {
@@ -409,4 +427,57 @@ fn host_mode(args: &[String], mode: &str, shapes: &[Shape], host: &str, threads:
         &rows,
         mode,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Cell, callgrind_cell, valgrind_error};
+    use crate::matrix::{SETS, SHAPES};
+
+    /// A cell that yields no counts still has its callgrind output removed:
+    /// valgrind is absent (a spawn error) or cannot run the missing binary (a
+    /// failed run), and either way the row records an error and the file goes.
+    #[test]
+    fn removes_the_callgrind_output_of_a_failed_cell() {
+        let dir = std::env::temp_dir().join(format!("sjc-callgrind-cell-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let out_file = dir.join("callgrind.out");
+        std::fs::write(&out_file, "stale").unwrap();
+        let cell = Cell {
+            set: &SETS[0],
+            backend: "serde_json",
+            workload: "json-small",
+            shape: SHAPES[0],
+        };
+        let row = callgrind_cell(&dir.join("no-such-cell"), &cell, &out_file, "portable");
+        let removed = !out_file.exists();
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(row["error"].is_string(), "{row}");
+        assert!(removed, "callgrind output survived a failed cell");
+    }
+
+    #[test]
+    fn names_the_instruction_valgrind_could_not_decode() {
+        let stderr = "\
+==7== Callgrind, a call-graph generating cache profiler
+disInstr(arm64): unhandled instruction 0x25F8C540
+disInstr(arm64): 0010'0101 1111'1000 1100'0101 0100'0000
+==7== valgrind: Unrecognised instruction at address 0x4a1f20.
+==7==    at 0x4a1f20: std::rt::lang_start_internal (mod.rs:713)
+==7== Process terminating with default action of signal 4 (SIGILL)
+If that doesn't help, please report this bug to: www.valgrind.org
+In the bug report, send all the above text, the valgrind
+version, and what OS and version you are using.  Thanks.";
+        assert_eq!(
+            valgrind_error(stderr),
+            "disInstr(arm64): unhandled instruction 0x25F8C540\n\
+             ==7== valgrind: Unrecognised instruction at address 0x4a1f20."
+        );
+    }
+
+    #[test]
+    fn falls_back_to_the_tail() {
+        let stderr = "a\nb\nc\nd\ne\nf\ng";
+        assert_eq!(valgrind_error(stderr), "c\nd\ne\nf\ng");
+    }
 }

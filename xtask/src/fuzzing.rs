@@ -80,7 +80,7 @@ pub fn fuzz(args: &[String]) -> Result<()> {
                     };
                     eprintln!("fuzz: {} {config} {target} for {seconds}s", set.name);
                     let started = std::time::SystemTime::now();
-                    let (ok, _, stderr) = capture(cargo_fuzz("run").arg(&corpus).args([
+                    let (_, _, stderr) = capture(cargo_fuzz("run").arg(&corpus).args([
                         "--",
                         &format!("-max_total_time={seconds}"),
                         &format!("-fork={forks}"),
@@ -107,16 +107,19 @@ pub fn fuzz(args: &[String]) -> Result<()> {
                         .map(str::to_owned);
                     // Minimize what was found into the corpus that is committed.
                     let _ = run(cargo_fuzz("cmin").arg(&corpus));
-                    // A run that exits non-zero despite `-ignore_crashes` did
-                    // not fuzz (a build failure, a stopped parent): it cannot
-                    // pass rule 2, and its tail says why.
-                    let tail = (!ok).then(|| {
+                    // The fork-mode parent exits with its last worker's code,
+                    // so the exit status says nothing; a run finished only if
+                    // the parent reached its exit line. One that did not (a
+                    // build failure, a stopped parent) cannot pass rule 2,
+                    // and its tail says why.
+                    let finished = stderr.lines().any(|l| l.starts_with("INFO: exiting:"));
+                    let tail = (!finished).then(|| {
                         let lines: Vec<&str> = stderr.lines().collect();
                         lines[lines.len().saturating_sub(40)..].join("\n")
                     });
                     json!({
                         "set": set.name, "config": config, "target": target, "seconds": seconds, "forks": forks, "seed": 1,
-                        "divergence_found": !ok || found.divergence, "executions": executed, "crash_count": found.crash_count,
+                        "divergence_found": !finished || found.divergence, "executions": executed, "crash_count": found.crash_count,
                         "assertion": found.assertion,
                         "crash_input_hex": crashes.first().and_then(|(path, _)| std::fs::read(path).ok()).map(|b| hex(&b)),
                         "sanitizer_report": found.sanitizer_report, "crash_tail": tail,

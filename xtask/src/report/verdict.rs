@@ -341,9 +341,11 @@ fn rule1(data: &Data, e: &Entry, pool: &[&Entry]) -> Outcome {
 
 fn rule2(data: &Data, e: &Entry) -> Outcome {
     let mut runs = 0;
-    let mut failures = Vec::new();
+    // The same first failure recurs at every variant and build of a backend,
+    // so each is stated once with the number of runs it gated.
+    let mut gated: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
     for host in &data.hosts {
-        for ((variant, set), report) in &host.conformance {
+        for report in host.conformance.values() {
             let b = &report["backends"][e.backend];
             if b.is_null() {
                 continue;
@@ -355,14 +357,20 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
                     .and_then(|f| f.first())
                     .cloned()
                     .unwrap_or(Value::Null);
-                failures.push(format!(
-                    "{variant}/{set}: {} ({})",
-                    first["section"].as_str().unwrap_or("?"),
-                    first["case"].as_str().unwrap_or("?")
-                ));
+                *gated
+                    .entry(format!(
+                        "{} {}",
+                        first["section"].as_str().unwrap_or("?"),
+                        first["case"].as_str().unwrap_or("?")
+                    ))
+                    .or_default() += 1;
             }
         }
     }
+    let mut failures: Vec<String> = gated
+        .into_iter()
+        .map(|(case, n)| format!("{case} fails {n} of {runs} conformance runs"))
+        .collect();
     let set = e.set;
     let fuzz: Vec<&Value> = data.fuzz.iter().filter(|r| r["set"] == set).collect();
     for r in &fuzz {
@@ -375,8 +383,18 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
         }
     }
     let miri = data.miri.iter().find(|r| r["set"] == set);
-    if miri.is_some_and(|r| r["outcome"] == "undefined-behavior") {
-        failures.push("Miri reports undefined behavior".into());
+    if let Some(r) = miri.filter(|r| r["outcome"] == "undefined-behavior") {
+        // "error: Undefined Behavior: <what>: <where>" -> "<what>".
+        let what = r["detail"]
+            .as_str()
+            .and_then(|d| d.split("Undefined Behavior: ").nth(1))
+            .and_then(|d| d.split(':').next())
+            .map(str::trim)
+            .filter(|w| !w.is_empty());
+        failures.push(what.map_or_else(
+            || "Miri reports undefined behavior".to_owned(),
+            |w| format!("Miri reports undefined behavior ({w})"),
+        ));
     }
     if e.backend.starts_with("serde_json") {
         return Outcome::Pass("reference".into());
@@ -653,5 +671,30 @@ mod tests {
         let data = with_fuzz(vec![row], true);
         assert!(matches!(rule3(&data, e), Outcome::Pass(_)));
         assert_eq!(rule2(&data, e), Outcome::Fail("fuzz roundtrip (v3)".into()));
+    }
+
+    #[test]
+    fn a_conformance_failure_is_stated_once_with_its_run_count() {
+        let e = sonic();
+        let failing = json!({ "backends": { e.backend: { "gate": "fail",
+            "gating_failures": [{ "section": "grammar", "case": "n_x.json" }] } } });
+        let passing = json!({ "backends": { e.backend: { "gate": "pass" } } });
+        let mut host = crate::report::data::Host::default();
+        for (variant, report) in [("native", &failing), ("portable", &failing), ("v3", &passing)] {
+            host.conformance.insert((variant.into(), e.set.into()), report.clone());
+        }
+        let data = Data {
+            hosts: vec![host],
+            miri: vec![json!({ "set": e.set, "outcome": "undefined-behavior",
+                "detail": "error: Undefined Behavior: in-bounds pointer arithmetic failed: attempting to offset" })],
+            ..Data::default()
+        };
+        assert_eq!(
+            rule2(&data, e),
+            Outcome::Fail(
+                "Miri reports undefined behavior (in-bounds pointer arithmetic failed); grammar n_x.json fails 2 of 3 conformance runs"
+                    .into()
+            )
+        );
     }
 }

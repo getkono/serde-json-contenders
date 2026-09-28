@@ -107,16 +107,7 @@ pub fn fuzz(args: &[String]) -> Result<()> {
                         .map(str::to_owned);
                     // Minimize what was found into the corpus that is committed.
                     let _ = run(cargo_fuzz("cmin").arg(&corpus));
-                    // The fork-mode parent exits with its last worker's code,
-                    // so the exit status says nothing; a run finished only if
-                    // the parent reached its exit line. One that did not (a
-                    // build failure, a stopped parent) cannot pass rule 2,
-                    // and its tail says why.
-                    let finished = stderr.lines().any(|l| l.starts_with("INFO: exiting:"));
-                    let tail = (!finished).then(|| {
-                        let lines: Vec<&str> = stderr.lines().collect();
-                        lines[lines.len().saturating_sub(40)..].join("\n")
-                    });
+                    let (finished, tail) = finished_run(&stderr);
                     json!({
                         "set": set.name, "config": config, "target": target, "seconds": seconds, "forks": forks, "seed": 1,
                         "divergence_found": !finished || found.divergence, "executions": executed, "crash_count": found.crash_count,
@@ -153,6 +144,20 @@ fn crashes_since(dir: &Path, since: SystemTime) -> Vec<(PathBuf, u64)> {
         .collect();
     crashes.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| a.0.cmp(&b.0)));
     crashes
+}
+
+/// Whether a run finished, and if it did not, the last 40 lines of its
+/// stderr. The fork-mode parent exits with its last worker's code, so the
+/// exit status says nothing; a run finished only if the parent reached its
+/// exit line. One that did not (a build failure, a stopped parent, a spawn
+/// failure) cannot pass rule 2, and its tail says why.
+fn finished_run(stderr: &str) -> (bool, Option<String>) {
+    let finished = stderr.lines().any(|l| l.starts_with("INFO: exiting:"));
+    let tail = (!finished).then(|| {
+        let lines: Vec<&str> = stderr.lines().collect();
+        lines[lines.len().saturating_sub(40)..].join("\n")
+    });
+    (finished, tail)
 }
 
 fn hex(bytes: &[u8]) -> String {
@@ -266,7 +271,29 @@ pub fn miri(args: &[String]) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Findings, crashes_since, hex};
+    use super::{Findings, crashes_since, finished_run, hex};
+
+    #[test]
+    fn a_run_that_reached_its_exit_line_finished() {
+        let stderr = "#99: cov: 1 exec/s: 9\n==1== ERROR: libFuzzer: deadly signal\nINFO: exiting: 77 time: 30s\n";
+        assert_eq!(finished_run(stderr), (true, None));
+    }
+
+    #[test]
+    fn a_run_without_an_exit_line_did_not_finish_and_keeps_its_tail() {
+        let stderr = (0..50).map(|i| format!("line {i}")).collect::<Vec<_>>().join("\n");
+        let (finished, tail) = finished_run(&stderr);
+        assert!(!finished);
+        let tail = tail.unwrap_or_default();
+        assert_eq!(tail.lines().count(), 40);
+        assert!(tail.starts_with("line 10\n"));
+        assert!(tail.ends_with("line 49"));
+    }
+
+    #[test]
+    fn a_spawn_failure_did_not_finish() {
+        assert_eq!(finished_run("spawn failed"), (false, Some("spawn failed".into())));
+    }
 
     const PANIC_RELAYED: &str = "#1024: cov: 10 ft: 12 corp: 3 exec/s: 512 oom/timeout/crash: 0/0/1 time: 3s\n\
         ==41== ERROR: libFuzzer: deadly signal\n";

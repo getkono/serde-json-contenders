@@ -11,21 +11,41 @@ on:
         default: ""
 
 jobs:
-  count:
-    name: Count (${{ matrix.os }})
+  # One job per task: each writes its own result file, builds its own targets
+  # and needs its own share of the runner's disk, so a runner lost in one task
+  # loses only that task's results.
+  measure:
+    name: ${{ matrix.task }} (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, ubuntu-24.04-arm]
+        task: [count, e2e-count, alloc]
+        include:
+          - task: count
+            args: --jobs 4
     runs-on: ${{ matrix.os }}
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
-      - run: cargo xtask count --jobs 4 ${{ inputs.filter }}
-      - run: cargo xtask e2e-count ${{ inputs.filter }}
-      - run: cargo xtask alloc ${{ inputs.filter }}
+      - name: Runner resources
+        run: |
+          echo "cores $(nproc), core file limit $(ulimit -c)"
+          free -m
+          df -h "$GITHUB_WORKSPACE"
+      - name: cargo xtask ${{ matrix.task }}
+        run: |
+          # Memory and disk, sampled into this log: a runner that dies of
+          # either leaves no other record of which it was.
+          ( while sleep 300; do
+              echo "resources $(date -u +%T): memory $(free -m | awk '/^Mem/ {print $3 "/" $2}') MiB, disk $(df -h --output=used,avail "$GITHUB_WORKSPACE" | tail -1 | xargs) used/avail"
+            done ) &
+          sampler=$!
+          trap 'kill $sampler' EXIT
+          cargo xtask ${{ matrix.task }} ${{ matrix.args }} ${{ inputs.filter }}
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: results-${{ matrix.os }}
+          name: results-${{ matrix.task }}-${{ matrix.os }}
           path: results/

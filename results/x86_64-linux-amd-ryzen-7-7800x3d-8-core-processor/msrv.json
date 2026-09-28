@@ -1,0 +1,95 @@
+{
+  "kind": "msrv",
+  "provenance": {
+    "arch": "x86_64",
+    "boost": "1",
+    "container_image": null,
+    "cpu": "AMD Ryzen 7 7800X3D 8-Core Processor",
+    "git_commit": "98b4b45faa3d84240828baf235b1ff22cca17228",
+    "git_dirty": false,
+    "governor": "powersave",
+    "host": "x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor",
+    "kernel": "7.2.4-200.fc44.x86_64",
+    "loadavg": "29.03 30.52 27.60 6/5199 1382690",
+    "microcode": "microcode\t: 0xa60120c",
+    "os": "linux",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
+    "timestamp": "2026-09-28T08:22:21Z",
+    "valgrind": null
+  },
+  "rows": [
+    {
+      "builds_on_msrv": true,
+      "crate": "serde_json",
+      "declared": "1.71",
+      "first_error": null,
+      "msrv": "1.85.0",
+      "set": "baseline"
+    },
+    {
+      "builds_on_msrv": true,
+      "crate": "serde_json",
+      "declared": "1.71",
+      "first_error": null,
+      "msrv": "1.85.0",
+      "set": "baseline-float-roundtrip"
+    },
+    {
+      "builds_on_msrv": false,
+      "crate": "flexon",
+      "declared": null,
+      "first_error": "error[E0432]: unresolved import `core::hint::select_unpredictable` (in flexon-0.4.8)",
+      "msrv": "1.85.0",
+      "set": "flexon-ct"
+    },
+    {
+      "builds_on_msrv": false,
+      "crate": "flexon",
+      "declared": null,
+      "first_error": "error[E0432]: unresolved import `core::hint::select_unpredictable` (in flexon-0.4.8)",
+      "msrv": "1.85.0",
+      "set": "flexon-rt"
+    },
+    {
+      "builds_on_msrv": true,
+      "crate": "hifijson",
+      "declared": "1.56",
+      "first_error": null,
+      "msrv": "1.85.0",
+      "set": "hifijson"
+    },
+    {
+      "builds_on_msrv": false,
+      "crate": "jiter",
+      "declared": "1.88",
+      "first_error": "error[E0658]: `let` expressions in this position are unstable (in jiter-0.17.0)",
+      "msrv": "1.85.0",
+      "set": "jiter"
+    },
+    {
+      "builds_on_msrv": false,
+      "crate": "simd-json",
+      "declared": "1.88",
+      "first_error": "error[E0658]: `let` expressions in this position are unstable (in halfbrown-0.4.0)",
+      "msrv": "1.85.0",
+      "set": "simd-json"
+    },
+    {
+      "builds_on_msrv": true,
+      "crate": "sonic-rs",
+      "declared": null,
+      "first_error": null,
+      "msrv": "1.85.0",
+      "set": "sonic-rs"
+    },
+    {
+      "builds_on_msrv": true,
+      "crate": "struson",
+      "declared": "1.85.0",
+      "first_error": null,
+      "msrv": "1.85.0",
+      "set": "struson"
+    }
+  ],
+  "schema": 1
+}

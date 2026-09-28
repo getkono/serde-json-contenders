@@ -27,6 +27,12 @@ pub fn image() -> Result<()> {
 
 /// Re-run `xtask <task> <args>` inside the image, with the repository and the
 /// cargo registry mounted.
+///
+/// Core dumps are off: valgrind writes a `vgcore.<pid>` into the working
+/// directory, the mounted repository, for every client a signal kills, so a
+/// variant it cannot decode (SVE and `ldapr` on aarch64, AVX-512 on x86-64) would
+/// otherwise leave one core per cell until the disk fills. The cell's row
+/// records the failure; a core file adds nothing to it.
 pub fn reexec(task: &str, args: &[String]) -> Result<()> {
     if !cfg!(target_os = "linux") {
         anyhow::bail!("{task} runs valgrind, which does not run on this OS; run it on Linux (or let CI run it)");
@@ -37,7 +43,7 @@ pub fn reexec(task: &str, args: &[String]) -> Result<()> {
         .map(std::path::PathBuf::from)
         .or_else(|_| std::env::var("HOME").map(|h| std::path::Path::new(&h).join(".cargo")))?;
     run(Command::new(engine())
-        .args(["run", "--rm", "--security-opt", "label=disable"])
+        .args(["run", "--rm", "--security-opt", "label=disable", "--ulimit", "core=0"])
         .arg("-v")
         .arg(format!("{}:/work", root().display()))
         .arg("-v")

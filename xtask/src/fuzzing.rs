@@ -168,10 +168,36 @@ fn hex(bytes: &[u8]) -> String {
     })
 }
 
-/// A sanitizer's memory-error line. `LeakSanitizer` is left out: a leak is
-/// safe Rust, not a soundness defect.
+/// A sanitizer's memory-error line. A leak (`LeakSanitizer`) and a
+/// `stack-overflow` are left out: safe Rust leaks, and safe recursion on
+/// deeply nested input overflows its stack and aborts; neither is a
+/// soundness defect. Both still crash, so both still count against rule 2.
 fn is_sanitizer_error(line: &str) -> bool {
-    line.contains("ERROR:") && line.contains("Sanitizer:") && !line.contains("LeakSanitizer")
+    line.contains("ERROR:")
+        && line.contains("Sanitizer:")
+        && !line.contains("LeakSanitizer")
+        && !line.contains("Sanitizer: stack-overflow")
+}
+
+/// At most this many distinct relayed sanitizer lines are kept.
+const RELAYED_LINES: usize = 8;
+
+/// A relayed sanitizer line with what differs between workers removed: the
+/// `==pid==` prefix and every hexadecimal address, so the same error from
+/// many workers reads as one line.
+fn normalise(line: &str) -> String {
+    let line = line.find("ERROR:").map_or(line, |i| &line[i..]);
+    line.split(' ')
+        .map(|word| {
+            let bare = word.trim_start_matches('(').trim_end_matches(')');
+            if bare.starts_with("0x") && bare.len() > 2 && bare[2..].chars().all(|c| c.is_ascii_hexdigit()) {
+                word.replace(bare, "0x?")
+            } else {
+                word.to_owned()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// What one fuzz run found, read from its fork-mode parent's stderr (which
@@ -185,8 +211,9 @@ struct Findings {
     divergence: bool,
     /// The first assertion message, from the replay.
     assertion: Option<String>,
-    /// The replay's full sanitizer report, or failing that every distinct
-    /// sanitizer line any worker reported.
+    /// The replay's full sanitizer report, or failing that the distinct
+    /// sanitizer lines the workers reported, pid and addresses removed, at
+    /// most `RELAYED_LINES` of them.
     sanitizer_report: Option<String>,
 }
 
@@ -200,12 +227,21 @@ impl Findings {
                 .map_or(lines.len(), |i| i + 1);
             lines[..end.min(60)].join("\n")
         });
-        let mut relayed: Vec<&str> = stderr
-            .lines()
-            .filter(|l| is_sanitizer_error(l))
-            .map(str::trim)
-            .collect();
-        relayed.dedup();
+        let mut relayed: Vec<String> = Vec::new();
+        let mut omitted = 0usize;
+        for line in stderr.lines().filter(|l| is_sanitizer_error(l)).map(normalise) {
+            if relayed.contains(&line) {
+                continue;
+            }
+            if relayed.len() < RELAYED_LINES {
+                relayed.push(line);
+            } else {
+                omitted += 1;
+            }
+        }
+        if omitted > 0 {
+            relayed.push(format!("... and {omitted} more distinct sanitizer lines"));
+        }
         let sanitizer_report = block.or_else(|| (!relayed.is_empty()).then(|| relayed.join("\n")));
         let panicked = replay.contains("panicked at")
             || stderr
@@ -349,8 +385,45 @@ mod tests {
         assert!(found.divergence);
         assert_eq!(
             found.sanitizer_report.as_deref(),
-            Some("==42==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x1")
+            Some("ERROR: AddressSanitizer: heap-buffer-overflow on address 0x?")
         );
+    }
+
+    #[test]
+    fn relayed_lines_from_many_workers_collapse_to_one_per_error() {
+        let stderr = "==11==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x60200001 at pc 0x55aa bp 0x7ffc sp 0x7ffd\n\
+            ==12==ERROR: AddressSanitizer: SEGV on unknown address 0x0000 (pc 0x55ab bp 0x7ffe sp 0x7fff T0)\n\
+            ==13==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x60200099 at pc 0x55bb bp 0x7ff0 sp 0x7ff1\n";
+        let found = Findings::read(stderr, "", 3);
+        assert_eq!(
+            found.sanitizer_report.as_deref(),
+            Some(
+                "ERROR: AddressSanitizer: heap-buffer-overflow on address 0x? at pc 0x? bp 0x? sp 0x?\n\
+                 ERROR: AddressSanitizer: SEGV on unknown address 0x? (pc 0x? bp 0x? sp 0x? T0)"
+            )
+        );
+    }
+
+    #[test]
+    fn relayed_lines_are_capped() {
+        let stderr = (0..20)
+            .map(|i| format!("=={i}==ERROR: AddressSanitizer: kind-{i} on address 0x{i}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let report = Findings::read(&stderr, "", 20).sanitizer_report.unwrap_or_default();
+        assert_eq!(report.lines().count(), super::RELAYED_LINES + 1);
+        assert!(report.ends_with("... and 12 more distinct sanitizer lines"));
+    }
+
+    #[test]
+    fn a_stack_overflow_is_not_a_sanitizer_report() {
+        let found = Findings::read(
+            "==6==ERROR: AddressSanitizer: stack-overflow on address 0x7ffe (pc 0x55 bp 0x7f sp 0x7e T0)\n",
+            "",
+            1,
+        );
+        assert_eq!(found.sanitizer_report, None);
+        assert!(found.divergence);
     }
 
     #[test]

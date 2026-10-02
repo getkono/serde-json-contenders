@@ -115,10 +115,25 @@ pub struct Variant {
     pub name: &'static str,
     /// `RUSTFLAGS`.
     pub rustflags: &'static str,
-    /// Whether valgrind can run what this variant emits on the given host.
-    /// `native` on an AVX-512 host cannot be.
+    /// Whether the counted (callgrind) tasks run this variant on the given
+    /// host. `native` on an AVX-512 host cannot be counted, and aarch64
+    /// `native` is counted as [`ARM_NATIVE_COUNTED`] instead.
     pub valgrind: bool,
 }
+
+/// aarch64 `native` with the target features valgrind's arm64 decoder cannot
+/// run (up to at least 3.25.1) switched off: `sve`, whose removal takes
+/// `sve2` with it, and `rcpc` (the `ldapr` loads), whose removal takes
+/// `rcpc2` with it. Neoverse N2, GitHub's `ubuntu-24.04-arm`, has both, and
+/// fat LTO recompiles std with them, so a `native` build dies in valgrind
+/// before any measured work. This is the build rule 1's aarch64 counts are
+/// taken from; every other feature of the CPU, and its tuning, are the
+/// `native` build's.
+pub const ARM_NATIVE_COUNTED: Variant = Variant {
+    name: "native-counted",
+    rustflags: "-C target-cpu=native -C target-feature=-sve,-rcpc",
+    valgrind: true,
+};
 
 /// The variants for the architecture this binary runs on.
 #[must_use]
@@ -133,8 +148,9 @@ pub fn variants() -> Vec<Variant> {
             Variant {
                 name: "native",
                 rustflags: "-C target-cpu=native",
-                valgrind: true,
+                valgrind: false,
             },
+            ARM_NATIVE_COUNTED,
         ]
     } else {
         vec![
@@ -227,3 +243,42 @@ pub const TIMED_SHAPES: &[Shape] = &[SHAPES[0], SHAPES[4]];
 
 /// The workloads the decision rule is evaluated on.
 pub const KYNOS: &[&str] = &["json-small", "echo-post", "json-large"];
+
+#[cfg(test)]
+mod tests {
+    use std::process::Command;
+
+    use super::ARM_NATIVE_COUNTED;
+
+    /// rustc's target features for aarch64 Linux at `rustflags`, with
+    /// `native` read as Neoverse N2 (GitHub's `ubuntu-24.04-arm`), so the
+    /// check runs on any host.
+    fn n2_features(rustflags: &str) -> Vec<String> {
+        let flags = rustflags.replace("target-cpu=native", "target-cpu=neoverse-n2");
+        let out = Command::new("rustc")
+            .args(["--print", "cfg", "--target", "aarch64-unknown-linux-gnu"])
+            .args(flags.split_whitespace())
+            .output()
+            .expect("rustc runs");
+        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+        String::from_utf8_lossy(&out.stdout)
+            .lines()
+            .filter_map(|l| l.strip_prefix("target_feature=\"")?.strip_suffix('"'))
+            .map(str::to_owned)
+            .collect()
+    }
+
+    #[test]
+    fn the_counted_arm_build_switches_off_exactly_what_valgrind_cannot_decode() {
+        let native = n2_features("-C target-cpu=native");
+        let counted = n2_features(ARM_NATIVE_COUNTED.rustflags);
+        assert!(counted.iter().all(|c| native.contains(c)), "{counted:?}");
+        let dropped: Vec<&str> = native
+            .iter()
+            .filter(|n| !counted.contains(n))
+            .map(String::as_str)
+            .collect();
+        assert_eq!(dropped, ["rcpc", "rcpc2", "sve", "sve2"]);
+        assert!(counted.iter().any(|c| c == "neon"));
+    }
+}

@@ -43,12 +43,15 @@ Every build uses the same profile: `opt-level = 3`, `lto = "fat"`, `codegen-unit
 | `portable` | `-C target-cpu=x86-64` (aarch64: `generic`) |
 | `v3` | `-C target-cpu=x86-64-v3 -C target-feature=+pclmulqdq` (x86 only) |
 | `native` | `-C target-cpu=native` |
+| `native-counted` | `-C target-cpu=native -C target-feature=-sve,-rcpc` (aarch64 only) |
 
 A gain that only shows up in a native build is accepted: applications are assumed to be built for the machines they run on. The decision rule is therefore evaluated at `v3` and `native`, and `portable` is reported for information only.
 
+valgrind cannot run an aarch64 `native` build on the Neoverse N2 machines it is counted on. Its arm64 decoder (3.24.0 here, and every release up to at least 3.25.1) handles neither SVE nor the RCpc `ldapr` load, and N2 has both. Fat LTO also recompiles std with them, so every cell dies before any measured work. aarch64 `native` is therefore counted as `native-counted`: the same CPU target and tuning, with SVE (and SVE2) and RCpc (and RCpc2) switched off, and every other feature rustc reports for the CPU kept. Every SIMD path a candidate has on aarch64 is NEON, which `native-counted` keeps, so what the count leaves out is code the compiler chose to vectorise with SVE and the atomics' RCpc loads. Only the count moves: every other task still builds and measures `native` itself.
+
 `cargo xtask doctor` checks, on each machine, that every build really runs the path it claims:
 
-- The target features compiled into each `native` binary are exactly the ones rustc reports for that CPU.
+- The target features compiled into each `native` and `native-counted` binary are exactly the ones rustc reports for that CPU and that variant's `RUSTFLAGS`.
 - sonic-rs took its compile-time fast path.
 - simd-json and flexon selected their best path at run time.
 
@@ -153,7 +156,7 @@ A pass under rule 4 that rests on `solo` numbers is reported as provisional.
 | --- | --- | --- | --- |
 | AMD Ryzen 7 7800X3D (Zen 4), Linux | `portable`, `v3` in the container (valgrind cannot run AVX-512, so not `native`) | all variants | `solo` |
 | Apple Silicon, macOS | not available (no valgrind) | not available (needs root) | `solo`, when recorded |
-| GitHub `ubuntu-24.04-arm` (Neoverse) | `portable`, `native` | no | no |
+| GitHub `ubuntu-24.04-arm` (Neoverse N2) | `portable`, `native-counted` (valgrind cannot run `native`'s SVE and RCpc code) | no | no |
 | GitHub `ubuntu-24.04` | reproducibility check only: counts must match the committed ones within 0.5 % | no | no |
 
 There is no Intel machine, so Intel wall-clock and hardware-counter numbers are missing. Timed numbers are superseded whenever `mise run all` is rerun on a machine that has been quieted.
@@ -173,7 +176,7 @@ Decode-only entries are compared on the decode axes alone, and an encoder is onl
 
 A backend is **recommended for Kynos** only if all four hold:
 
-1. **Frontier.** On at least one Kynos shape, it is non-dominated among eligible entries and more than 5 % better than serde_json on decode or encode CPU or heap. This must hold at x86-64 `v3` (estimated cycles) or `native` (hardware cycles), *and* on aarch64 `native`.
+1. **Frontier.** On at least one Kynos shape, it is non-dominated among eligible entries and more than 5 % better than serde_json on decode or encode CPU or heap. This must hold at x86-64 `v3` (estimated cycles) or `native` (hardware cycles), *and* on aarch64 `native` (estimated cycles, counted at `native-counted`).
 2. **Conformance.** No gating disagreement at any variant, no fuzz divergence, and no undefined behaviour under Miri.
 3. **Soundness.** No advisory affecting the pinned version, no open soundness issue, and no memory error reported by the sanitizer while fuzzing.
 4. **End to end.** At least 10 % better throughput or p99 on `echo-post` or `json-large`, outside the A/A band, and consistent with the counted codec share.

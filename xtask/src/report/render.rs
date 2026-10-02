@@ -472,7 +472,11 @@ fn end_to_end(out: &mut String, data: &Data) {
     }
     out.push_str("### End to end: a hyper server\n\n");
     for (arch, rows) in &data.e2e_count {
-        let variant = if arch == "aarch64" { "native" } else { "v3" };
+        let variant = if arch == "aarch64" {
+            ARM_NATIVE.variant
+        } else {
+            X86_V3.variant
+        };
         let _ = writeln!(
             out,
             "**Counted, {arch} {variant}** — estimated cycles per request; codec share = (backend − floor) ÷ backend, where the floor serves the same routes with no JSON.\n"

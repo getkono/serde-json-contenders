@@ -145,7 +145,9 @@ impl Outcome {
 pub struct Point {
     pub arch: &'static str,
     pub variant: &'static str,
-    /// `callgrind` (estimated cycles) or `hw` (hardware cycles).
+    /// `callgrind` (estimated cycles) or `hw` (hardware cycles); the rule
+    /// reads only these. `callgrind-ir` (instructions callgrind counted) and
+    /// `hw-instructions` (`instructions:u`) are reported beside them.
     pub source: &'static str,
 }
 
@@ -155,8 +157,26 @@ impl Point {
             "{} {} ({})",
             self.arch,
             self.variant,
-            if self.source == "hw" { "cycles" } else { "est. cycles" }
+            match self.source {
+                "hw" => "cycles",
+                "hw-instructions" => "instructions",
+                "callgrind-ir" => "Ir",
+                _ => "est. cycles",
+            }
         )
+    }
+
+    /// The same build, read as instructions instead of cycles.
+    #[must_use]
+    pub fn instructions(self) -> Self {
+        Self {
+            source: if self.source == "hw" {
+                "hw-instructions"
+            } else {
+                "callgrind-ir"
+            },
+            ..self
+        }
     }
 }
 
@@ -194,12 +214,16 @@ pub const POINTS: &[Point] = &[X86_PORTABLE, X86_V3, X86_NATIVE, ARM_PORTABLE, A
 /// CPU per operation at a point.
 pub fn cpu(data: &Data, p: Point, backend: &str, workload: &str, op: &str) -> Option<f64> {
     let key = Key::new(p.variant, backend, workload, op);
-    match p.source {
-        "hw" => data
-            .hosts
+    let hw = |field: &str| {
+        data.hosts
             .iter()
             .filter(|h| h.arch() == p.arch)
-            .find_map(|h| h.hw.get(&key, "cycles")),
+            .find_map(|h| h.hw.get(&key, field))
+    };
+    match p.source {
+        "hw" => hw("cycles"),
+        "hw-instructions" => hw("instructions"),
+        "callgrind-ir" => data.callgrind.get(p.arch)?.get(&key, "ir"),
         _ => data.callgrind.get(p.arch)?.get(&key, "est_cycles"),
     }
 }
@@ -571,15 +595,16 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
     }
 }
 
-fn exists(data: &Data, e: &Entry) -> (bool, String) {
+/// Whether `e` deserves to exist. Its frontier is drawn among `pool`: every
+/// entry, eligible or not, that has not failed conformance.
+fn exists(data: &Data, e: &Entry, pool: &[&Entry]) -> (bool, String) {
     if e.backend == "serde_json" {
         return (true, "the baseline".into());
     }
-    let pool: Vec<&Entry> = ENTRIES.iter().collect();
     let mut best: Option<(f64, String)> = None;
     for p in POINTS {
         for w in payloads::ALL {
-            if let Some((axis, r)) = frontier_win(data, *p, e, w, &pool)
+            if let Some((axis, r)) = frontier_win(data, *p, e, w, pool)
                 && best.as_ref().is_none_or(|(b, _)| r < *b)
             {
                 best = Some((r, format!("{w} {axis} {r:.2}× serde_json at {}", p.label())));
@@ -601,12 +626,14 @@ fn exists(data: &Data, e: &Entry) -> (bool, String) {
 
 /// Apply the rule to every entry.
 pub fn judge(data: &Data) -> Vec<Verdict> {
-    // A backend that returns wrong answers cannot define the frontier: the
-    // pool is the eligible entries that have not failed conformance.
-    let pool: Vec<&Entry> = ENTRIES
+    // A backend that returns wrong answers cannot define the frontier: rule
+    // 1's pool is the eligible entries that have not failed conformance, and
+    // "deserves to exist" draws its own from every entry that has not.
+    let conforming: Vec<&Entry> = ENTRIES
         .iter()
-        .filter(|x| x.eligible && !matches!(rule2(data, x), Outcome::Fail(_)))
+        .filter(|x| !matches!(rule2(data, x), Outcome::Fail(_)))
         .collect();
+    let pool: Vec<&Entry> = conforming.iter().copied().filter(|x| x.eligible).collect();
     ENTRIES
         .iter()
         .map(|e| {
@@ -624,7 +651,7 @@ pub fn judge(data: &Data) -> Vec<Verdict> {
                 entry: *e,
                 rules,
                 recommended,
-                exists: exists(data, e),
+                exists: exists(data, e, &conforming),
             }
         })
         .collect()
@@ -682,6 +709,42 @@ pub(super) mod tests {
                 Outcome::Fail("sanitizer report fuzzing decode_value (portable)".into())
             );
         }
+    }
+
+    /// sonic-rs decodes json-small in half serde_json's cycles but fails
+    /// conformance; simd-json takes 80 %. A wrong answer cannot decide which
+    /// codecs are faster, so simd-json is on the frontier of "deserves to
+    /// exist" as it is of rule 1.
+    #[test]
+    fn an_entry_that_failed_conformance_dominates_nobody() {
+        let mut table = Table::default();
+        for (backend, est) in [("serde_json", 100.0), ("simd-json", 80.0), ("sonic-rs", 50.0)] {
+            table.rows.insert(
+                Key::new("v3", backend, "json-small", "decode"),
+                json!({ "est_cycles": est }),
+            );
+        }
+        let mut host = crate::report::data::Host::default();
+        host.conformance.insert(
+            ("native".into(), "sonic-rs".into()),
+            json!({ "backends": { "sonic-rs": { "gate": "fail",
+                "gating_failures": [{ "section": "grammar", "case": "n_x.json" }] } } }),
+        );
+        let data = Data {
+            callgrind: [("x86_64".to_owned(), table)].into(),
+            hosts: vec![host],
+            ..Data::default()
+        };
+        let verdicts = super::judge(&data);
+        let simd = verdicts.iter().find(|v| v.entry.backend == "simd-json").unwrap();
+        assert!(simd.exists.0, "{:?}", simd.exists);
+        assert!(
+            simd.exists
+                .1
+                .starts_with("json-small decode CPU 0.80× serde_json at x86_64 v3"),
+            "{:?}",
+            simd.exists
+        );
     }
 
     #[test]

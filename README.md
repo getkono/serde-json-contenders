@@ -207,15 +207,15 @@ Individual tasks are listed by `cargo xtask`. Every result file under `results/`
 | `serde_json` | serde_json | baseline | yes — the baseline | all four rules hold |
 | `serde_json+float_roundtrip` | serde_json | ❌ fail | yes — unicode decode CPU 0.55× serde_json at x86_64 native (cycles). Correctly rounded float parsing, which the default parser is not (see conformance, numbers). | no route ≥10 % better in throughput or p99 beyond the A/A band |
 | `sonic-rs` | sonic-rs | ❌ fail | yes — echo-post encode CPU 0.19× serde_json at x86_64 v3 (est. cycles). Lazy path lookups without a full parse (`get`, `get_many`, `LazyValue`); errors carry a byte offset as well as line and column. | grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs; fuzz decode_struct (portable); fuzz decode_struct (v3) |
-| `simd-json` | simd-json | ❌ fail | yes — echo-post encode CPU 0.29× serde_json at x86_64 native (cycles). Borrowing decode of escaped strings, unescaped in place: 1,175 allocations against serde_json's 4,584 for twitter-like into borrowed types from a unique buffer. A tape API (`to_tape`) traverses without building values. | status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3) |
+| `simd-json` | simd-json | ❌ fail | yes — echo-post encode CPU 0.28× serde_json at x86_64 v3 (est. cycles). Borrowing decode of escaped strings, unescaped in place: 1,175 allocations against serde_json's 4,584 for twitter-like into borrowed types from a unique buffer. A tape API (`to_tape`) traverses without building values. | status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3) |
 | `simd-json-buffers` | simd-json | ❌ fail | yes — echo-post encode CPU 0.28× serde_json at x86_64 portable (est. cycles). Reusing `Buffers` across calls roughly halves plain `from_slice`'s allocated bytes: 2.93 MB against 5.54 MB for twitter-like into borrowed types from a unique buffer. | status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3) |
-| `flexon-rt` | flexon | ❌ fail | yes — sweep-256b decode CPU 0.67× serde_json at x86_64 native (cycles). `from_mut_slice` borrows escaped strings in place; JSON-pointer access. Its latest release (0.4.9) does not compile on stable Rust. | grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence |
-| `flexon-rt-mut` | flexon | ❌ fail | yes — In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-rt`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer. | grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence |
+| `flexon-rt` | flexon | ❌ fail | yes — echo-post encode CPU 0.35× serde_json at x86_64 v3 (est. cycles). `from_mut_slice` borrows escaped strings in place; JSON-pointer access. Its latest release (0.4.9) does not compile on stable Rust. | grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence |
+| `flexon-rt-mut` | flexon | ❌ fail | yes — echo-post encode CPU 0.35× serde_json at x86_64 v3 (est. cycles). In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-rt`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer. | grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence |
 | `flexon-ct` | flexon | ❌ fail | yes — echo-post encode CPU 0.35× serde_json at x86_64 v3 (est. cycles). The compile-time SIMD configuration of flexon; same API as `flexon-rt`. | grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence |
 | `flexon-ct-mut` | flexon | ❌ fail | yes — echo-post encode CPU 0.26× serde_json at x86_64 native (cycles). In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-ct`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer. | grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence |
 | `jiter` | jiter | ❌ fail | yes — floats decode CPU 0.47× serde_json at x86_64 native (cycles). Partial mode parses truncated documents (built for streamed model output); decode only. | status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence |
-| `hifijson` | hifijson | ❌ fail | yes — No `unsafe`: 0 unsafe blocks, functions or impls in its 1 runtime crate. Lexes any byte iterator (`IterLexer`), so input need not be in memory; numbers kept as text. | reference point: no borrowed slice decode plus `to_vec`-style encoder |
-| `struson` | struson | ❌ fail | yes — No `unsafe`: 0 unsafe blocks, functions or impls across its 5 runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors. | reference point: no borrowed slice decode plus `to_vec`-style encoder |
+| `hifijson` | hifijson | ❌ fail | yes — sweep-1kib decode CPU 0.92× serde_json at x86_64 native (cycles). No `unsafe`: 0 unsafe blocks, functions or impls in its 1 runtime crate. Lexes any byte iterator (`IterLexer`), so input need not be in memory; numbers kept as text. | reference point: no borrowed slice decode plus `to_vec`-style encoder |
+| `struson` | struson | ❌ fail | yes — sweep-64b encode heap 0.70× serde_json at x86_64 portable (est. cycles). No `unsafe`: 0 unsafe blocks, functions or impls across its 5 runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors. | reference point: no borrowed slice decode plus `to_vec`-style encoder |
 
 ### The decision rule, entry by entry
 
@@ -234,29 +234,41 @@ Individual tasks are listed by `cargo xtask`. Every result file under `results/`
 
 ### CPU per operation at the three Kynos shapes
 
-serde_json is the absolute figure; every other column is a ratio to it (below 1 is faster). Owned decode of one shared frame, and `to_vec` encode: what a server does.
+serde_json is the absolute figure; every other column is a ratio to it (below 1 is faster). Owned decode of one shared frame, and `to_vec` encode: what a server does. The rule reads the cycle rows; the instruction rows beside them are the same builds counted as instructions.
 
 **Decode**
 
 | Workload | Point | serde_json | `serde_json+float_roundtrip` | `sonic-rs` | `simd-json` | `simd-json-buffers` | `flexon-rt` | `flexon-rt-mut` | `flexon-ct` | `flexon-ct-mut` | `jiter` | `hifijson` | `struson` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | json-small | x86_64 v3 (est. cycles) | 4040 | 1.01× | 0.83× | 1.30× | 0.88× | 0.73× | 0.76× | 0.72× | 0.75× | 0.90× | 1.17× | 3.65× |
+| json-small | x86_64 v3 (Ir) | 4040 | 1.01× | 0.83× | 1.30× | 0.88× | 0.73× | 0.76× | 0.72× | 0.75× | 0.90× | 1.17× | 3.65× |
 | json-small | x86_64 native (cycles) | 1633 | 0.65× | 0.71× | 0.83× | 0.86× | 0.68× | 0.72× | 0.65× | 0.44× | 0.62× | 0.71× | 2.55× |
+| json-small | x86_64 native (instructions) | 3802 | 1.01× | 0.82× | 1.27× | 0.85× | 0.71× | 0.72× | 0.71× | 0.72× | 0.89× | 1.19× | 3.68× |
 | echo-post | x86_64 v3 (est. cycles) | 4471 | 1.02× | 0.60× | 1.87× | 1.19× | 0.51× | 0.63× | 0.51× | 0.62× | 0.53× | 3.01× | 14.60× |
+| echo-post | x86_64 v3 (Ir) | 4471 | 1.02× | 0.60× | 1.87× | 1.19× | 0.51× | 0.63× | 0.51× | 0.62× | 0.53× | 3.01× | 14.57× |
 | echo-post | x86_64 native (cycles) | 1628 | 0.60× | 0.58× | 1.22× | 0.85× | 0.52× | 0.63× | 0.48× | 0.42× | 0.59× | 1.83× | 10.14× |
+| echo-post | x86_64 native (instructions) | 4368 | 1.01× | 0.58× | 1.74× | 1.05× | 0.46× | 0.54× | 0.45× | 0.53× | 0.48× | 3.06× | 14.76× |
 | json-large | x86_64 v3 (est. cycles) | 3.88 M | 1.01× | 0.81× | 0.83× | 0.82× | 0.77× | 0.77× | 0.75× | 0.76× | 0.92× | 1.12× | 2.94× |
+| json-large | x86_64 v3 (Ir) | 3.82 M | 1.01× | 0.80× | 0.81× | 0.79× | 0.76× | 0.76× | 0.74× | 0.75× | 0.92× | 1.12× | 2.97× |
 | json-large | x86_64 native (cycles) | 1.52 M | 0.67× | 0.56× | 0.60× | 0.71× | 0.71× | 0.61× | 0.68× | 0.40× | 0.68× | 0.73× | 2.27× |
+| json-large | x86_64 native (instructions) | 3.65 M | 1.01× | 0.79× | 0.77× | 0.77× | 0.75× | 0.73× | 0.73× | 0.72× | 0.91× | 1.14× | 2.95× |
 
 **Encode**
 
 | Workload | Point | serde_json | `serde_json+float_roundtrip` | `sonic-rs` | `simd-json` | `simd-json-buffers` | `flexon-rt` | `flexon-rt-mut` | `flexon-ct` | `flexon-ct-mut` | `struson` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | json-small | x86_64 v3 (est. cycles) | 1699 | 1.00× | 1.34× | 1.46× | 1.46× | 1.71× | 1.71× | 1.71× | 1.71× | 3.03× |
+| json-small | x86_64 v3 (Ir) | 1699 | 1.00× | 1.34× | 1.46× | 1.46× | 1.71× | 1.71× | 1.71× | 1.71× | 3.03× |
 | json-small | x86_64 native (cycles) | 793 | 0.72× | 0.86× | 0.81× | 0.79× | 1.64× | 1.51× | 1.65× | 1.02× | 2.71× |
+| json-small | x86_64 native (instructions) | 1685 | 1.00× | 1.32× | 1.47× | 1.47× | 1.84× | 1.84× | 1.84× | 1.84× | 3.10× |
 | echo-post | x86_64 v3 (est. cycles) | 10.6 k | 1.00× | 0.19× | 0.28× | 0.28× | 0.35× | 0.35× | 0.35× | 0.35× | 2.41× |
+| echo-post | x86_64 v3 (Ir) | 10.6 k | 1.00× | 0.19× | 0.28× | 0.28× | 0.35× | 0.35× | 0.35× | 0.35× | 2.41× |
 | echo-post | x86_64 native (cycles) | 3421 | 1.31× | 0.23× | 0.29× | 0.33× | 0.42× | 0.42× | 0.43× | 0.26× | 1.64× |
+| echo-post | x86_64 native (instructions) | 10.4 k | 1.00× | 0.22× | 0.24× | 0.24× | 0.33× | 0.33× | 0.33× | 0.33× | 2.43× |
 | json-large | x86_64 v3 (est. cycles) | 1.12 M | 1.00× | 0.96× | 1.34× | 1.34× | 0.97× | 0.97× | 0.97× | 0.97× | 2.39× |
+| json-large | x86_64 v3 (Ir) | 1.09 M | 1.00× | 0.96× | 1.35× | 1.35× | 0.97× | 0.97× | 0.97× | 0.97× | 2.42× |
 | json-large | x86_64 native (cycles) | 470.6 k | 0.60× | 0.82× | 0.86× | 0.85× | 0.95× | 0.90× | 0.97× | 0.61× | 2.12× |
+| json-large | x86_64 native (instructions) | 1.10 M | 1.00× | 0.92× | 1.34× | 1.34× | 0.96× | 0.96× | 0.96× | 0.96× | 2.35× |
 
 ### Size sweep: where SIMD starts to pay
 
@@ -328,44 +340,46 @@ A `—` under a nested workload is a rejection at that depth (see conformance), 
 
 ### Heap per operation
 
-| Entry point | Workload | Decode allocations | Decode bytes | Decode peak | Encode allocations | Encode bytes |
-| --- | --- | --- | --- | --- | --- | --- |
-| `serde_json` | json-small | 5 | 123 | 671 | 1 | 128 |
-| `serde_json` | echo-post | 1 | 1024 | 1024 | 1 | 2086 |
-| `serde_json` | json-large | 3526 | 160.4 k | 160.4 k | 1 | 131.1 k |
-| `serde_json+float_roundtrip` | json-small | 5 | 123 | 671 | 1 | 128 |
-| `serde_json+float_roundtrip` | echo-post | 1 | 1024 | 1024 | 1 | 2086 |
-| `serde_json+float_roundtrip` | json-large | 3526 | 160.4 k | 160.4 k | 1 | 131.1 k |
-| `sonic-rs` | json-small | 5 | 123 | 671 | 1 | 256 |
-| `sonic-rs` | echo-post | 1 | 1024 | 1024 | 1 | 6197 |
-| `sonic-rs` | json-large | 3526 | 160.4 k | 160.4 k | 1 | 131.1 k |
-| `simd-json` | json-small | 11 | 2276 | 2177 | 1 | 512 |
-| `simd-json` | echo-post | 7 | 5580 | 4556 | 1 | 2086 |
-| `simd-json` | json-large | 3532 | 947.1 k | 826.6 k | 1 | 131.1 k |
-| `simd-json-buffers` | json-small | 7 | 838 | 838 | 1 | 512 |
-| `simd-json-buffers` | echo-post | 3 | 2412 | 2412 | 1 | 2086 |
-| `simd-json-buffers` | json-large | 3528 | 660.1 k | 660.1 k | 1 | 131.1 k |
-| `flexon-rt` | json-small | 5 | 123 | 671 | 1 | 128 |
-| `flexon-rt` | echo-post | 1 | 1024 | 1024 | 1 | 2086 |
-| `flexon-rt` | json-large | 3526 | 160.4 k | 160.4 k | 1 | 131.1 k |
-| `flexon-rt-mut` | json-small | 6 | 214 | 671 | 1 | 128 |
-| `flexon-rt-mut` | echo-post | 2 | 2100 | 2100 | 1 | 2086 |
-| `flexon-rt-mut` | json-large | 3527 | 225.9 k | 225.9 k | 1 | 131.1 k |
-| `flexon-ct` | json-small | 5 | 123 | 671 | 1 | 128 |
-| `flexon-ct` | echo-post | 1 | 1024 | 1024 | 1 | 2086 |
-| `flexon-ct` | json-large | 3526 | 160.4 k | 160.4 k | 1 | 131.1 k |
-| `flexon-ct-mut` | json-small | 6 | 214 | 671 | 1 | 128 |
-| `flexon-ct-mut` | echo-post | 2 | 2100 | 2100 | 1 | 2086 |
-| `flexon-ct-mut` | json-large | 3527 | 225.9 k | 225.9 k | 1 | 131.1 k |
-| `jiter` | json-small | 5 | 123 | 671 | — | — |
-| `jiter` | echo-post | 1 | 1024 | 1024 | — | — |
-| `jiter` | json-large | 3526 | 160.4 k | 160.4 k | — | — |
-| `hifijson` | json-small | 5 | 123 | 671 | — | — |
-| `hifijson` | echo-post | 1 | 1024 | 1024 | — | — |
-| `hifijson` | json-large | 3526 | 160.4 k | 160.4 k | — | — |
-| `struson` | json-small | 14 | 675 | 671 | 4 | 155 |
-| `struson` | echo-post | 8 | 1572 | 1567 | 4 | 2122 |
-| `struson` | json-large | 7763 | 177.8 k | 160.9 k | 1414 | 138.7 k |
+At `native`, owned decode of one shared frame and `to_vec` encode. Bytes are those requested, counting only the growth of a reallocation; peak is the most live at once.
+
+| Entry point | Workload | Decode allocations | Decode reallocations | Decode bytes | Decode peak | Encode allocations | Encode reallocations | Encode bytes | Encode peak |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `serde_json` | json-small | 5 | 0 | 123 | 671 | 1 | 0 | 128 | 671 |
+| `serde_json` | echo-post | 1 | 0 | 1024 | 1024 | 1 | 2 | 2086 | 2086 |
+| `serde_json` | json-large | 3526 | 8 | 160.4 k | 160.4 k | 1 | 10 | 131.1 k | 131.1 k |
+| `serde_json+float_roundtrip` | json-small | 5 | 0 | 123 | 671 | 1 | 0 | 128 | 671 |
+| `serde_json+float_roundtrip` | echo-post | 1 | 0 | 1024 | 1024 | 1 | 2 | 2086 | 2086 |
+| `serde_json+float_roundtrip` | json-large | 3526 | 8 | 160.4 k | 160.4 k | 1 | 10 | 131.1 k | 131.1 k |
+| `sonic-rs` | json-small | 5 | 0 | 123 | 671 | 1 | 1 | 256 | 671 |
+| `sonic-rs` | echo-post | 1 | 0 | 1024 | 1024 | 1 | 1 | 6197 | 6197 |
+| `sonic-rs` | json-large | 3526 | 8 | 160.4 k | 160.4 k | 1 | 10 | 131.1 k | 131.1 k |
+| `simd-json` | json-small | 11 | 2 | 2276 | 2177 | 1 | 0 | 512 | 671 |
+| `simd-json` | echo-post | 7 | 2 | 5580 | 4556 | 1 | 2 | 2086 | 2086 |
+| `simd-json` | json-large | 3532 | 4 | 947.1 k | 826.6 k | 1 | 8 | 131.1 k | 131.1 k |
+| `simd-json-buffers` | json-small | 7 | 0 | 838 | 838 | 1 | 0 | 512 | 671 |
+| `simd-json-buffers` | echo-post | 3 | 0 | 2412 | 2412 | 1 | 2 | 2086 | 2086 |
+| `simd-json-buffers` | json-large | 3528 | 0 | 660.1 k | 660.1 k | 1 | 8 | 131.1 k | 131.1 k |
+| `flexon-rt` | json-small | 5 | 0 | 123 | 671 | 1 | 4 | 128 | 671 |
+| `flexon-rt` | echo-post | 1 | 0 | 1024 | 1024 | 1 | 4 | 2086 | 2086 |
+| `flexon-rt` | json-large | 3526 | 8 | 160.4 k | 160.4 k | 1 | 14 | 131.1 k | 131.1 k |
+| `flexon-rt-mut` | json-small | 6 | 0 | 214 | 671 | 1 | 4 | 128 | 671 |
+| `flexon-rt-mut` | echo-post | 2 | 0 | 2100 | 2100 | 1 | 4 | 2086 | 2086 |
+| `flexon-rt-mut` | json-large | 3527 | 8 | 225.9 k | 225.9 k | 1 | 14 | 131.1 k | 131.1 k |
+| `flexon-ct` | json-small | 5 | 0 | 123 | 671 | 1 | 4 | 128 | 671 |
+| `flexon-ct` | echo-post | 1 | 0 | 1024 | 1024 | 1 | 4 | 2086 | 2086 |
+| `flexon-ct` | json-large | 3526 | 8 | 160.4 k | 160.4 k | 1 | 14 | 131.1 k | 131.1 k |
+| `flexon-ct-mut` | json-small | 6 | 0 | 214 | 671 | 1 | 4 | 128 | 671 |
+| `flexon-ct-mut` | echo-post | 2 | 0 | 2100 | 2100 | 1 | 4 | 2086 | 2086 |
+| `flexon-ct-mut` | json-large | 3527 | 8 | 225.9 k | 225.9 k | 1 | 14 | 131.1 k | 131.1 k |
+| `jiter` | json-small | 5 | 0 | 123 | 671 | — | — | — | — |
+| `jiter` | echo-post | 1 | 0 | 1024 | 1024 | — | — | — | — |
+| `jiter` | json-large | 3526 | 8 | 160.4 k | 160.4 k | — | — | — | — |
+| `hifijson` | json-small | 5 | 0 | 123 | 671 | — | — | — | — |
+| `hifijson` | echo-post | 1 | 0 | 1024 | 1024 | — | — | — | — |
+| `hifijson` | json-large | 3526 | 8 | 160.4 k | 160.4 k | — | — | — | — |
+| `struson` | json-small | 14 | 0 | 675 | 671 | 4 | 4 | 155 | 671 |
+| `struson` | echo-post | 8 | 1 | 1572 | 1567 | 4 | 4 | 2122 | 2121 |
+| `struson` | json-large | 7763 | 8 | 177.8 k | 160.9 k | 1414 | 14 | 138.7 k | 131.1 k |
 
 ### How the body arrives, and borrowing
 
@@ -386,19 +400,36 @@ x86-64-v3 estimated cycles for `json-large`, relative to the same backend's owne
 | `hifijson` | 4.36 M | 1.00× | 1.00× | 1.00× |
 | `struson` | 11.43 M | 1.00× | 0.99× | 0.99× |
 
+### Encoding into a reused buffer
+
+x86-64-v3 estimated cycles: `to_vec` into a fresh `Vec`, and `to_writer` into a reused `Vec` that already has capacity, relative to the same backend's `to_vec`.
+
+| Entry point | json-small `to_vec` (abs.) | json-small `to_writer` | echo-post `to_vec` (abs.) | echo-post `to_writer` | json-large `to_vec` (abs.) | json-large `to_writer` |
+| --- | --- | --- | --- | --- | --- | --- |
+| `serde_json` | 1699 | 0.91× | 10.6 k | 0.86× | 1.12 M | 0.97× |
+| `serde_json+float_roundtrip` | 1699 | 0.91× | 10.5 k | 0.86× | 1.12 M | 0.97× |
+| `sonic-rs` | 2276 | 0.65× | 1957 | 0.66× | 1.07 M | 0.97× |
+| `simd-json` | 2482 | 0.95× | 2910 | 0.50× | 1.50 M | 1.00× |
+| `simd-json-buffers` | 2482 | 0.95× | 2945 | 0.50× | 1.50 M | 1.00× |
+| `flexon-rt` | 2902 | 0.51× | 3721 | 0.46× | 1.08 M | 0.97× |
+| `flexon-rt-mut` | 2902 | 0.51× | 3721 | 0.46× | 1.08 M | 0.97× |
+| `flexon-ct` | 2902 | 0.51× | 3721 | 0.46× | 1.08 M | 0.97× |
+| `flexon-ct-mut` | 2902 | 0.51× | 3721 | 0.46× | 1.08 M | 0.97× |
+| `struson` | 5151 | 0.72× | 25.5 k | 0.92× | 2.67 M | 0.99× |
+
 ### What adopting it costs besides CPU
 
-| Set | `.text` +full (native) | `.text` +decode-only | Clean release build | Incremental dev build | Builds on 1.85 | Declared MSRV | Crates added | `unsafe` blocks / fns / impls | Advisories |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| baseline | +47 KiB | +42 KiB | 6.2 s | 0.16 s | yes | 1.71 | 4 | 191 / 207 / 2 | none |
-| baseline-float-roundtrip | +69 KiB | +64 KiB | 6.9 s | 0.22 s | yes | 1.71 | 4 | 191 / 207 / 2 | none |
-| sonic-rs | +214 KiB | +180 KiB | 10.0 s | 0.20 s | yes | none | 17 | 776 / 489 / 116 | RUSTSEC-2020-0006 (patched), RUSTSEC-2022-0078 (patched), RUSTSEC-2019-0017 (patched), RUSTSEC-2023-0074 (patched) |
-| simd-json | +56 KiB | +46 KiB | 7.5 s | 0.19 s | no | 1.88 | 14 | 776 / 337 / 53 | RUSTSEC-2024-0402 (patched), RUSTSEC-2019-0008 (patched) |
-| flexon-rt | +74 KiB | +67 KiB | 16.0 s | 0.63 s | no | none | 2 | 165 / 165 / 0 | none |
-| flexon-ct | +73 KiB | +67 KiB | 6.9 s | 0.20 s | no | none | 2 | 165 / 165 / 0 | none |
-| jiter | +92 KiB | +92 KiB | 7.3 s | 0.17 s | no | 1.88 | 17 | 753 / 399 / 125 | RUSTSEC-2020-0007 (patched), RUSTSEC-2019-0017 (patched), RUSTSEC-2018-0003 (patched), RUSTSEC-2018-0018 (patched), RUSTSEC-2019-0009 (patched), RUSTSEC-2019-0012 (patched), RUSTSEC-2021-0003 (patched), RUSTSEC-2023-0074 (patched) |
-| hifijson | +66 KiB | +66 KiB | 8.3 s | 0.45 s | yes | 1.56 | 1 | 0 / 0 / 0 | none |
-| struson | +103 KiB | +93 KiB | 7.5 s | 0.30 s | yes | 1.85.0 | 9 | 0 / 0 / 0 | none |
+| Set | `.text` +full (native) | `.text` +decode-only | Clean release build | Clean dev build | Incremental dev build | Builds on 1.85 | Declared MSRV | Crates added | `unsafe` blocks / fns / impls / traits | Advisories |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| baseline | +47 KiB | +42 KiB | 6.2 s | 3.1 s | 0.16 s | yes | 1.71 | 4 | 191 / 207 / 2 / 0 | none |
+| baseline-float-roundtrip | +69 KiB | +64 KiB | 6.9 s | 3.5 s | 0.22 s | yes | 1.71 | 4 | 191 / 207 / 2 / 0 | none |
+| sonic-rs | +214 KiB | +180 KiB | 10.0 s | 3.9 s | 0.20 s | yes | none | 17 | 776 / 489 / 116 / 32 | RUSTSEC-2020-0006 (patched), RUSTSEC-2022-0078 (patched), RUSTSEC-2019-0017 (patched), RUSTSEC-2023-0074 (patched) |
+| simd-json | +56 KiB | +46 KiB | 7.5 s | 3.9 s | 0.19 s | no | 1.88 | 14 | 776 / 337 / 53 / 4 | RUSTSEC-2024-0402 (patched), RUSTSEC-2019-0008 (patched) |
+| flexon-rt | +74 KiB | +67 KiB | 16.0 s | 9.1 s | 0.63 s | no | none | 2 | 165 / 165 / 0 / 0 | none |
+| flexon-ct | +73 KiB | +67 KiB | 6.9 s | 3.4 s | 0.20 s | no | none | 2 | 165 / 165 / 0 / 0 | none |
+| jiter | +92 KiB | +92 KiB | 7.3 s | 3.7 s | 0.17 s | no | 1.88 | 17 | 753 / 399 / 125 / 32 | RUSTSEC-2020-0007 (patched), RUSTSEC-2019-0017 (patched), RUSTSEC-2018-0003 (patched), RUSTSEC-2018-0018 (patched), RUSTSEC-2019-0009 (patched), RUSTSEC-2019-0012 (patched), RUSTSEC-2021-0003 (patched), RUSTSEC-2023-0074 (patched) |
+| hifijson | +66 KiB | +66 KiB | 8.3 s | 7.4 s | 0.45 s | yes | 1.56 | 1 | 0 / 0 / 0 / 0 | none |
+| struson | +103 KiB | +93 KiB | 7.5 s | 3.3 s | 0.30 s | yes | 1.85.0 | 9 | 0 / 0 / 0 / 0 | none |
 
 Open issues touching soundness, reviewed by hand (`results/soundness.toml`); none fail rule 3 unless listed as open:
 
@@ -479,6 +510,21 @@ Disagreements per section, summed over every build variant and host; **bold** se
 - `struson` (native/struson): status — `shape/array-too-long`: status Some(422), serde_json Some(400)
 - `struson` (native/struson): numbers — `random/9.14136969137253e-261`: decoded {"error":"Data: unsupported number value '9.14136969137253e-261' at path '$', line 0, column 0 (data pos 0)"}, neither the correctly rounded value nor s
 - `struson` (native/struson): numbers — `random/2.5831903292054557e+102`: decoded {"error":"Data: unsupported number value '2.5831903292054557e+102' at path '$', line 0, column 0 (data pos 0)"}, neither the correctly rounded value nor
+
+**Nesting depth limits**, which the depth section records and gates only on a crash: the deepest document accepted, and the next depth tried, from 100 up to 1 000 000 levels, decoded into `Value` and into `IgnoredAny` on a 2 MiB (tokio's worker) and an 8 MiB stack.
+
+| Entry point | Variant | `Value`, 2 MiB | `Value`, 8 MiB | `IgnoredAny`, 2 MiB | `IgnoredAny`, 8 MiB |
+| --- | --- | --- | --- | --- | --- |
+| `sonic-rs` | native | ≤200, rejects 255 | ≤200, rejects 255 | ≤10000, crashes at 1000000 | ≤10000, crashes at 1000000 |
+| `simd-json` | native | ≤1000, rejects 1025 | ≤1000, rejects 1025 | ≤1000, rejects 1025 | ≤1000, rejects 1025 |
+| `simd-json-buffers` | native | ≤1000, rejects 1025 | ≤1000, rejects 1025 | ≤1000, rejects 1025 | ≤1000, rejects 1025 |
+| `flexon-rt` | native | ≤1025, crashes at 10000 | ≤10000, crashes at 1000000 | ≤10000, crashes at 1000000 | ≤10000, crashes at 1000000 |
+| `flexon-rt-mut` | native | ≤1025, crashes at 10000 | ≤10000, crashes at 1000000 | ≤10000, crashes at 1000000 | ≤10000, crashes at 1000000 |
+| `flexon-ct` | native | ≤1025, crashes at 10000 | ≤10000, crashes at 1000000 | ≤10000, crashes at 1000000 | ≤10000, crashes at 1000000 |
+| `flexon-ct-mut` | native | ≤1025, crashes at 10000 | ≤10000, crashes at 1000000 | ≤10000, crashes at 1000000 | ≤10000, crashes at 1000000 |
+| `jiter` | native | ≤200, rejects 255 | ≤200, rejects 255 | ≤200, rejects 255 | ≤200, rejects 255 |
+| `hifijson` | native | ≤1025, crashes at 10000 | ≤10000, crashes at 1000000 | ≤10000, crashes at 1000000 | ≤10000, crashes at 1000000 |
+| `struson` | native | ≤128, rejects 129 | ≤128, rejects 129 | ≤128, rejects 129 | ≤128, rejects 129 |
 
 ### End to end: a hyper server
 

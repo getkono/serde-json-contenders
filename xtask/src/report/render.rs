@@ -804,4 +804,15 @@ mod tests {
         assert!(!notes.contains("solo"));
         assert!(!notes.contains("reduced"));
     }
+
+    #[test]
+    fn states_a_missing_x86_64_host() {
+        let data = Data {
+            hosts: vec![host("aarch64-macos-apple-m", "Apple M", "canonical", (3, 30))],
+            ..Data::default()
+        };
+        let notes = limitations(&data).join("\n");
+        assert!(notes.contains("No x86-64 host is recorded, so no Intel host either."));
+        assert!(!notes.contains("No Intel host:"));
+    }
 }

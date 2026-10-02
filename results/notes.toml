@@ -2,6 +2,12 @@
 # crate's source at the pinned version. The report appends these to the
 # measured evidence in the "deserves to exist" column; they are never used as
 # evidence for the Kynos rule.
+#
+# Where a capability is measurable, the note quotes the figure that shows it:
+# allocations and bytes are x86-64 `native` decode rows of
+# results/x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor/alloc.json, and
+# unsafe counts are runtime crates in results/footprint.json. Re-check each
+# figure when those files are regenerated.
 
 ["serde_json+float_roundtrip"]
 merit = "Correctly rounded float parsing, which the default parser is not (see conformance, numbers)."
@@ -10,28 +16,28 @@ merit = "Correctly rounded float parsing, which the default parser is not (see c
 merit = "Lazy path lookups without a full parse (`get`, `get_many`, `LazyValue`); errors carry a byte offset as well as line and column."
 
 [simd-json]
-merit = "Borrowing decode of escaped strings, unescaped in place; a tape API (`to_tape`) for traversal without building values."
+merit = "Borrowing decode of escaped strings, unescaped in place: 1,175 allocations against serde_json's 4,584 for twitter-like into borrowed types from a unique buffer. A tape API (`to_tape`) traverses without building values."
 
 [simd-json-buffers]
-merit = "Reusing `Buffers` across calls removes the per-call scratch allocations plain `from_slice` makes."
+merit = "Reusing `Buffers` across calls roughly halves plain `from_slice`'s allocated bytes: 2.93 MB against 5.54 MB for twitter-like into borrowed types from a unique buffer."
 
 [flexon-rt]
 merit = "`from_mut_slice` borrows escaped strings in place; JSON-pointer access. Its latest release (0.4.9) does not compile on stable Rust."
 
 [flexon-rt-mut]
-merit = "In-place parse lets escaped strings borrow."
+merit = "In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-rt`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer."
 
 [flexon-ct]
 merit = "The compile-time SIMD configuration of flexon; same API as `flexon-rt`."
 
 [flexon-ct-mut]
-merit = "In-place parse lets escaped strings borrow."
+merit = "In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-ct`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer."
 
 [jiter]
 merit = "Partial mode parses truncated documents (built for streamed model output); decode only."
 
 [hifijson]
-merit = "No `unsafe`; lexes any byte iterator (`IterLexer`), so input need not be in memory; numbers kept as text."
+merit = "No `unsafe`: 0 unsafe blocks, functions or impls in its 1 runtime crate. Lexes any byte iterator (`IterLexer`), so input need not be in memory; numbers kept as text."
 
 [struson]
-merit = "No `unsafe`; a true streaming reader and writer with JSON-path seeking and positions in errors."
+merit = "No `unsafe`: 0 unsafe blocks, functions or impls across its 5 runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors."

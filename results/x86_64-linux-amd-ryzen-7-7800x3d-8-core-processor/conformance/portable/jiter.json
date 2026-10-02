@@ -1,0 +1,3013 @@
+{
+  "provenance": {
+    "arch": "x86_64",
+    "boost": "1",
+    "container_image": null,
+    "cpu": "AMD Ryzen 7 7800X3D 8-Core Processor",
+    "git_commit": "429dbc42e1ba98e81b69d224c78b094499ad4f34",
+    "git_dirty": false,
+    "governor": "powersave",
+    "host": "x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor",
+    "kernel": "7.2.4-200.fc44.x86_64",
+    "loadavg": "7.85 11.22 13.05 3/4294 494068",
+    "microcode": "microcode\t: 0xa60120c",
+    "os": "linux",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
+    "timestamp": "2026-09-28T07:02:52Z",
+    "valgrind": null
+  },
+  "report": {
+    "backends": {
+      "jiter": {
+        "gate": "fail",
+        "gating_failures": [
+          {
+            "case": "shape/variant-wrong-type",
+            "detail": "status Some(422), serde_json Some(400)",
+            "section": "status"
+          },
+          {
+            "case": "shape/u64-out-of-range",
+            "detail": "status Some(400), serde_json Some(422)",
+            "section": "status"
+          },
+          {
+            "case": "shape/negative-zero-into-u64",
+            "detail": "status Some(200), serde_json Some(422)",
+            "section": "status"
+          },
+          {
+            "case": "negative-zero-int#f64",
+            "detail": "both accept, values differ, and the backend's is not correctly rounded",
+            "section": "numbers"
+          },
+          {
+            "case": "flatten-map/2#owned#unique",
+            "detail": "outcome differs from serde_json",
+            "section": "attributes"
+          },
+          {
+            "case": "flatten-map/2#owned#shared",
+            "detail": "outcome differs from serde_json",
+            "section": "attributes"
+          },
+          {
+            "case": "flatten-map/2#borrowed#unique",
+            "detail": "outcome differs from serde_json",
+            "section": "attributes"
+          },
+          {
+            "case": "flatten-map/2#borrowed#shared",
+            "detail": "outcome differs from serde_json",
+            "section": "attributes"
+          },
+          {
+            "case": "untagged/4#owned#unique",
+            "detail": "outcome differs from serde_json",
+            "section": "attributes"
+          },
+          {
+            "case": "untagged/4#owned#shared",
+            "detail": "outcome differs from serde_json",
+            "section": "attributes"
+          },
+          {
+            "case": "untagged/4#borrowed#unique",
+            "detail": "outcome differs from serde_json",
+            "section": "attributes"
+          },
+          {
+            "case": "untagged/4#borrowed#shared",
+            "detail": "outcome differs from serde_json",
+            "section": "attributes"
+          },
+          {
+            "case": "externally-tagged/6#owned#unique",
+            "detail": "outcome differs from serde_json",
+            "section": "attributes"
+          },
+          {
+            "case": "externally-tagged/6#owned#shared",
+            "detail": "outcome differs from serde_json",
+            "section": "attributes"
+          },
+          {
+            "case": "externally-tagged/6#borrowed#unique",
+            "detail": "outcome differs from serde_json",
+            "section": "attributes"
+          },
+          {
+            "case": "externally-tagged/6#borrowed#shared",
+            "detail": "outcome differs from serde_json",
+            "section": "attributes"
+          },
+          {
+            "case": "y_structure_lonely_null.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_structure_lonely_null.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "ints#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "ints#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "ints#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "ints#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          }
+        ],
+        "sections": {
+          "attributes": {
+            "cases": 272,
+            "differences": [
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 22 })",
+                    "status": 400
+                  }
+                },
+                "case": "flatten-map/2#owned#unique",
+                "reference": {
+                  "input": "{\"x\":-1,\"id\":2,\"big\":18446744073709551615}",
+                  "outcome": {
+                    "accept": {
+                      "big": 18446744073709551615,
+                      "id": 2,
+                      "x": -1
+                    }
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 22 })",
+                    "status": 400
+                  }
+                },
+                "case": "flatten-map/2#owned#shared",
+                "reference": {
+                  "input": "{\"x\":-1,\"id\":2,\"big\":18446744073709551615}",
+                  "outcome": {
+                    "accept": {
+                      "big": 18446744073709551615,
+                      "id": 2,
+                      "x": -1
+                    }
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 22 })",
+                    "status": 400
+                  }
+                },
+                "case": "flatten-map/2#borrowed#unique",
+                "reference": {
+                  "input": "{\"x\":-1,\"id\":2,\"big\":18446744073709551615}",
+                  "outcome": {
+                    "accept": {
+                      "big": 18446744073709551615,
+                      "id": 2,
+                      "x": -1
+                    }
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 22 })",
+                    "status": 400
+                  }
+                },
+                "case": "flatten-map/2#borrowed#shared",
+                "reference": {
+                  "input": "{\"x\":-1,\"id\":2,\"big\":18446744073709551615}",
+                  "outcome": {
+                    "accept": {
+                      "big": 18446744073709551615,
+                      "id": 2,
+                      "x": -1
+                    }
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
+                    "status": 400
+                  }
+                },
+                "case": "untagged/4#owned#unique",
+                "reference": {
+                  "input": "18446744073709551615",
+                  "outcome": {
+                    "accept": 1.8446744073709552e+19
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
+                    "status": 400
+                  }
+                },
+                "case": "untagged/4#owned#shared",
+                "reference": {
+                  "input": "18446744073709551615",
+                  "outcome": {
+                    "accept": 1.8446744073709552e+19
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
+                    "status": 400
+                  }
+                },
+                "case": "untagged/4#borrowed#unique",
+                "reference": {
+                  "input": "18446744073709551615",
+                  "outcome": {
+                    "accept": 1.8446744073709552e+19
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
+                    "status": 400
+                  }
+                },
+                "case": "untagged/4#borrowed#shared",
+                "reference": {
+                  "input": "18446744073709551615",
+                  "outcome": {
+                    "accept": 1.8446744073709552e+19
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Enum { kind: NotSingleKey, index: 16 }",
+                    "status": 422
+                  }
+                },
+                "case": "externally-tagged/6#owned#unique",
+                "reference": {
+                  "input": "{\"New\":1,\"Unit\":null}",
+                  "outcome": {
+                    "reject": {
+                      "class": "syntax",
+                      "message": "expected value at line 1 column 8",
+                      "status": 400
+                    }
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Enum { kind: NotSingleKey, index: 16 }",
+                    "status": 422
+                  }
+                },
+                "case": "externally-tagged/6#owned#shared",
+                "reference": {
+                  "input": "{\"New\":1,\"Unit\":null}",
+                  "outcome": {
+                    "reject": {
+                      "class": "syntax",
+                      "message": "expected value at line 1 column 8",
+                      "status": 400
+                    }
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Enum { kind: NotSingleKey, index: 16 }",
+                    "status": 422
+                  }
+                },
+                "case": "externally-tagged/6#borrowed#unique",
+                "reference": {
+                  "input": "{\"New\":1,\"Unit\":null}",
+                  "outcome": {
+                    "reject": {
+                      "class": "syntax",
+                      "message": "expected value at line 1 column 8",
+                      "status": 400
+                    }
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Enum { kind: NotSingleKey, index: 16 }",
+                    "status": 422
+                  }
+                },
+                "case": "externally-tagged/6#borrowed#shared",
+                "reference": {
+                  "input": "{\"New\":1,\"Unit\":null}",
+                  "outcome": {
+                    "reject": {
+                      "class": "syntax",
+                      "message": "expected value at line 1 column 8",
+                      "status": 400
+                    }
+                  }
+                }
+              }
+            ],
+            "disagreements": 12,
+            "gating": true,
+            "gating_failure_count": 12,
+            "notes": []
+          },
+          "depth": {
+            "cases": 88,
+            "data": {
+              "limits": {
+                "backend": {
+                  "array/ignored/2MiB": {
+                    "first_crashed": null,
+                    "first_rejected": 255,
+                    "max_accepted": 200
+                  },
+                  "array/ignored/8MiB": {
+                    "first_crashed": null,
+                    "first_rejected": 255,
+                    "max_accepted": 200
+                  },
+                  "array/value/2MiB": {
+                    "first_crashed": null,
+                    "first_rejected": 255,
+                    "max_accepted": 200
+                  },
+                  "array/value/8MiB": {
+                    "first_crashed": null,
+                    "first_rejected": 255,
+                    "max_accepted": 200
+                  },
+                  "object/ignored/2MiB": {
+                    "first_crashed": null,
+                    "first_rejected": 255,
+                    "max_accepted": 200
+                  },
+                  "object/ignored/8MiB": {
+                    "first_crashed": null,
+                    "first_rejected": 255,
+                    "max_accepted": 200
+                  },
+                  "object/value/2MiB": {
+                    "first_crashed": null,
+                    "first_rejected": 255,
+                    "max_accepted": 200
+                  },
+                  "object/value/8MiB": {
+                    "first_crashed": null,
+                    "first_rejected": 255,
+                    "max_accepted": 200
+                  }
+                },
+                "reference": {
+                  "array/ignored/2MiB": {
+                    "first_crashed": null,
+                    "first_rejected": null,
+                    "max_accepted": 1000000
+                  },
+                  "array/ignored/8MiB": {
+                    "first_crashed": null,
+                    "first_rejected": null,
+                    "max_accepted": 1000000
+                  },
+                  "array/value/2MiB": {
+                    "first_crashed": null,
+                    "first_rejected": 128,
+                    "max_accepted": 127
+                  },
+                  "array/value/8MiB": {
+                    "first_crashed": null,
+                    "first_rejected": 128,
+                    "max_accepted": 127
+                  },
+                  "object/ignored/2MiB": {
+                    "first_crashed": null,
+                    "first_rejected": null,
+                    "max_accepted": 1000000
+                  },
+                  "object/ignored/8MiB": {
+                    "first_crashed": null,
+                    "first_rejected": null,
+                    "max_accepted": 1000000
+                  },
+                  "object/value/2MiB": {
+                    "first_crashed": null,
+                    "first_rejected": 128,
+                    "max_accepted": 127
+                  },
+                  "object/value/8MiB": {
+                    "first_crashed": null,
+                    "first_rejected": 128,
+                    "max_accepted": 127
+                  }
+                }
+              }
+            },
+            "differences": [
+              {
+                "backend": "accepted",
+                "case": "array/value/2MiB/128",
+                "reference": "rejected 400"
+              },
+              {
+                "backend": "accepted",
+                "case": "array/value/2MiB/129",
+                "reference": "rejected 400"
+              },
+              {
+                "backend": "accepted",
+                "case": "array/value/2MiB/200",
+                "reference": "rejected 400"
+              },
+              {
+                "backend": "accepted",
+                "case": "array/value/8MiB/128",
+                "reference": "rejected 400"
+              },
+              {
+                "backend": "accepted",
+                "case": "array/value/8MiB/129",
+                "reference": "rejected 400"
+              },
+              {
+                "backend": "accepted",
+                "case": "array/value/8MiB/200",
+                "reference": "rejected 400"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "array/ignored/2MiB/255",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "array/ignored/2MiB/256",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "array/ignored/2MiB/1000",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "array/ignored/2MiB/1025",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "array/ignored/2MiB/10000",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "array/ignored/2MiB/1000000",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "array/ignored/8MiB/255",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "array/ignored/8MiB/256",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "array/ignored/8MiB/1000",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "array/ignored/8MiB/1025",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "array/ignored/8MiB/10000",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "array/ignored/8MiB/1000000",
+                "reference": "accepted"
+              },
+              {
+                "backend": "accepted",
+                "case": "object/value/2MiB/128",
+                "reference": "rejected 400"
+              },
+              {
+                "backend": "accepted",
+                "case": "object/value/2MiB/129",
+                "reference": "rejected 400"
+              },
+              {
+                "backend": "accepted",
+                "case": "object/value/2MiB/200",
+                "reference": "rejected 400"
+              },
+              {
+                "backend": "accepted",
+                "case": "object/value/8MiB/128",
+                "reference": "rejected 400"
+              },
+              {
+                "backend": "accepted",
+                "case": "object/value/8MiB/129",
+                "reference": "rejected 400"
+              },
+              {
+                "backend": "accepted",
+                "case": "object/value/8MiB/200",
+                "reference": "rejected 400"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "object/ignored/2MiB/255",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "object/ignored/2MiB/256",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "object/ignored/2MiB/1000",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "object/ignored/2MiB/1025",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "object/ignored/2MiB/10000",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "object/ignored/2MiB/1000000",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "object/ignored/8MiB/255",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "object/ignored/8MiB/256",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "object/ignored/8MiB/1000",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "object/ignored/8MiB/1025",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "object/ignored/8MiB/10000",
+                "reference": "accepted"
+              },
+              {
+                "backend": "rejected 400",
+                "case": "object/ignored/8MiB/1000000",
+                "reference": "accepted"
+              }
+            ],
+            "disagreements": 36,
+            "gating": false,
+            "gating_failure_count": 0,
+            "notes": []
+          },
+          "encode_diff": {
+            "cases": 96,
+            "differences": [
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 254 })",
+                    "status": 400
+                  }
+                },
+                "case": "ints#decode/owned#unique",
+                "reference": {
+                  "accept": "{\"signed\":[44236,-95297479014572784,-8341,2912621235409727,-283732124,-47870,-7762365930029636,-653482580,-93,-2912453148716,-440046176452484368,5018766820960,-1,-70585304715051272,-4261,25539167121643,517397888,-24561157638,-27545,-66686734177367,-4496274821,873910641920,-513529665479,-588202,-2,-6237073520916,29294009629812240,-3696948081856658,-19576535626,5946,-7690842170,892,-9255136767229210... (14548 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 254 })",
+                    "status": 400
+                  }
+                },
+                "case": "ints#decode/borrowed#unique",
+                "reference": {
+                  "accept": "{\"signed\":[44236,-95297479014572784,-8341,2912621235409727,-283732124,-47870,-7762365930029636,-653482580,-93,-2912453148716,-440046176452484368,5018766820960,-1,-70585304715051272,-4261,25539167121643,517397888,-24561157638,-27545,-66686734177367,-4496274821,873910641920,-513529665479,-588202,-2,-6237073520916,29294009629812240,-3696948081856658,-19576535626,5946,-7690842170,892,-9255136767229210... (14548 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 254 })",
+                    "status": 400
+                  }
+                },
+                "case": "ints#decode/owned#shared",
+                "reference": {
+                  "accept": "{\"signed\":[44236,-95297479014572784,-8341,2912621235409727,-283732124,-47870,-7762365930029636,-653482580,-93,-2912453148716,-440046176452484368,5018766820960,-1,-70585304715051272,-4261,25539167121643,517397888,-24561157638,-27545,-66686734177367,-4496274821,873910641920,-513529665479,-588202,-2,-6237073520916,29294009629812240,-3696948081856658,-19576535626,5946,-7690842170,892,-9255136767229210... (14548 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 254 })",
+                    "status": 400
+                  }
+                },
+                "case": "ints#decode/borrowed#shared",
+                "reference": {
+                  "accept": "{\"signed\":[44236,-95297479014572784,-8341,2912621235409727,-283732124,-47870,-7762365930029636,-653482580,-93,-2912453148716,-440046176452484368,5018766820960,-1,-70585304715051272,-4261,25539167121643,517397888,-24561157638,-27545,-66686734177367,-4496274821,873910641920,-513529665479,-588202,-2,-6237073520916,29294009629812240,-3696948081856658,-19576535626,5946,-7690842170,892,-9255136767229210... (14548 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "accept": "[-2.851342213612639e-233,-2.598542894144541e+65,-4.996368820429492e-44,3.407675064251883e-219,2.226584470308293e-90,5.306820229383566e-268,-6.542205594435227e+54,-7.233467679502166e+296,-2.9639499256117824e-228,-4.4622049767668867e-45,8.412785910025416e-202,-5.7642579549365314e+305,-4.777403466629105e+74,2.6605997919494885e-234,3.1069391926606013e+156,4.3272882825966486e-54,5.987872254674003e-213,... (16384 bytes, depth 1)"
+                },
+                "case": "floats#decode/owned#unique",
+                "reference": {
+                  "accept": "[-2.851342213612639e-233,-2.5985428941445413e+65,-4.996368820429492e-44,3.407675064251883e-219,2.2265844703082932e-90,5.306820229383566e-268,-6.542205594435227e+54,-7.233467679502166e+296,-2.9639499256117824e-228,-4.4622049767668867e-45,8.412785910025416e-202,-5.7642579549365314e+305,-4.777403466629105e+74,2.6605997919494885e-234,3.1069391926606013e+156,4.3272882825966486e-54,5.987872254674003e-21... (16378 bytes, depth 1)"
+                }
+              },
+              {
+                "backend": {
+                  "accept": "[-2.851342213612639e-233,-2.598542894144541e+65,-4.996368820429492e-44,3.407675064251883e-219,2.226584470308293e-90,5.306820229383566e-268,-6.542205594435227e+54,-7.233467679502166e+296,-2.9639499256117824e-228,-4.4622049767668867e-45,8.412785910025416e-202,-5.7642579549365314e+305,-4.777403466629105e+74,2.6605997919494885e-234,3.1069391926606013e+156,4.3272882825966486e-54,5.987872254674003e-213,... (16384 bytes, depth 1)"
+                },
+                "case": "floats#decode/borrowed#unique",
+                "reference": {
+                  "accept": "[-2.851342213612639e-233,-2.5985428941445413e+65,-4.996368820429492e-44,3.407675064251883e-219,2.2265844703082932e-90,5.306820229383566e-268,-6.542205594435227e+54,-7.233467679502166e+296,-2.9639499256117824e-228,-4.4622049767668867e-45,8.412785910025416e-202,-5.7642579549365314e+305,-4.777403466629105e+74,2.6605997919494885e-234,3.1069391926606013e+156,4.3272882825966486e-54,5.987872254674003e-21... (16378 bytes, depth 1)"
+                }
+              },
+              {
+                "backend": {
+                  "accept": "[-2.851342213612639e-233,-2.598542894144541e+65,-4.996368820429492e-44,3.407675064251883e-219,2.226584470308293e-90,5.306820229383566e-268,-6.542205594435227e+54,-7.233467679502166e+296,-2.9639499256117824e-228,-4.4622049767668867e-45,8.412785910025416e-202,-5.7642579549365314e+305,-4.777403466629105e+74,2.6605997919494885e-234,3.1069391926606013e+156,4.3272882825966486e-54,5.987872254674003e-213,... (16384 bytes, depth 1)"
+                },
+                "case": "floats#decode/owned#shared",
+                "reference": {
+                  "accept": "[-2.851342213612639e-233,-2.5985428941445413e+65,-4.996368820429492e-44,3.407675064251883e-219,2.2265844703082932e-90,5.306820229383566e-268,-6.542205594435227e+54,-7.233467679502166e+296,-2.9639499256117824e-228,-4.4622049767668867e-45,8.412785910025416e-202,-5.7642579549365314e+305,-4.777403466629105e+74,2.6605997919494885e-234,3.1069391926606013e+156,4.3272882825966486e-54,5.987872254674003e-21... (16378 bytes, depth 1)"
+                }
+              },
+              {
+                "backend": {
+                  "accept": "[-2.851342213612639e-233,-2.598542894144541e+65,-4.996368820429492e-44,3.407675064251883e-219,2.226584470308293e-90,5.306820229383566e-268,-6.542205594435227e+54,-7.233467679502166e+296,-2.9639499256117824e-228,-4.4622049767668867e-45,8.412785910025416e-202,-5.7642579549365314e+305,-4.777403466629105e+74,2.6605997919494885e-234,3.1069391926606013e+156,4.3272882825966486e-54,5.987872254674003e-213,... (16384 bytes, depth 1)"
+                },
+                "case": "floats#decode/borrowed#shared",
+                "reference": {
+                  "accept": "[-2.851342213612639e-233,-2.5985428941445413e+65,-4.996368820429492e-44,3.407675064251883e-219,2.2265844703082932e-90,5.306820229383566e-268,-6.542205594435227e+54,-7.233467679502166e+296,-2.9639499256117824e-228,-4.4622049767668867e-45,8.412785910025416e-202,-5.7642579549365314e+305,-4.777403466629105e+74,2.6605997919494885e-234,3.1069391926606013e+156,4.3272882825966486e-54,5.987872254674003e-21... (16378 bytes, depth 1)"
+                }
+              },
+              {
+                "backend": {
+                  "accept": "{\"depth\":0,\"next\":{\"depth\":1,\"next\":{\"depth\":2,\"next\":{\"depth\":3,\"next\":{\"depth\":4,\"next\":{\"depth\":5,\"next\":{\"depth\":6,\"next\":{\"depth\":7,\"next\":{\"depth\":8,\"next\":{\"depth\":9,\"next\":{\"depth\":10,\"next\":{\"depth\":11,\"next\":{\"depth\":12,\"next\":{\"depth\":13,\"next\":{\"depth\":14,\"next\":{\"depth\":15,\"next\":{\"depth\":16,\"next\":{\"depth\":17,\"next\":{\"depth\":18,\"next\":{\"depth\":19,\"next\":{\"depth\":20,\"next\":{\"depth\":21... (2603 bytes, depth 129)"
+                },
+                "case": "nested-129#decode/owned#unique",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "recursion limit exceeded at line 1 column 2431",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": "{\"depth\":0,\"next\":{\"depth\":1,\"next\":{\"depth\":2,\"next\":{\"depth\":3,\"next\":{\"depth\":4,\"next\":{\"depth\":5,\"next\":{\"depth\":6,\"next\":{\"depth\":7,\"next\":{\"depth\":8,\"next\":{\"depth\":9,\"next\":{\"depth\":10,\"next\":{\"depth\":11,\"next\":{\"depth\":12,\"next\":{\"depth\":13,\"next\":{\"depth\":14,\"next\":{\"depth\":15,\"next\":{\"depth\":16,\"next\":{\"depth\":17,\"next\":{\"depth\":18,\"next\":{\"depth\":19,\"next\":{\"depth\":20,\"next\":{\"depth\":21... (2603 bytes, depth 129)"
+                },
+                "case": "nested-129#decode/borrowed#unique",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "recursion limit exceeded at line 1 column 2431",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": "{\"depth\":0,\"next\":{\"depth\":1,\"next\":{\"depth\":2,\"next\":{\"depth\":3,\"next\":{\"depth\":4,\"next\":{\"depth\":5,\"next\":{\"depth\":6,\"next\":{\"depth\":7,\"next\":{\"depth\":8,\"next\":{\"depth\":9,\"next\":{\"depth\":10,\"next\":{\"depth\":11,\"next\":{\"depth\":12,\"next\":{\"depth\":13,\"next\":{\"depth\":14,\"next\":{\"depth\":15,\"next\":{\"depth\":16,\"next\":{\"depth\":17,\"next\":{\"depth\":18,\"next\":{\"depth\":19,\"next\":{\"depth\":20,\"next\":{\"depth\":21... (2603 bytes, depth 129)"
+                },
+                "case": "nested-129#decode/owned#shared",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "recursion limit exceeded at line 1 column 2431",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": "{\"depth\":0,\"next\":{\"depth\":1,\"next\":{\"depth\":2,\"next\":{\"depth\":3,\"next\":{\"depth\":4,\"next\":{\"depth\":5,\"next\":{\"depth\":6,\"next\":{\"depth\":7,\"next\":{\"depth\":8,\"next\":{\"depth\":9,\"next\":{\"depth\":10,\"next\":{\"depth\":11,\"next\":{\"depth\":12,\"next\":{\"depth\":13,\"next\":{\"depth\":14,\"next\":{\"depth\":15,\"next\":{\"depth\":16,\"next\":{\"depth\":17,\"next\":{\"depth\":18,\"next\":{\"depth\":19,\"next\":{\"depth\":20,\"next\":{\"depth\":21... (2603 bytes, depth 129)"
+                },
+                "case": "nested-129#decode/borrowed#shared",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "recursion limit exceeded at line 1 column 2431",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614315,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2212322 bytes, depth 7)"
+                },
+                "case": "canada-like#decode/owned#unique",
+                "reference": {
+                  "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614316,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2207853 bytes, depth 7)"
+                }
+              },
+              {
+                "backend": {
+                  "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614315,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2212322 bytes, depth 7)"
+                },
+                "case": "canada-like#decode/borrowed#unique",
+                "reference": {
+                  "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614316,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2207853 bytes, depth 7)"
+                }
+              },
+              {
+                "backend": {
+                  "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614315,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2212322 bytes, depth 7)"
+                },
+                "case": "canada-like#decode/owned#shared",
+                "reference": {
+                  "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614316,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2207853 bytes, depth 7)"
+                }
+              },
+              {
+                "backend": {
+                  "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614315,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2212322 bytes, depth 7)"
+                },
+                "case": "canada-like#decode/borrowed#shared",
+                "reference": {
+                  "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614316,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2207853 bytes, depth 7)"
+                }
+              }
+            ],
+            "disagreements": 16,
+            "gating": true,
+            "gating_failure_count": 4,
+            "notes": [
+              "decode-only backend: encode checks skipped, decode checks run",
+              "floats#decode/owned#unique: the backend's value is the source's exactly; serde_json's is not",
+              "floats#decode/borrowed#unique: the backend's value is the source's exactly; serde_json's is not",
+              "floats#decode/owned#shared: the backend's value is the source's exactly; serde_json's is not",
+              "floats#decode/borrowed#shared: the backend's value is the source's exactly; serde_json's is not",
+              "nested-129#decode/owned#unique: serde_json refuses at its recursion limit (see depth)",
+              "nested-129#decode/borrowed#unique: serde_json refuses at its recursion limit (see depth)",
+              "nested-129#decode/owned#shared: serde_json refuses at its recursion limit (see depth)",
+              "nested-129#decode/borrowed#shared: serde_json refuses at its recursion limit (see depth)",
+              "canada-like#decode/owned#unique: the backend's value is the source's exactly; serde_json's is not",
+              "canada-like#decode/borrowed#unique: the backend's value is the source's exactly; serde_json's is not",
+              "canada-like#decode/owned#shared: the backend's value is the source's exactly; serde_json's is not",
+              "canada-like#decode/borrowed#shared: the backend's value is the source's exactly; serde_json's is not"
+            ]
+          },
+          "encoding": {
+            "cases": 0,
+            "data": {
+              "line_column": {
+                "backend_has_none": 0,
+                "different": 38,
+                "mismatches": [
+                  {
+                    "backend": [
+                      1,
+                      5
+                    ],
+                    "case": "n_array_incomplete.json",
+                    "reference": [
+                      1,
+                      4
+                    ]
+                  },
+                  {
+                    "backend": [
+                      3,
+                      4
+                    ],
+                    "case": "n_array_newlines_unclosed.json",
+                    "reference": [
+                      3,
+                      3
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      4
+                    ],
+                    "case": "n_array_unclosed.json",
+                    "reference": [
+                      1,
+                      3
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      4
+                    ],
+                    "case": "n_array_unclosed_trailing_comma.json",
+                    "reference": [
+                      1,
+                      3
+                    ]
+                  },
+                  {
+                    "backend": [
+                      3,
+                      3
+                    ],
+                    "case": "n_array_unclosed_with_new_lines.json",
+                    "reference": [
+                      3,
+                      2
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      4
+                    ],
+                    "case": "n_array_unclosed_with_object_inside.json",
+                    "reference": [
+                      1,
+                      3
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      6
+                    ],
+                    "case": "n_object_missing_value.json",
+                    "reference": [
+                      1,
+                      5
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      5
+                    ],
+                    "case": "n_object_no-colon.json",
+                    "reference": [
+                      1,
+                      4
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      8
+                    ],
+                    "case": "n_object_unterminated-value.json",
+                    "reference": [
+                      1,
+                      7
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      2
+                    ],
+                    "case": "n_single_space.json",
+                    "reference": [
+                      1,
+                      1
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      13
+                    ],
+                    "case": "n_string_1_surrogate_then_escape_u.json",
+                    "reference": [
+                      1,
+                      12
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      14
+                    ],
+                    "case": "n_string_1_surrogate_then_escape_u1.json",
+                    "reference": [
+                      1,
+                      13
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      12
+                    ],
+                    "case": "n_string_1_surrogate_then_escape_u1x.json",
+                    "reference": [
+                      1,
+                      14
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      8
+                    ],
+                    "case": "n_string_escaped_backslash_bad.json",
+                    "reference": [
+                      1,
+                      7
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      6
+                    ],
+                    "case": "n_string_incomplete_escape.json",
+                    "reference": [
+                      1,
+                      5
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      13
+                    ],
+                    "case": "n_string_incomplete_surrogate.json",
+                    "reference": [
+                      1,
+                      14
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      8
+                    ],
+                    "case": "n_string_invalid-utf-8-in-escape.json",
+                    "reference": [
+                      1,
+                      7
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      5
+                    ],
+                    "case": "n_string_invalid_unicode_escape.json",
+                    "reference": [
+                      1,
+                      8
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      2
+                    ],
+                    "case": "n_string_single_doublequote.json",
+                    "reference": [
+                      1,
+                      1
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      4
+                    ],
+                    "case": "n_string_start_escape_unclosed.json",
+                    "reference": [
+                      1,
+                      3
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      6
+                    ],
+                    "case": "n_string_unescaped_newline.json",
+                    "reference": [
+                      2,
+                      0
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      201
+                    ],
+                    "case": "n_structure_100000_opening_arrays.json",
+                    "reference": [
+                      1,
+                      128
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      7
+                    ],
+                    "case": "n_structure_array_with_unclosed_string.json",
+                    "reference": [
+                      1,
+                      6
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      12
+                    ],
+                    "case": "n_structure_comma_instead_of_closing_brace.json",
+                    "reference": [
+                      1,
+                      11
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      2
+                    ],
+                    "case": "n_structure_lone-open-bracket.json",
+                    "reference": [
+                      1,
+                      1
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      1
+                    ],
+                    "case": "n_structure_no_data.json",
+                    "reference": [
+                      1,
+                      0
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      5
+                    ],
+                    "case": "n_structure_object_unclosed_no_value.json",
+                    "reference": [
+                      1,
+                      4
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      501
+                    ],
+                    "case": "n_structure_open_array_object.json",
+                    "reference": [
+                      1,
+                      317
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      3
+                    ],
+                    "case": "n_structure_open_array_open_object.json",
+                    "reference": [
+                      1,
+                      2
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      4
+                    ],
+                    "case": "n_structure_open_array_open_string.json",
+                    "reference": [
+                      1,
+                      3
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      5
+                    ],
+                    "case": "n_structure_open_array_string.json",
+                    "reference": [
+                      1,
+                      4
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      2
+                    ],
+                    "case": "n_structure_open_object.json",
+                    "reference": [
+                      1,
+                      1
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      4
+                    ],
+                    "case": "n_structure_open_object_open_string.json",
+                    "reference": [
+                      1,
+                      3
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      3
+                    ],
+                    "case": "n_structure_unclosed_array.json",
+                    "reference": [
+                      1,
+                      2
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      13
+                    ],
+                    "case": "n_structure_unclosed_array_partial_null.json",
+                    "reference": [
+                      1,
+                      12
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      13
+                    ],
+                    "case": "n_structure_unclosed_array_unfinished_false.json",
+                    "reference": [
+                      1,
+                      12
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      13
+                    ],
+                    "case": "n_structure_unclosed_array_unfinished_true.json",
+                    "reference": [
+                      1,
+                      12
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      13
+                    ],
+                    "case": "n_structure_unclosed_object.json",
+                    "reference": [
+                      1,
+                      12
+                    ]
+                  }
+                ],
+                "same": 150
+              }
+            },
+            "differences": [],
+            "disagreements": 0,
+            "gating": false,
+            "gating_failure_count": 0,
+            "notes": [
+              "decode-only backend: encoding checks skipped",
+              "error position: 38 n_ case(s) differ from serde_json, 0 have none (data.line_column)"
+            ]
+          },
+          "grammar": {
+            "cases": 2544,
+            "data": {
+              "implementation_defined_differences": {
+                "i_number_huge_exp.json#value/borrowed#shared": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_huge_exp.json#value/borrowed#unique": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_huge_exp.json#value/owned#shared": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_huge_exp.json#value/owned#unique": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_neg_int_huge_exp.json#value/borrowed#shared": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_neg_int_huge_exp.json#value/borrowed#unique": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_neg_int_huge_exp.json#value/owned#shared": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_neg_int_huge_exp.json#value/owned#unique": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_pos_double_huge_exp.json#value/borrowed#shared": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_pos_double_huge_exp.json#value/borrowed#unique": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_pos_double_huge_exp.json#value/owned#shared": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_pos_double_huge_exp.json#value/owned#unique": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_real_neg_overflow.json#value/borrowed#shared": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_real_neg_overflow.json#value/borrowed#unique": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_real_neg_overflow.json#value/owned#shared": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_real_neg_overflow.json#value/owned#unique": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_real_pos_overflow.json#value/borrowed#shared": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_real_pos_overflow.json#value/borrowed#unique": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_real_pos_overflow.json#value/owned#shared": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_real_pos_overflow.json#value/owned#unique": {
+                  "backend": "accept",
+                  "reference": "reject 400"
+                },
+                "i_number_too_big_neg_int.json#value/borrowed#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_number_too_big_neg_int.json#value/borrowed#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_number_too_big_neg_int.json#value/owned#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_number_too_big_neg_int.json#value/owned#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_number_too_big_pos_int.json#value/borrowed#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_number_too_big_pos_int.json#value/borrowed#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_number_too_big_pos_int.json#value/owned#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_number_too_big_pos_int.json#value/owned#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_number_very_big_negative_int.json#value/borrowed#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_number_very_big_negative_int.json#value/borrowed#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_number_very_big_negative_int.json#value/owned#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_number_very_big_negative_int.json#value/owned#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_object_key_lone_2nd_surrogate.json#ignored/borrowed#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_object_key_lone_2nd_surrogate.json#ignored/borrowed#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_object_key_lone_2nd_surrogate.json#ignored/owned#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_object_key_lone_2nd_surrogate.json#ignored/owned#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_1st_surrogate_but_2nd_missing.json#ignored/borrowed#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_1st_surrogate_but_2nd_missing.json#ignored/borrowed#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_1st_surrogate_but_2nd_missing.json#ignored/owned#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_1st_surrogate_but_2nd_missing.json#ignored/owned#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_1st_valid_surrogate_2nd_invalid.json#ignored/borrowed#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_1st_valid_surrogate_2nd_invalid.json#ignored/borrowed#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_1st_valid_surrogate_2nd_invalid.json#ignored/owned#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_1st_valid_surrogate_2nd_invalid.json#ignored/owned#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_incomplete_surrogate_and_escape_valid.json#ignored/borrowed#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_incomplete_surrogate_and_escape_valid.json#ignored/borrowed#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_incomplete_surrogate_and_escape_valid.json#ignored/owned#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_incomplete_surrogate_and_escape_valid.json#ignored/owned#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_incomplete_surrogate_pair.json#ignored/borrowed#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_incomplete_surrogate_pair.json#ignored/borrowed#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_incomplete_surrogate_pair.json#ignored/owned#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_incomplete_surrogate_pair.json#ignored/owned#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_incomplete_surrogates_escape_valid.json#ignored/borrowed#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_incomplete_surrogates_escape_valid.json#ignored/borrowed#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_incomplete_surrogates_escape_valid.json#ignored/owned#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_incomplete_surrogates_escape_valid.json#ignored/owned#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_invalid_lonely_surrogate.json#ignored/borrowed#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_invalid_lonely_surrogate.json#ignored/borrowed#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_invalid_lonely_surrogate.json#ignored/owned#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_invalid_lonely_surrogate.json#ignored/owned#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_invalid_surrogate.json#ignored/borrowed#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_invalid_surrogate.json#ignored/borrowed#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_invalid_surrogate.json#ignored/owned#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_invalid_surrogate.json#ignored/owned#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_inverted_surrogates_U+1D11E.json#ignored/borrowed#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_inverted_surrogates_U+1D11E.json#ignored/borrowed#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_inverted_surrogates_U+1D11E.json#ignored/owned#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_inverted_surrogates_U+1D11E.json#ignored/owned#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_lone_second_surrogate.json#ignored/borrowed#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_lone_second_surrogate.json#ignored/borrowed#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_lone_second_surrogate.json#ignored/owned#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_string_lone_second_surrogate.json#ignored/owned#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_structure_500_nested_arrays.json#ignored/borrowed#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_structure_500_nested_arrays.json#ignored/borrowed#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_structure_500_nested_arrays.json#ignored/owned#shared": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                },
+                "i_structure_500_nested_arrays.json#ignored/owned#unique": {
+                  "backend": "reject 400",
+                  "reference": "accept"
+                }
+              }
+            },
+            "differences": [
+              {
+                "backend": {
+                  "accept": [
+                    "Infinity"
+                  ]
+                },
+                "case": "i_number_huge_exp.json#value/owned#unique",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 17",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "Infinity"
+                  ]
+                },
+                "case": "i_number_huge_exp.json#value/owned#shared",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 17",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "Infinity"
+                  ]
+                },
+                "case": "i_number_huge_exp.json#value/borrowed#unique",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 17",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "Infinity"
+                  ]
+                },
+                "case": "i_number_huge_exp.json#value/borrowed#shared",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 17",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "-Infinity"
+                  ]
+                },
+                "case": "i_number_neg_int_huge_exp.json#value/owned#unique",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 9",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "-Infinity"
+                  ]
+                },
+                "case": "i_number_neg_int_huge_exp.json#value/owned#shared",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 9",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "-Infinity"
+                  ]
+                },
+                "case": "i_number_neg_int_huge_exp.json#value/borrowed#unique",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 9",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "-Infinity"
+                  ]
+                },
+                "case": "i_number_neg_int_huge_exp.json#value/borrowed#shared",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 9",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "Infinity"
+                  ]
+                },
+                "case": "i_number_pos_double_huge_exp.json#value/owned#unique",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 10",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "Infinity"
+                  ]
+                },
+                "case": "i_number_pos_double_huge_exp.json#value/owned#shared",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 10",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "Infinity"
+                  ]
+                },
+                "case": "i_number_pos_double_huge_exp.json#value/borrowed#unique",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 10",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "Infinity"
+                  ]
+                },
+                "case": "i_number_pos_double_huge_exp.json#value/borrowed#shared",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 10",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "-Infinity"
+                  ]
+                },
+                "case": "i_number_real_neg_overflow.json#value/owned#unique",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 15",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "-Infinity"
+                  ]
+                },
+                "case": "i_number_real_neg_overflow.json#value/owned#shared",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 15",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "-Infinity"
+                  ]
+                },
+                "case": "i_number_real_neg_overflow.json#value/borrowed#unique",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 15",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "-Infinity"
+                  ]
+                },
+                "case": "i_number_real_neg_overflow.json#value/borrowed#shared",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 15",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "Infinity"
+                  ]
+                },
+                "case": "i_number_real_pos_overflow.json#value/owned#unique",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 14",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "Infinity"
+                  ]
+                },
+                "case": "i_number_real_pos_overflow.json#value/owned#shared",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 14",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "Infinity"
+                  ]
+                },
+                "case": "i_number_real_pos_overflow.json#value/borrowed#unique",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 14",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    "Infinity"
+                  ]
+                },
+                "case": "i_number_real_pos_overflow.json#value/borrowed#shared",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 14",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 3 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_number_too_big_neg_int.json#value/owned#unique",
+                "reference": {
+                  "accept": [
+                    -1.2312312312312312e+29
+                  ]
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 3 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_number_too_big_neg_int.json#value/owned#shared",
+                "reference": {
+                  "accept": [
+                    -1.2312312312312312e+29
+                  ]
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 3 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_number_too_big_neg_int.json#value/borrowed#unique",
+                "reference": {
+                  "accept": [
+                    -1.2312312312312312e+29
+                  ]
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 3 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_number_too_big_neg_int.json#value/borrowed#shared",
+                "reference": {
+                  "accept": [
+                    -1.2312312312312312e+29
+                  ]
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 2 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_number_too_big_pos_int.json#value/owned#unique",
+                "reference": {
+                  "accept": [
+                    1e+20
+                  ]
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 2 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_number_too_big_pos_int.json#value/owned#shared",
+                "reference": {
+                  "accept": [
+                    1e+20
+                  ]
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 2 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_number_too_big_pos_int.json#value/borrowed#unique",
+                "reference": {
+                  "accept": [
+                    1e+20
+                  ]
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 2 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_number_too_big_pos_int.json#value/borrowed#shared",
+                "reference": {
+                  "accept": [
+                    1e+20
+                  ]
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 3 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_number_very_big_negative_int.json#value/owned#unique",
+                "reference": {
+                  "accept": [
+                    -2.3746237467327687e+47
+                  ]
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 3 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_number_very_big_negative_int.json#value/owned#shared",
+                "reference": {
+                  "accept": [
+                    -2.3746237467327687e+47
+                  ]
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 3 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_number_very_big_negative_int.json#value/borrowed#unique",
+                "reference": {
+                  "accept": [
+                    -2.3746237467327687e+47
+                  ]
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 3 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_number_very_big_negative_int.json#value/borrowed#shared",
+                "reference": {
+                  "accept": [
+                    -2.3746237467327687e+47
+                  ]
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: LoneLeadingSurrogateInHexEscape, index: 7 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_object_key_lone_2nd_surrogate.json#ignored/owned#unique",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: LoneLeadingSurrogateInHexEscape, index: 7 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_object_key_lone_2nd_surrogate.json#ignored/owned#shared",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: LoneLeadingSurrogateInHexEscape, index: 7 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_object_key_lone_2nd_surrogate.json#ignored/borrowed#unique",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: LoneLeadingSurrogateInHexEscape, index: 7 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_object_key_lone_2nd_surrogate.json#ignored/borrowed#shared",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: UnexpectedEndOfHexEscape, index: 8 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_string_1st_surrogate_but_2nd_missing.json#ignored/owned#unique",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: UnexpectedEndOfHexEscape, index: 8 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_string_1st_surrogate_but_2nd_missing.json#ignored/owned#shared",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: UnexpectedEndOfHexEscape, index: 8 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_string_1st_surrogate_but_2nd_missing.json#ignored/borrowed#unique",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: UnexpectedEndOfHexEscape, index: 8 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_string_1st_surrogate_but_2nd_missing.json#ignored/borrowed#shared",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: LoneLeadingSurrogateInHexEscape, index: 13 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_string_1st_valid_surrogate_2nd_invalid.json#ignored/owned#unique",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: LoneLeadingSurrogateInHexEscape, index: 13 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_string_1st_valid_surrogate_2nd_invalid.json#ignored/owned#shared",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: LoneLeadingSurrogateInHexEscape, index: 13 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_string_1st_valid_surrogate_2nd_invalid.json#ignored/borrowed#unique",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: LoneLeadingSurrogateInHexEscape, index: 13 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_string_1st_valid_surrogate_2nd_invalid.json#ignored/borrowed#shared",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: UnexpectedEndOfHexEscape, index: 9 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_string_incomplete_surrogate_and_escape_valid.json#ignored/owned#unique",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: UnexpectedEndOfHexEscape, index: 9 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_string_incomplete_surrogate_and_escape_valid.json#ignored/owned#shared",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: UnexpectedEndOfHexEscape, index: 9 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_string_incomplete_surrogate_and_escape_valid.json#ignored/borrowed#unique",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: UnexpectedEndOfHexEscape, index: 9 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_string_incomplete_surrogate_and_escape_valid.json#ignored/borrowed#shared",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: LoneLeadingSurrogateInHexEscape, index: 7 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_string_incomplete_surrogate_pair.json#ignored/owned#unique",
+                "reference": {
+                  "accept": null
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: LoneLeadingSurrogateInHexEscape, index: 7 })",
+                    "status": 400
+                  }
+                },
+                "case": "i_string_incomplete_surrogate_pair.json#ignored/owned#shared",
+                "reference": {
+                  "accept": null
+                }
+              }
+            ],
+            "disagreements": 84,
+            "gating": false,
+            "gating_failure_count": 0,
+            "notes": []
+          },
+          "numbers": {
+            "cases": 1475642,
+            "data": {
+              "random": {
+                "backend_not_correctly_rounded": 0,
+                "backend_rejected": 0,
+                "reference_not_correctly_rounded": 438725,
+                "samples": 1000000,
+                "seed": 24301,
+                "texts": 1475586
+              }
+            },
+            "differences": [
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
+                    "status": 400
+                  }
+                },
+                "case": "u64-max#u64",
+                "reference": {
+                  "accept": 18446744073709551615
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
+                    "status": 400
+                  }
+                },
+                "case": "u64-max#i64",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid value: integer `18446744073709551615`, expected i64 at line 1 column 20",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
+                    "status": 400
+                  }
+                },
+                "case": "u64-max#f64",
+                "reference": {
+                  "accept": {
+                    "bits": "43f0000000000000",
+                    "f64": "1.8446744073709552e19"
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
+                    "status": 400
+                  }
+                },
+                "case": "u64-max#value",
+                "reference": {
+                  "accept": 18446744073709551615
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
+                    "status": 400
+                  }
+                },
+                "case": "2^64#u64",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: floating point `1.8446744073709552e+19`, expected u64 at line 1 column 20",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
+                    "status": 400
+                  }
+                },
+                "case": "2^64#i64",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: floating point `1.8446744073709552e+19`, expected i64 at line 1 column 20",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
+                    "status": 400
+                  }
+                },
+                "case": "2^64#f64",
+                "reference": {
+                  "accept": {
+                    "bits": "43f0000000000000",
+                    "f64": "1.8446744073709552e19"
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
+                    "status": 400
+                  }
+                },
+                "case": "2^64#value",
+                "reference": {
+                  "accept": 1.8446744073709552e+19
+                }
+              },
+              {
+                "backend": {
+                  "accept": 0
+                },
+                "case": "negative-zero-int#u64",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: floating point `-0.0`, expected u64 at line 1 column 2",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": 0
+                },
+                "case": "negative-zero-int#i64",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: floating point `-0.0`, expected i64 at line 1 column 2",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": {
+                    "bits": "0000000000000000",
+                    "f64": "0.0"
+                  }
+                },
+                "case": "negative-zero-int#f64",
+                "reference": {
+                  "accept": {
+                    "bits": "8000000000000000",
+                    "f64": "-0.0"
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": 0
+                },
+                "case": "negative-zero-int#value",
+                "reference": {
+                  "accept": -0.0
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Data { message: \"invalid type: string \\\"Infinity\\\", expected u64\", index: 0 }",
+                    "status": 422
+                  }
+                },
+                "case": "1e400#u64",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 5",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Data { message: \"invalid type: string \\\"Infinity\\\", expected i64\", index: 0 }",
+                    "status": 422
+                  }
+                },
+                "case": "1e400#i64",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 5",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": {
+                    "bits": "7ff0000000000000",
+                    "f64": "inf"
+                  }
+                },
+                "case": "1e400#f64",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 5",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": "Infinity"
+                },
+                "case": "1e400#value",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 5",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Data { message: \"invalid type: string \\\"-Infinity\\\", expected u64\", index: 0 }",
+                    "status": 422
+                  }
+                },
+                "case": "-1e400#u64",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 6",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Data { message: \"invalid type: string \\\"-Infinity\\\", expected i64\", index: 0 }",
+                    "status": 422
+                  }
+                },
+                "case": "-1e400#i64",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 6",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": {
+                    "bits": "fff0000000000000",
+                    "f64": "-inf"
+                  }
+                },
+                "case": "-1e400#f64",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 6",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": "-Infinity"
+                },
+                "case": "-1e400#value",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 6",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": {
+                    "bits": "0000000000000001",
+                    "f64": "5e-324"
+                  }
+                },
+                "case": "half-min-subnormal#f64",
+                "reference": {
+                  "accept": {
+                    "bits": "0000000000000000",
+                    "f64": "0.0"
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": 5e-324
+                },
+                "case": "half-min-subnormal#value",
+                "reference": {
+                  "accept": 0.0
+                }
+              },
+              {
+                "backend": "3.8343200066506608e-109 (296cd0f2c21d7f90)",
+                "case": "random/3.8343200066506608e-109",
+                "reference": "3.834320006650661e-109 (296cd0f2c21d7f91)"
+              },
+              {
+                "backend": "1.1067003261072841e119 (58a5f17b6c15c659)",
+                "case": "random/1.1067003261072841e+119",
+                "reference": "1.106700326107284e119 (58a5f17b6c15c658)"
+              },
+              {
+                "backend": "1.1067003261072841e119 (58a5f17b6c15c659)",
+                "case": "random/1.1067003261072841e119",
+                "reference": "1.106700326107284e119 (58a5f17b6c15c658)"
+              },
+              {
+                "backend": "1.0840213116575865e179 (651ac042fa7b481a)",
+                "case": "random/1.0840213116575865e+179",
+                "reference": "1.0840213116575863e179 (651ac042fa7b4819)"
+              },
+              {
+                "backend": "1.0840213116575865e179 (651ac042fa7b481a)",
+                "case": "random/1.0840213116575865e179",
+                "reference": "1.0840213116575863e179 (651ac042fa7b4819)"
+              },
+              {
+                "backend": "-2.3855244064896571e260 (f5ff07c9523504dd)",
+                "case": "random/-2.3855244064896571e+260",
+                "reference": "-2.3855244064896574e260 (f5ff07c9523504de)"
+              },
+              {
+                "backend": "-2.3855244064896571e260 (f5ff07c9523504dd)",
+                "case": "random/-2.3855244064896571e260",
+                "reference": "-2.3855244064896574e260 (f5ff07c9523504de)"
+              },
+              {
+                "backend": "-8551711244936388.0 (c33e61bc6ef9e4c4)",
+                "case": "random/-8551711244936388.0",
+                "reference": "-8551711244936387.0 (c33e61bc6ef9e4c3)"
+              },
+              {
+                "backend": "-2.7191226635249994e-219 (928eb721ed361ba3)",
+                "case": "random/-2.7191226635249994e-219",
+                "reference": "-2.719122663524999e-219 (928eb721ed361ba2)"
+              },
+              {
+                "backend": "-3.276067416930401e161 (e1774d56b0dc91ac)",
+                "case": "random/-3.276067416930401e+161",
+                "reference": "-3.2760674169304007e161 (e1774d56b0dc91ab)"
+              },
+              {
+                "backend": "-3.276067416930401e161 (e1774d56b0dc91ac)",
+                "case": "random/-3.276067416930401e161",
+                "reference": "-3.2760674169304007e161 (e1774d56b0dc91ab)"
+              },
+              {
+                "backend": "-9.06759990740383e-279 (8634930f702b6452)",
+                "case": "random/-9.06759990740383e-279",
+                "reference": "-9.067599907403831e-279 (8634930f702b6453)"
+              },
+              {
+                "backend": "3.9964390276339876e180 (656ed1cb9a126362)",
+                "case": "random/3.9964390276339876e+180",
+                "reference": "3.996439027633987e180 (656ed1cb9a126361)"
+              },
+              {
+                "backend": "3.9964390276339876e180 (656ed1cb9a126362)",
+                "case": "random/3.9964390276339876e180",
+                "reference": "3.996439027633987e180 (656ed1cb9a126361)"
+              },
+              {
+                "backend": "1.6119588020809302e-236 (0efa3dda544646d9)",
+                "case": "random/1.6119588020809302e-236",
+                "reference": "1.61195880208093e-236 (0efa3dda544646d8)"
+              },
+              {
+                "backend": "1.2808971911120855e67 (4dde6838b289c9ce)",
+                "case": "random/1.2808971911120855e+67",
+                "reference": "1.2808971911120856e67 (4dde6838b289c9cf)"
+              },
+              {
+                "backend": "1.2808971911120855e67 (4dde6838b289c9ce)",
+                "case": "random/1.2808971911120855e67",
+                "reference": "1.2808971911120856e67 (4dde6838b289c9cf)"
+              },
+              {
+                "backend": "-2.698112434670878e242 (f2443b542bf81344)",
+                "case": "random/-2.698112434670878e+242",
+                "reference": "-2.6981124346708784e242 (f2443b542bf81345)"
+              },
+              {
+                "backend": "-2.698112434670878e242 (f2443b542bf81344)",
+                "case": "random/-2.698112434670878e242",
+                "reference": "-2.6981124346708784e242 (f2443b542bf81345)"
+              },
+              {
+                "backend": "-1.894908397070803e-48 (b60627c1559d3728)",
+                "case": "random/-1.894908397070803e-48",
+                "reference": "-1.8949083970708028e-48 (b60627c1559d3727)"
+              },
+              {
+                "backend": "1.684937255889337e-245 (0d1d73ce3f48b12d)",
+                "case": "random/1.684937255889337e-245",
+                "reference": "1.6849372558893368e-245 (0d1d73ce3f48b12c)"
+              },
+              {
+                "backend": "-5.462100460649861e-265 (89119cbf1ee9784b)",
+                "case": "random/-5.462100460649861e-265",
+                "reference": "-5.46210046064986e-265 (89119cbf1ee9784a)"
+              },
+              {
+                "backend": "9.172168221324205e-156 (1fbf7b87b4f36bc8)",
+                "case": "random/9.172168221324205e-156",
+                "reference": "9.172168221324204e-156 (1fbf7b87b4f36bc7)"
+              },
+              {
+                "backend": "-1.068416206573193e245 (f2cf4b807cd13ccb)",
+                "case": "random/-1.068416206573193e+245",
+                "reference": "-1.0684162065731931e245 (f2cf4b807cd13ccc)"
+              },
+              {
+                "backend": "-1.068416206573193e245 (f2cf4b807cd13ccb)",
+                "case": "random/-1.068416206573193e245",
+                "reference": "-1.0684162065731931e245 (f2cf4b807cd13ccc)"
+              },
+              {
+                "backend": "4.4643110371719e260 (760d091192ea9c40)",
+                "case": "random/4.4643110371719e+260",
+                "reference": "4.4643110371718996e260 (760d091192ea9c3f)"
+              },
+              {
+                "backend": "4.4643110371719e260 (760d091192ea9c40)",
+                "case": "random/4.4643110371719e260",
+                "reference": "4.4643110371718996e260 (760d091192ea9c3f)"
+              },
+              {
+                "backend": "2.9552655816438114e-304 (00e9f0d36844e2b3)",
+                "case": "random/2.9552655816438114e-304",
+                "reference": "2.955265581643811e-304 (00e9f0d36844e2b2)"
+              }
+            ],
+            "disagreements": 438747,
+            "gating": true,
+            "gating_failure_count": 1,
+            "notes": [
+              "decode-only backend: encoder round trips skipped"
+            ]
+          },
+          "status": {
+            "cases": 66959,
+            "differences": [
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Enum { kind: NotStringOrSingleKeyObject, index: 110 }",
+                    "status": 422
+                  }
+                },
+                "case": "shape/variant-wrong-type",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "expected value at line 1 column 111",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 60 })",
+                    "status": 400
+                  }
+                },
+                "case": "shape/u64-out-of-range",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: floating point `1.8446744073709552e+19`, expected u64 at line 1 column 79",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": {
+                    "big": 0,
+                    "flag": true,
+                    "id": 1,
+                    "kind": "Alpha",
+                    "name": "a",
+                    "note": "n",
+                    "pair": [
+                      1,
+                      2
+                    ],
+                    "score": 1.5,
+                    "signed": -1,
+                    "small": 1,
+                    "triple": [
+                      1,
+                      2,
+                      3
+                    ]
+                  }
+                },
+                "case": "shape/negative-zero-into-u64",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: floating point `-0.0`, expected u64 at line 1 column 61",
+                    "status": 422
+                  }
+                }
+              }
+            ],
+            "disagreements": 3,
+            "gating": true,
+            "gating_failure_count": 3,
+            "notes": []
+          },
+          "strings": {
+            "cases": 130,
+            "data": {
+              "borrow_probe": {
+                "shared": {
+                  "backend": {
+                    "str_escaped": false,
+                    "str_unescaped": true
+                  },
+                  "reference": {
+                    "str_escaped": false,
+                    "str_unescaped": true
+                  }
+                },
+                "unique": {
+                  "backend": {
+                    "str_escaped": false,
+                    "str_unescaped": true
+                  },
+                  "reference": {
+                    "str_escaped": false,
+                    "str_unescaped": true
+                  }
+                }
+              }
+            },
+            "differences": [],
+            "disagreements": 0,
+            "gating": false,
+            "gating_failure_count": 0,
+            "notes": []
+          },
+          "structs": {
+            "cases": 128,
+            "differences": [],
+            "disagreements": 0,
+            "gating": false,
+            "gating_failure_count": 0,
+            "notes": []
+          },
+          "value_targets": {
+            "cases": 384,
+            "differences": [
+              {
+                "backend": {
+                  "accept": [
+                    0
+                  ]
+                },
+                "case": "y_number_minus_zero.json#value/owned",
+                "reference": {
+                  "accept": [
+                    -0.0
+                  ]
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    0
+                  ]
+                },
+                "case": "y_number_minus_zero.json#value/borrowed",
+                "reference": {
+                  "accept": [
+                    -0.0
+                  ]
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    0
+                  ]
+                },
+                "case": "y_number_negative_zero.json#value/owned",
+                "reference": {
+                  "accept": [
+                    -0.0
+                  ]
+                }
+              },
+              {
+                "backend": {
+                  "accept": [
+                    0
+                  ]
+                },
+                "case": "y_number_negative_zero.json#value/borrowed",
+                "reference": {
+                  "accept": [
+                    -0.0
+                  ]
+                }
+              },
+              {
+                "backend": {
+                  "accept": {}
+                },
+                "case": "y_structure_lonely_null.json#map/owned",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: null, expected a map at line 1 column 4",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "accept": {}
+                },
+                "case": "y_structure_lonely_null.json#map/borrowed",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: null, expected a map at line 1 column 4",
+                    "status": 422
+                  }
+                }
+              }
+            ],
+            "disagreements": 6,
+            "gating": true,
+            "gating_failure_count": 2,
+            "notes": []
+          }
+        }
+      }
+    },
+    "reference": "serde_json",
+    "schema": 1,
+    "serde_json_features": {
+      "arbitrary_precision": false,
+      "float_roundtrip": false
+    },
+    "target_features": [
+      "sse2"
+    ]
+  },
+  "schema": 1
+}

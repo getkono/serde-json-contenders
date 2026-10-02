@@ -1,0 +1,293 @@
+{
+  "kind": "size",
+  "provenance": {
+    "arch": "x86_64",
+    "boost": "1",
+    "container_image": null,
+    "cpu": "AMD Ryzen 7 7800X3D 8-Core Processor",
+    "git_commit": "80ab6dfe9713f2669d274e149d571e8da46c3824",
+    "git_dirty": false,
+    "governor": "powersave",
+    "host": "x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor",
+    "kernel": "7.2.4-200.fc44.x86_64",
+    "loadavg": "36.17 31.65 27.79 47/5784 1373552",
+    "microcode": "microcode\t: 0xa60120c",
+    "os": "linux",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
+    "timestamp": "2026-09-28T08:21:37Z",
+    "valgrind": null
+  },
+  "rows": [
+    {
+      "crate": "serde_json",
+      "decode": 286066,
+      "decode_delta": 42976,
+      "floor": 243090,
+      "full": 291616,
+      "full_delta": 48526,
+      "set": "baseline",
+      "variant": "native"
+    },
+    {
+      "crate": "serde_json",
+      "decode": 289117,
+      "decode_delta": 45031,
+      "floor": 244086,
+      "full": 294700,
+      "full_delta": 50614,
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "crate": "serde_json",
+      "decode": 285865,
+      "decode_delta": 43408,
+      "floor": 242457,
+      "full": 291428,
+      "full_delta": 48971,
+      "set": "baseline",
+      "variant": "v3"
+    },
+    {
+      "crate": "serde_json",
+      "decode": 308722,
+      "decode_delta": 65632,
+      "floor": 243090,
+      "full": 313792,
+      "full_delta": 70702,
+      "set": "baseline-float-roundtrip",
+      "variant": "native"
+    },
+    {
+      "crate": "serde_json",
+      "decode": 308909,
+      "decode_delta": 64823,
+      "floor": 244086,
+      "full": 314012,
+      "full_delta": 69926,
+      "set": "baseline-float-roundtrip",
+      "variant": "portable"
+    },
+    {
+      "crate": "serde_json",
+      "decode": 306553,
+      "decode_delta": 64096,
+      "floor": 242457,
+      "full": 311652,
+      "full_delta": 69195,
+      "set": "baseline-float-roundtrip",
+      "variant": "v3"
+    },
+    {
+      "crate": "flexon",
+      "decode": 311330,
+      "decode_delta": 68240,
+      "floor": 243090,
+      "full": 318018,
+      "full_delta": 74928,
+      "set": "flexon-ct",
+      "variant": "native"
+    },
+    {
+      "crate": "flexon",
+      "decode": 315949,
+      "decode_delta": 71863,
+      "floor": 244086,
+      "full": 323277,
+      "full_delta": 79191,
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "crate": "flexon",
+      "decode": 309369,
+      "decode_delta": 66912,
+      "floor": 242457,
+      "full": 316025,
+      "full_delta": 73568,
+      "set": "flexon-ct",
+      "variant": "v3"
+    },
+    {
+      "crate": "flexon",
+      "decode": 312114,
+      "decode_delta": 69008,
+      "floor": 243106,
+      "full": 319090,
+      "full_delta": 75984,
+      "set": "flexon-rt",
+      "variant": "native"
+    },
+    {
+      "crate": "flexon",
+      "decode": 315949,
+      "decode_delta": 71863,
+      "floor": 244086,
+      "full": 323277,
+      "full_delta": 79191,
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "crate": "flexon",
+      "decode": 309817,
+      "decode_delta": 67344,
+      "floor": 242473,
+      "full": 317065,
+      "full_delta": 74592,
+      "set": "flexon-rt",
+      "variant": "v3"
+    },
+    {
+      "crate": "hifijson",
+      "decode": 310322,
+      "decode_delta": 67232,
+      "floor": 243090,
+      "full": 310322,
+      "full_delta": 67232,
+      "set": "hifijson",
+      "variant": "native"
+    },
+    {
+      "crate": "hifijson",
+      "decode": 310246,
+      "decode_delta": 66160,
+      "floor": 244086,
+      "full": 310150,
+      "full_delta": 66064,
+      "set": "hifijson",
+      "variant": "portable"
+    },
+    {
+      "crate": "hifijson",
+      "decode": 308761,
+      "decode_delta": 66304,
+      "floor": 242457,
+      "full": 308745,
+      "full_delta": 66288,
+      "set": "hifijson",
+      "variant": "v3"
+    },
+    {
+      "crate": "jiter",
+      "decode": 337186,
+      "decode_delta": 94096,
+      "floor": 243090,
+      "full": 337058,
+      "full_delta": 93968,
+      "set": "jiter",
+      "variant": "native"
+    },
+    {
+      "crate": "jiter",
+      "decode": 335174,
+      "decode_delta": 91088,
+      "floor": 244086,
+      "full": 335062,
+      "full_delta": 90976,
+      "set": "jiter",
+      "variant": "portable"
+    },
+    {
+      "crate": "jiter",
+      "decode": 334409,
+      "decode_delta": 91952,
+      "floor": 242457,
+      "full": 334249,
+      "full_delta": 91792,
+      "set": "jiter",
+      "variant": "v3"
+    },
+    {
+      "crate": "simd-json",
+      "decode": 289778,
+      "decode_delta": 46672,
+      "floor": 243106,
+      "full": 300930,
+      "full_delta": 57824,
+      "set": "simd-json",
+      "variant": "native"
+    },
+    {
+      "crate": "simd-json",
+      "decode": 310045,
+      "decode_delta": 65959,
+      "floor": 244086,
+      "full": 322029,
+      "full_delta": 77943,
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "crate": "simd-json",
+      "decode": 289177,
+      "decode_delta": 46704,
+      "floor": 242473,
+      "full": 300441,
+      "full_delta": 57968,
+      "set": "simd-json",
+      "variant": "v3"
+    },
+    {
+      "crate": "sonic-rs",
+      "decode": 427170,
+      "decode_delta": 184080,
+      "floor": 243090,
+      "full": 462448,
+      "full_delta": 219358,
+      "set": "sonic-rs",
+      "variant": "native"
+    },
+    {
+      "crate": "sonic-rs",
+      "decode": 442589,
+      "decode_delta": 198503,
+      "floor": 244086,
+      "full": 481788,
+      "full_delta": 237702,
+      "set": "sonic-rs",
+      "variant": "portable"
+    },
+    {
+      "crate": "sonic-rs",
+      "decode": 426665,
+      "decode_delta": 184208,
+      "floor": 242457,
+      "full": 460516,
+      "full_delta": 218059,
+      "set": "sonic-rs",
+      "variant": "v3"
+    },
+    {
+      "crate": "struson",
+      "decode": 338547,
+      "decode_delta": 95457,
+      "floor": 243090,
+      "full": 348723,
+      "full_delta": 105633,
+      "set": "struson",
+      "variant": "native"
+    },
+    {
+      "crate": "struson",
+      "decode": 343512,
+      "decode_delta": 99426,
+      "floor": 244086,
+      "full": 353208,
+      "full_delta": 109122,
+      "set": "struson",
+      "variant": "portable"
+    },
+    {
+      "crate": "struson",
+      "decode": 338456,
+      "decode_delta": 95999,
+      "floor": 242457,
+      "full": 348536,
+      "full_delta": 106079,
+      "set": "struson",
+      "variant": "v3"
+    }
+  ],
+  "schema": 1
+}

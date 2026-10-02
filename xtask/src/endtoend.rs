@@ -180,6 +180,11 @@ fn which(name: &str) -> Result<std::path::PathBuf> {
     Ok(name.into())
 }
 
+/// Reps per route and seconds per load phase unless `--reps` and `--seconds`
+/// say otherwise; the report states any run that took fewer.
+pub const REPS: u64 = 5;
+pub const SECONDS: u64 = 30;
+
 /// `xtask e2e-time`: closed-loop throughput, then open-loop latency at 70 % of
 /// serde_json's throughput on the same route, `--reps` times (default 5),
 /// with serde_json run twice per rep as the A/A control.
@@ -194,8 +199,8 @@ pub fn time(args: &[String]) -> Result<()> {
             .and_then(|i| args.get(i + 1))
             .and_then(|v| v.parse::<u64>().ok())
     };
-    let reps = flag("--reps").unwrap_or(5);
-    let seconds = flag("--seconds").unwrap_or(30);
+    let reps = flag("--reps").unwrap_or(REPS);
+    let seconds = flag("--seconds").unwrap_or(SECONDS);
     let trust = if args.iter().any(|a| a == "--canonical") {
         "canonical"
     } else {

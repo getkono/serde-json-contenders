@@ -588,7 +588,11 @@ fn end_to_end(out: &mut String, data: &Data) {
     }
     out.push_str("### End to end: a hyper server\n\n");
     for (arch, rows) in &data.e2e_count {
-        let variant = if arch == "aarch64" { "native" } else { "v3" };
+        let variant = if arch == "aarch64" {
+            ARM_NATIVE.variant
+        } else {
+            X86_V3.variant
+        };
         let _ = writeln!(
             out,
             "**Counted, {arch} {variant}** — estimated cycles per request; codec share = (backend − floor) ÷ backend, where the floor serves the same routes with no JSON.\n"
@@ -752,8 +756,21 @@ fn provenance(out: &mut String, data: &Data) {
 mod tests {
     use serde_json::json;
 
-    use super::limitations;
+    use super::verdict::ENTRIES;
+    use super::verdict::tests::arm_e2e_counts;
+    use super::{end_to_end, limitations};
     use crate::report::data::{Data, Host, Key, Table};
+
+    #[test]
+    fn the_aarch64_end_to_end_table_reads_the_counted_build() {
+        let e = ENTRIES.iter().find(|e| e.set == "sonic-rs").unwrap_or(&ENTRIES[1]);
+        let mut out = String::new();
+        end_to_end(&mut out, &arm_e2e_counts(e.backend));
+        assert!(out.contains("**Counted, aarch64 native-counted**"), "{out}");
+        // native-counted holds 300 and 200 cycles; native holds 100 and 50.
+        assert!(out.contains("| 200 |"), "{out}");
+        assert!(!out.contains("| 50 |"), "{out}");
+    }
 
     fn host(slug: &str, cpu: &str, trust: &str, (rounds, seconds): (usize, u64)) -> Host {
         let mut time = Table::default();

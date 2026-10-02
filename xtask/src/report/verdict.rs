@@ -9,7 +9,7 @@
 use serde_json::{Value, json};
 
 use super::data::{Data, Key};
-use crate::matrix::KYNOS;
+use crate::matrix::{ARM_NATIVE_COUNTED, KYNOS};
 
 /// Materiality: differences within this fraction are not differences.
 pub const EPSILON: f64 = 0.05;
@@ -176,9 +176,12 @@ pub const X86_PORTABLE: Point = Point {
     variant: "portable",
     source: "callgrind",
 };
+/// aarch64 `native` as rule 1 reads it: counted at
+/// [`ARM_NATIVE_COUNTED`], because valgrind cannot run the `sve` and `rcpc` code
+/// a `native` build emits on Neoverse N2.
 pub const ARM_NATIVE: Point = Point {
     arch: "aarch64",
-    variant: "native",
+    variant: ARM_NATIVE_COUNTED.name,
     source: "callgrind",
 };
 pub const ARM_PORTABLE: Point = Point {
@@ -500,7 +503,11 @@ pub fn e2e_gain(rows: &[Value], backend: &str, route: &str) -> Option<(f64, f64,
 /// The throughput gain the counted per-request cost predicts, CPU-bound.
 pub fn e2e_predicted(data: &Data, arch: &str, backend: &str, route: &str) -> Option<f64> {
     let rows = data.e2e_count.get(arch)?;
-    let variant = if arch == "aarch64" { "native" } else { "v3" };
+    let variant = if arch == "aarch64" {
+        ARM_NATIVE.variant
+    } else {
+        X86_V3.variant
+    };
     let get = |b: &str| {
         rows.iter()
             .find(|r| r["backend"] == b && r["route"] == route && r["variant"] == variant)
@@ -642,10 +649,11 @@ pub fn to_json(verdicts: &[Verdict]) -> Value {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use serde_json::json;
 
-    use super::{Data, ENTRIES, Entry, Outcome, rule2, rule3};
+    use super::super::data::{Key, Table};
+    use super::{ARM_NATIVE, Data, ENTRIES, Entry, Outcome, cpu, e2e_predicted, rule2, rule3};
 
     fn sonic() -> &'static Entry {
         ENTRIES.iter().find(|e| e.set == "sonic-rs").unwrap_or(&ENTRIES[0])
@@ -684,6 +692,47 @@ mod tests {
         let data = with_fuzz(vec![row], true);
         assert!(matches!(rule3(&data, e), Outcome::Pass(_)));
         assert_eq!(rule2(&data, e), Outcome::Fail("fuzz roundtrip (v3)".into()));
+    }
+
+    #[test]
+    fn aarch64_native_is_read_from_the_counted_build() {
+        let mut table = Table::default();
+        for (variant, est) in [("native", 1.0), ("native-counted", 2.0)] {
+            table.rows.insert(
+                Key::new(variant, "serde_json", "json-small", "decode"),
+                json!({ "est_cycles": est }),
+            );
+        }
+        let data = Data {
+            callgrind: [("aarch64".to_owned(), table)].into(),
+            ..Data::default()
+        };
+        assert_eq!(cpu(&data, ARM_NATIVE, "serde_json", "json-small", "decode"), Some(2.0));
+    }
+
+    /// aarch64 end-to-end counts beside each other at `native` and `native-counted`, so that a
+    /// reader of the wrong variant gets a different answer.
+    pub(in crate::report) fn arm_e2e_counts(backend: &str) -> Data {
+        let rows = [("native", 100.0, 50.0), ("native-counted", 300.0, 200.0)]
+            .into_iter()
+            .flat_map(|(variant, base, me)| {
+                [("serde_json", base), (backend, me)].map(|(b, est)| {
+                    json!({ "variant": variant, "backend": b, "route": "json-large-post", "est_cycles": est })
+                })
+            })
+            .collect();
+        Data {
+            e2e_count: [("aarch64".to_owned(), rows)].into(),
+            ..Data::default()
+        }
+    }
+
+    #[test]
+    fn aarch64_end_to_end_prediction_is_read_from_the_counted_build() {
+        let e = sonic();
+        let data = arm_e2e_counts(e.backend);
+        // native-counted: 300 / 200 - 1 = 0.5; native would give 100 / 50 - 1 = 1.0.
+        assert_eq!(e2e_predicted(&data, "aarch64", e.backend, "json-large-post"), Some(0.5));
     }
 
     #[test]

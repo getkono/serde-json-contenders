@@ -639,6 +639,8 @@ fn depth_cell(limits: &Value, target: &str, stack: &str) -> String {
     let object = &limits[format!("object/{target}/{stack}")];
     match (array.is_null(), object.is_null()) {
         (true, true) => "—".into(),
+        (false, true) => format!("array {}", depth_limit(array)),
+        (true, false) => format!("object {}", depth_limit(object)),
         _ if array == object => depth_limit(array),
         _ => format!("array {}; object {}", depth_limit(array), depth_limit(object)),
     }
@@ -656,9 +658,13 @@ fn depth_limits(out: &mut String, data: &Data) {
     };
     let limits = |e: &Entry| -> Option<(&str, &Value)> {
         if e.backend == "serde_json" {
-            let (variant, r) = ENTRIES.iter().skip(1).find_map(|o| report(o.set))?;
-            let b = r["backends"].as_object()?.values().next()?;
-            return Some((variant, &b["sections"]["depth"]["data"]["limits"]["reference"]));
+            // serde_json against itself reports no backend; every other
+            // report carries its limits as the reference.
+            return ENTRIES.iter().skip(1).find_map(|o| {
+                let (variant, r) = report(o.set)?;
+                let b = r["backends"].as_object()?.values().next()?;
+                Some((variant, &b["sections"]["depth"]["data"]["limits"]["reference"]))
+            });
         }
         let (variant, r) = report(e.set)?;
         let l = &r["backends"][e.backend]["sections"]["depth"]["data"]["limits"]["backend"];
@@ -870,7 +876,7 @@ mod tests {
 
     use super::verdict::ENTRIES;
     use super::verdict::tests::arm_e2e_counts;
-    use super::{depth_cell, end_to_end, limitations};
+    use super::{depth_cell, depth_limits, end_to_end, limitations};
     use crate::report::data::{Data, Host, Key, Table};
 
     #[test]
@@ -948,6 +954,41 @@ mod tests {
             "array ≤127, rejects 128; object all, to 1000000"
         );
         assert_eq!(depth_cell(&limits, "value", "8MiB"), "—");
+    }
+
+    #[test]
+    fn serde_json_depth_limits_come_from_another_report_s_reference() {
+        let limit = |max: u64, rejected: u64| json!({ "array/value/2MiB": { "max_accepted": max, "first_rejected": rejected, "first_crashed": null } });
+        let mut host = Host {
+            slug: "x86_64-linux-amd-x".into(),
+            ..Host::default()
+        };
+        host.conformance.insert(
+            ("native".into(), "baseline-float-roundtrip".into()),
+            json!({ "backends": {} }),
+        );
+        host.conformance.insert(
+            ("native".into(), "sonic-rs".into()),
+            json!({ "backends": { "sonic-rs": { "sections": { "depth": { "data": { "limits": {
+                "backend": limit(200, 255), "reference": limit(127, 128) } } } } } } }),
+        );
+        let mut out = String::new();
+        depth_limits(
+            &mut out,
+            &Data {
+                hosts: vec![host],
+                ..Data::default()
+            },
+        );
+        // Only arrays were recorded, so the cells say which they describe.
+        assert!(
+            out.contains("| `serde_json` | native | array ≤127, rejects 128 | — |"),
+            "{out}"
+        );
+        assert!(
+            out.contains("| `sonic-rs` | native | array ≤200, rejects 255 | — |"),
+            "{out}"
+        );
     }
 
     #[test]

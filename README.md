@@ -515,6 +515,7 @@ Disagreements per section, summed over every build variant and host; **bold** se
 
 | Entry point | Variant | `Value`, 2 MiB | `Value`, 8 MiB | `IgnoredAny`, 2 MiB | `IgnoredAny`, 8 MiB |
 | --- | --- | --- | --- | --- | --- |
+| `serde_json` | native | ≤127, rejects 128 | ≤127, rejects 128 | all, to 1000000 | all, to 1000000 |
 | `sonic-rs` | native | ≤200, rejects 255 | ≤200, rejects 255 | ≤10000, crashes at 1000000 | ≤10000, crashes at 1000000 |
 | `simd-json` | native | ≤1000, rejects 1025 | ≤1000, rejects 1025 | ≤1000, rejects 1025 | ≤1000, rejects 1025 |
 | `simd-json-buffers` | native | ≤1000, rejects 1025 | ≤1000, rejects 1025 | ≤1000, rejects 1025 | ≤1000, rejects 1025 |

@@ -618,11 +618,11 @@ pub fn to_json(verdicts: &[Verdict]) -> Value {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use serde_json::json;
 
     use super::super::data::{Key, Table};
-    use super::{ARM_NATIVE, Data, ENTRIES, Entry, Outcome, cpu, rule2, rule3};
+    use super::{ARM_NATIVE, Data, ENTRIES, Entry, Outcome, cpu, e2e_predicted, rule2, rule3};
 
     fn sonic() -> &'static Entry {
         ENTRIES.iter().find(|e| e.set == "sonic-rs").unwrap_or(&ENTRIES[0])
@@ -677,5 +677,30 @@ mod tests {
             ..Data::default()
         };
         assert_eq!(cpu(&data, ARM_NATIVE, "serde_json", "json-small", "decode"), Some(2.0));
+    }
+
+    /// aarch64 end-to-end counts beside each other at `native` and `native-counted`, so that a
+    /// reader of the wrong variant gets a different answer.
+    pub(in crate::report) fn arm_e2e_counts(backend: &str) -> Data {
+        let rows = [("native", 100.0, 50.0), ("native-counted", 300.0, 200.0)]
+            .into_iter()
+            .flat_map(|(variant, base, me)| {
+                [("serde_json", base), (backend, me)].map(|(b, est)| {
+                    json!({ "variant": variant, "backend": b, "route": "json-large-post", "est_cycles": est })
+                })
+            })
+            .collect();
+        Data {
+            e2e_count: [("aarch64".to_owned(), rows)].into(),
+            ..Data::default()
+        }
+    }
+
+    #[test]
+    fn aarch64_end_to_end_prediction_is_read_from_the_counted_build() {
+        let e = sonic();
+        let data = arm_e2e_counts(e.backend);
+        // native-counted: 300 / 200 - 1 = 0.5; native would give 100 / 50 - 1 = 1.0.
+        assert_eq!(e2e_predicted(&data, "aarch64", e.backend, "json-large-post"), Some(0.5));
     }
 }

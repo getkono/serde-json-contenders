@@ -635,3 +635,21 @@ fn provenance(out: &mut String, data: &Data) {
     let _ = POINTS;
     out.push('\n');
 }
+
+#[cfg(test)]
+mod tests {
+    use super::end_to_end;
+    use super::verdict::ENTRIES;
+    use super::verdict::tests::arm_e2e_counts;
+
+    #[test]
+    fn the_aarch64_end_to_end_table_reads_the_counted_build() {
+        let e = ENTRIES.iter().find(|e| e.set == "sonic-rs").unwrap_or(&ENTRIES[1]);
+        let mut out = String::new();
+        end_to_end(&mut out, &arm_e2e_counts(e.backend));
+        assert!(out.contains("**Counted, aarch64 native-counted**"), "{out}");
+        // native-counted holds 300 and 200 cycles; native holds 100 and 50.
+        assert!(out.contains("| 200 |"), "{out}");
+        assert!(!out.contains("| 50 |"), "{out}");
+    }
+}

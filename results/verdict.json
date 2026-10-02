@@ -6,8 +6,8 @@
       "crate": "serde_json",
       "deserves_to_exist": true,
       "exists_evidence": "the baseline",
-      "reason": "footprint not yet recorded",
-      "recommended": "pending",
+      "reason": "all four rules hold",
+      "recommended": "pass",
       "rules": [
         {
           "detail": "baseline",
@@ -18,8 +18,8 @@
           "outcome": "pass"
         },
         {
-          "detail": "footprint not yet recorded",
-          "outcome": "pending"
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
         },
         {
           "detail": "baseline",
@@ -31,12 +31,12 @@
       "backend": "serde_json+float_roundtrip",
       "crate": "serde_json",
       "deserves_to_exist": true,
-      "exists_evidence": "Correctly rounded float parsing, which the default parser is not (see conformance, numbers).",
-      "reason": "x86-64 counts not yet recorded",
-      "recommended": "pending",
+      "exists_evidence": "unicode decode CPU 0.55× serde_json at x86_64 native (cycles). Correctly rounded float parsing, which the default parser is not (see conformance, numbers).",
+      "reason": "no route ≥10 % better in throughput or p99 beyond the A/A band",
+      "recommended": "fail",
       "rules": [
         {
-          "detail": "x86-64 counts not yet recorded",
+          "detail": "json-small decode CPU 0.65× at x86_64 native (cycles); aarch64 counts not yet recorded",
           "outcome": "pending"
         },
         {
@@ -44,12 +44,12 @@
           "outcome": "pass"
         },
         {
-          "detail": "footprint not yet recorded",
-          "outcome": "pending"
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
         },
         {
-          "detail": "end-to-end timing not yet recorded",
-          "outcome": "pending"
+          "detail": "no route ≥10 % better in throughput or p99 beyond the A/A band",
+          "outcome": "fail"
         }
       ]
     },
@@ -57,25 +57,25 @@
       "backend": "sonic-rs",
       "crate": "sonic-rs",
       "deserves_to_exist": true,
-      "exists_evidence": "Lazy path lookups without a full parse (`get`, `get_many`, `LazyValue`); errors carry a byte offset as well as line and column.",
-      "reason": "x86-64 counts not yet recorded",
-      "recommended": "pending",
+      "exists_evidence": "echo-post encode CPU 0.19× serde_json at x86_64 v3 (est. cycles). Lazy path lookups without a full parse (`get`, `get_many`, `LazyValue`); errors carry a byte offset as well as line and column.",
+      "reason": "grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs; fuzz decode_struct (portable); fuzz decode_struct (v3)",
+      "recommended": "fail",
       "rules": [
         {
-          "detail": "x86-64 counts not yet recorded",
+          "detail": "json-small decode CPU 0.83× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded",
           "outcome": "pending"
         },
         {
-          "detail": "conformance not yet run",
-          "outcome": "pending"
+          "detail": "grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs; fuzz decode_struct (portable); fuzz decode_struct (v3)",
+          "outcome": "fail"
         },
         {
-          "detail": "footprint not yet recorded",
-          "outcome": "pending"
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
         },
         {
-          "detail": "end-to-end timing not yet recorded",
-          "outcome": "pending"
+          "detail": "no route ≥10 % better in throughput or p99 beyond the A/A band",
+          "outcome": "fail"
         }
       ]
     },
@@ -83,24 +83,24 @@
       "backend": "simd-json",
       "crate": "simd-json",
       "deserves_to_exist": true,
-      "exists_evidence": "Borrowing decode of escaped strings, unescaped in place; a tape API (`to_tape`) for traversal without building values.",
-      "reason": "x86-64 counts not yet recorded",
-      "recommended": "pending",
+      "exists_evidence": "echo-post encode CPU 0.29× serde_json at x86_64 native (cycles). Borrowing decode of escaped strings, unescaped in place: 1,175 allocations against serde_json's 4,584 for twitter-like into borrowed types from a unique buffer. A tape API (`to_tape`) traverses without building values.",
+      "reason": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
+      "recommended": "fail",
       "rules": [
         {
-          "detail": "x86-64 counts not yet recorded",
+          "detail": "json-small encode CPU 0.81× at x86_64 native (cycles); aarch64 counts not yet recorded",
           "outcome": "pending"
         },
         {
-          "detail": "conformance not yet run",
-          "outcome": "pending"
+          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
+          "outcome": "fail"
         },
         {
-          "detail": "footprint not yet recorded",
-          "outcome": "pending"
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
         },
         {
-          "detail": "end-to-end timing not yet recorded",
+          "detail": "provisional pass: echo-post +13 % rps, +66 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun",
           "outcome": "pending"
         }
       ]
@@ -109,24 +109,24 @@
       "backend": "simd-json-buffers",
       "crate": "simd-json",
       "deserves_to_exist": true,
-      "exists_evidence": "Reusing `Buffers` across calls removes the per-call scratch allocations plain `from_slice` makes.",
-      "reason": "x86-64 counts not yet recorded",
-      "recommended": "pending",
+      "exists_evidence": "echo-post encode CPU 0.28× serde_json at x86_64 portable (est. cycles). Reusing `Buffers` across calls roughly halves plain `from_slice`'s allocated bytes: 2.93 MB against 5.54 MB for twitter-like into borrowed types from a unique buffer.",
+      "reason": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
+      "recommended": "fail",
       "rules": [
         {
-          "detail": "x86-64 counts not yet recorded",
+          "detail": "json-small decode CPU 0.88× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded",
           "outcome": "pending"
         },
         {
-          "detail": "conformance not yet run",
-          "outcome": "pending"
+          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
+          "outcome": "fail"
         },
         {
-          "detail": "footprint not yet recorded",
-          "outcome": "pending"
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
         },
         {
-          "detail": "end-to-end timing not yet recorded",
+          "detail": "provisional pass: echo-post -16 % rps, +65 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun",
           "outcome": "pending"
         }
       ]
@@ -135,25 +135,25 @@
       "backend": "flexon-rt",
       "crate": "flexon",
       "deserves_to_exist": true,
-      "exists_evidence": "`from_mut_slice` borrows escaped strings in place; JSON-pointer access. Its latest release (0.4.9) does not compile on stable Rust.",
-      "reason": "x86-64 counts not yet recorded",
-      "recommended": "pending",
+      "exists_evidence": "sweep-256b decode CPU 0.67× serde_json at x86_64 native (cycles). `from_mut_slice` borrows escaped strings in place; JSON-pointer access. Its latest release (0.4.9) does not compile on stable Rust.",
+      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+      "recommended": "fail",
       "rules": [
         {
-          "detail": "x86-64 counts not yet recorded",
+          "detail": "json-small decode CPU 0.73× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded",
           "outcome": "pending"
         },
         {
-          "detail": "conformance not yet run",
-          "outcome": "pending"
+          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+          "outcome": "fail"
         },
         {
-          "detail": "footprint not yet recorded",
-          "outcome": "pending"
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
         },
         {
-          "detail": "end-to-end timing not yet recorded",
-          "outcome": "pending"
+          "detail": "gains inconsistent with counted codec share: x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor json-large-post: +59 % measured, +30 % predicted",
+          "outcome": "fail"
         }
       ]
     },
@@ -161,24 +161,24 @@
       "backend": "flexon-rt-mut",
       "crate": "flexon",
       "deserves_to_exist": true,
-      "exists_evidence": "In-place parse lets escaped strings borrow.",
-      "reason": "x86-64 counts not yet recorded",
-      "recommended": "pending",
+      "exists_evidence": "In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-rt`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer.",
+      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+      "recommended": "fail",
       "rules": [
         {
-          "detail": "x86-64 counts not yet recorded",
+          "detail": "json-small decode CPU 0.76× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded",
           "outcome": "pending"
         },
         {
-          "detail": "conformance not yet run",
-          "outcome": "pending"
+          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+          "outcome": "fail"
         },
         {
-          "detail": "footprint not yet recorded",
-          "outcome": "pending"
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
         },
         {
-          "detail": "end-to-end timing not yet recorded",
+          "detail": "provisional pass: echo-post +8 % rps, +85 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun",
           "outcome": "pending"
         }
       ]
@@ -187,25 +187,25 @@
       "backend": "flexon-ct",
       "crate": "flexon",
       "deserves_to_exist": true,
-      "exists_evidence": "The compile-time SIMD configuration of flexon; same API as `flexon-rt`.",
-      "reason": "x86-64 counts not yet recorded",
-      "recommended": "pending",
+      "exists_evidence": "echo-post encode CPU 0.35× serde_json at x86_64 v3 (est. cycles). The compile-time SIMD configuration of flexon; same API as `flexon-rt`.",
+      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+      "recommended": "fail",
       "rules": [
         {
-          "detail": "x86-64 counts not yet recorded",
+          "detail": "json-small decode CPU 0.72× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded",
           "outcome": "pending"
         },
         {
-          "detail": "conformance not yet run",
-          "outcome": "pending"
+          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+          "outcome": "fail"
         },
         {
-          "detail": "footprint not yet recorded",
-          "outcome": "pending"
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
         },
         {
-          "detail": "end-to-end timing not yet recorded",
-          "outcome": "pending"
+          "detail": "no route ≥10 % better in throughput or p99 beyond the A/A band",
+          "outcome": "fail"
         }
       ]
     },
@@ -213,24 +213,24 @@
       "backend": "flexon-ct-mut",
       "crate": "flexon",
       "deserves_to_exist": true,
-      "exists_evidence": "In-place parse lets escaped strings borrow.",
-      "reason": "x86-64 counts not yet recorded",
-      "recommended": "pending",
+      "exists_evidence": "echo-post encode CPU 0.26× serde_json at x86_64 native (cycles). In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-ct`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer.",
+      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+      "recommended": "fail",
       "rules": [
         {
-          "detail": "x86-64 counts not yet recorded",
+          "detail": "json-small decode CPU 0.75× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded",
           "outcome": "pending"
         },
         {
-          "detail": "conformance not yet run",
-          "outcome": "pending"
+          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+          "outcome": "fail"
         },
         {
-          "detail": "footprint not yet recorded",
-          "outcome": "pending"
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
         },
         {
-          "detail": "end-to-end timing not yet recorded",
+          "detail": "provisional pass: json-large-post +52 % rps, +42 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun",
           "outcome": "pending"
         }
       ]
@@ -239,25 +239,25 @@
       "backend": "jiter",
       "crate": "jiter",
       "deserves_to_exist": true,
-      "exists_evidence": "Partial mode parses truncated documents (built for streamed model output); decode only.",
-      "reason": "x86-64 counts not yet recorded",
-      "recommended": "pending",
+      "exists_evidence": "floats decode CPU 0.47× serde_json at x86_64 native (cycles). Partial mode parses truncated documents (built for streamed model output); decode only.",
+      "reason": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence",
+      "recommended": "fail",
       "rules": [
         {
-          "detail": "x86-64 counts not yet recorded",
+          "detail": "json-small decode CPU 0.90× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded",
           "outcome": "pending"
         },
         {
-          "detail": "conformance not yet run",
-          "outcome": "pending"
+          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence",
+          "outcome": "fail"
         },
         {
-          "detail": "footprint not yet recorded",
-          "outcome": "pending"
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
         },
         {
-          "detail": "end-to-end timing not yet recorded",
-          "outcome": "pending"
+          "detail": "no route ≥10 % better in throughput or p99 beyond the A/A band",
+          "outcome": "fail"
         }
       ]
     },
@@ -265,25 +265,25 @@
       "backend": "hifijson",
       "crate": "hifijson",
       "deserves_to_exist": true,
-      "exists_evidence": "No `unsafe`; lexes any byte iterator (`IterLexer`), so input need not be in memory; numbers kept as text.",
+      "exists_evidence": "No `unsafe`: 0 unsafe blocks, functions or impls in its 1 runtime crate. Lexes any byte iterator (`IterLexer`), so input need not be in memory; numbers kept as text.",
       "reason": "reference point: no borrowed slice decode plus `to_vec`-style encoder",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "x86-64 counts not yet recorded",
-          "outcome": "pending"
+          "detail": "not on the frontier with a ≥5 % CPU or heap win on any Kynos shape at x86-64-v3 or native",
+          "outcome": "fail"
         },
         {
-          "detail": "conformance not yet run",
-          "outcome": "pending"
+          "detail": "status shape/valid fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
+          "outcome": "fail"
         },
         {
-          "detail": "footprint not yet recorded",
-          "outcome": "pending"
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
         },
         {
-          "detail": "end-to-end timing not yet recorded",
-          "outcome": "pending"
+          "detail": "no route ≥10 % better in throughput or p99 beyond the A/A band",
+          "outcome": "fail"
         }
       ]
     },
@@ -291,25 +291,25 @@
       "backend": "struson",
       "crate": "struson",
       "deserves_to_exist": true,
-      "exists_evidence": "No `unsafe`; a true streaming reader and writer with JSON-path seeking and positions in errors.",
+      "exists_evidence": "No `unsafe`: 0 unsafe blocks, functions or impls across its 5 runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors.",
       "reason": "reference point: no borrowed slice decode plus `to_vec`-style encoder",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "x86-64 counts not yet recorded",
-          "outcome": "pending"
+          "detail": "not on the frontier with a ≥5 % CPU or heap win on any Kynos shape at x86-64-v3 or native",
+          "outcome": "fail"
         },
         {
-          "detail": "conformance not yet run",
-          "outcome": "pending"
+          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence",
+          "outcome": "fail"
         },
         {
-          "detail": "footprint not yet recorded",
-          "outcome": "pending"
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
         },
         {
-          "detail": "end-to-end timing not yet recorded",
-          "outcome": "pending"
+          "detail": "no route ≥10 % better in throughput or p99 beyond the A/A band",
+          "outcome": "fail"
         }
       ]
     }

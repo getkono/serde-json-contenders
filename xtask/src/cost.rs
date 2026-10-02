@@ -75,6 +75,10 @@ fn median(mut v: Vec<f64>) -> f64 {
     v[v.len() / 2]
 }
 
+/// Builds per measurement unless `--reps` says otherwise; the report states
+/// any run that took fewer.
+pub const COMPILE_REPS: usize = 5;
+
 /// `xtask compile-time`: clean release, clean dev, and incremental dev
 /// rebuild of the full fixture, `--reps` times each (default 5), median.
 pub fn compile_time(args: &[String]) -> Result<()> {
@@ -84,7 +88,7 @@ pub fn compile_time(args: &[String]) -> Result<()> {
         .position(|a| a == "--reps")
         .and_then(|i| args.get(i + 1))
         .and_then(|v| v.parse().ok())
-        .unwrap_or(5);
+        .unwrap_or(COMPILE_REPS);
     let touched = root().join("crates/size-fixture/src/lib.rs");
     let mut rows = Vec::new();
     for set in filter.sets() {

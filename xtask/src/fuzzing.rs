@@ -13,6 +13,10 @@ use crate::util::{capture, root, run};
 /// The nightly toolchain fuzzing and Miri need, pinned.
 pub const NIGHTLY: &str = "nightly-2026-09-25";
 
+/// Seconds per target unless `--seconds` says otherwise; the report states
+/// any run that took fewer.
+pub const SECONDS: u64 = 1800;
+
 /// Fuzz targets, one binary per backend feature.
 pub const FUZZ_TARGETS: &[&str] = &["decode_value", "decode_struct", "roundtrip"];
 
@@ -34,7 +38,7 @@ pub fn fuzz(args: &[String]) -> Result<()> {
     };
     // `-ignore_crashes` only takes effect in fork mode, so at least one worker.
     let (seconds, forks, parallel) = (
-        flag("--seconds", 1800),
+        flag("--seconds", SECONDS),
         flag("--forks", 2).max(1),
         flag("--parallel", 4),
     );

@@ -1,0 +1,1689 @@
+{
+  "builds": [
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json"
+        ],
+        "compiled_features": [
+          "sse2"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "fxsr",
+        "sse",
+        "sse2"
+      ],
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json"
+        ],
+        "compiled_features": [
+          "sse2"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": true
+        }
+      },
+      "rustc_features": [
+        "fxsr",
+        "sse",
+        "sse2"
+      ],
+      "set": "baseline-float-roundtrip",
+      "variant": "portable"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "sonic-rs"
+        ],
+        "compiled_features": [
+          "sse2"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)",
+          "sonic-rs": "sse2 (fallback scanner)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "fxsr",
+        "sse",
+        "sse2"
+      ],
+      "set": "sonic-rs",
+      "variant": "portable"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "simd-json",
+          "simd-json-buffers"
+        ],
+        "compiled_features": [
+          "sse2"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)",
+          "simd-json": "AVX2"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "fxsr",
+        "sse",
+        "sse2"
+      ],
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "flexon-rt",
+          "flexon-rt-mut"
+        ],
+        "compiled_features": [
+          "sse2"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "flexon": "rt: avx2 skip, sse2 scan",
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "fxsr",
+        "sse",
+        "sse2"
+      ],
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "flexon-ct",
+          "flexon-ct-mut"
+        ],
+        "compiled_features": [
+          "sse2"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "flexon": "ct: sse2",
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "fxsr",
+        "sse",
+        "sse2"
+      ],
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "jiter"
+        ],
+        "compiled_features": [
+          "sse2"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "jiter": "sse2",
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "fxsr",
+        "sse",
+        "sse2"
+      ],
+      "set": "jiter",
+      "variant": "portable"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "hifijson"
+        ],
+        "compiled_features": [
+          "sse2"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "fxsr",
+        "sse",
+        "sse2"
+      ],
+      "set": "hifijson",
+      "variant": "portable"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "struson"
+        ],
+        "compiled_features": [
+          "sse2"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "fxsr",
+        "sse",
+        "sse2"
+      ],
+      "set": "struson",
+      "variant": "portable"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "avx",
+        "avx2",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "ssse3",
+        "xsave"
+      ],
+      "set": "baseline",
+      "variant": "v3"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": true
+        }
+      },
+      "rustc_features": [
+        "avx",
+        "avx2",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "ssse3",
+        "xsave"
+      ],
+      "set": "baseline-float-roundtrip",
+      "variant": "v3"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "sonic-rs"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)",
+          "sonic-rs": "avx2+pclmulqdq"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "avx",
+        "avx2",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "ssse3",
+        "xsave"
+      ],
+      "set": "sonic-rs",
+      "variant": "v3"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "simd-json",
+          "simd-json-buffers"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)",
+          "simd-json": "AVX2"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "avx",
+        "avx2",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "ssse3",
+        "xsave"
+      ],
+      "set": "simd-json",
+      "variant": "v3"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "flexon-rt",
+          "flexon-rt-mut"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "flexon": "rt: avx2 skip, sse2 scan",
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "avx",
+        "avx2",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "ssse3",
+        "xsave"
+      ],
+      "set": "flexon-rt",
+      "variant": "v3"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "flexon-ct",
+          "flexon-ct-mut"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "flexon": "ct: avx2+pclmulqdq",
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "avx",
+        "avx2",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "ssse3",
+        "xsave"
+      ],
+      "set": "flexon-ct",
+      "variant": "v3"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "jiter"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "jiter": "sse2",
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "avx",
+        "avx2",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "ssse3",
+        "xsave"
+      ],
+      "set": "jiter",
+      "variant": "v3"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "hifijson"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "avx",
+        "avx2",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "ssse3",
+        "xsave"
+      ],
+      "set": "hifijson",
+      "variant": "v3"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "struson"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "avx",
+        "avx2",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "ssse3",
+        "xsave"
+      ],
+      "set": "struson",
+      "variant": "v3"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw",
+          "aes"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "adx",
+        "aes",
+        "avx",
+        "avx2",
+        "avx512bf16",
+        "avx512bitalg",
+        "avx512bw",
+        "avx512cd",
+        "avx512dq",
+        "avx512f",
+        "avx512ifma",
+        "avx512vbmi",
+        "avx512vbmi2",
+        "avx512vl",
+        "avx512vnni",
+        "avx512vpopcntdq",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "gfni",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "rdrand",
+        "rdseed",
+        "sha",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "sse4a",
+        "ssse3",
+        "vaes",
+        "vpclmulqdq",
+        "xsave",
+        "xsavec",
+        "xsaveopt",
+        "xsaves"
+      ],
+      "set": "baseline",
+      "variant": "native"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw",
+          "aes"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": true
+        }
+      },
+      "rustc_features": [
+        "adx",
+        "aes",
+        "avx",
+        "avx2",
+        "avx512bf16",
+        "avx512bitalg",
+        "avx512bw",
+        "avx512cd",
+        "avx512dq",
+        "avx512f",
+        "avx512ifma",
+        "avx512vbmi",
+        "avx512vbmi2",
+        "avx512vl",
+        "avx512vnni",
+        "avx512vpopcntdq",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "gfni",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "rdrand",
+        "rdseed",
+        "sha",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "sse4a",
+        "ssse3",
+        "vaes",
+        "vpclmulqdq",
+        "xsave",
+        "xsavec",
+        "xsaveopt",
+        "xsaves"
+      ],
+      "set": "baseline-float-roundtrip",
+      "variant": "native"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "sonic-rs"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw",
+          "aes"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)",
+          "sonic-rs": "avx2+pclmulqdq"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "adx",
+        "aes",
+        "avx",
+        "avx2",
+        "avx512bf16",
+        "avx512bitalg",
+        "avx512bw",
+        "avx512cd",
+        "avx512dq",
+        "avx512f",
+        "avx512ifma",
+        "avx512vbmi",
+        "avx512vbmi2",
+        "avx512vl",
+        "avx512vnni",
+        "avx512vpopcntdq",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "gfni",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "rdrand",
+        "rdseed",
+        "sha",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "sse4a",
+        "ssse3",
+        "vaes",
+        "vpclmulqdq",
+        "xsave",
+        "xsavec",
+        "xsaveopt",
+        "xsaves"
+      ],
+      "set": "sonic-rs",
+      "variant": "native"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "simd-json",
+          "simd-json-buffers"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw",
+          "aes"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)",
+          "simd-json": "AVX2"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "adx",
+        "aes",
+        "avx",
+        "avx2",
+        "avx512bf16",
+        "avx512bitalg",
+        "avx512bw",
+        "avx512cd",
+        "avx512dq",
+        "avx512f",
+        "avx512ifma",
+        "avx512vbmi",
+        "avx512vbmi2",
+        "avx512vl",
+        "avx512vnni",
+        "avx512vpopcntdq",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "gfni",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "rdrand",
+        "rdseed",
+        "sha",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "sse4a",
+        "ssse3",
+        "vaes",
+        "vpclmulqdq",
+        "xsave",
+        "xsavec",
+        "xsaveopt",
+        "xsaves"
+      ],
+      "set": "simd-json",
+      "variant": "native"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "flexon-rt",
+          "flexon-rt-mut"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw",
+          "aes"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "flexon": "rt: avx2 skip, sse2 scan",
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "adx",
+        "aes",
+        "avx",
+        "avx2",
+        "avx512bf16",
+        "avx512bitalg",
+        "avx512bw",
+        "avx512cd",
+        "avx512dq",
+        "avx512f",
+        "avx512ifma",
+        "avx512vbmi",
+        "avx512vbmi2",
+        "avx512vl",
+        "avx512vnni",
+        "avx512vpopcntdq",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "gfni",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "rdrand",
+        "rdseed",
+        "sha",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "sse4a",
+        "ssse3",
+        "vaes",
+        "vpclmulqdq",
+        "xsave",
+        "xsavec",
+        "xsaveopt",
+        "xsaves"
+      ],
+      "set": "flexon-rt",
+      "variant": "native"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "flexon-ct",
+          "flexon-ct-mut"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw",
+          "aes"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "flexon": "ct: avx2+pclmulqdq",
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "adx",
+        "aes",
+        "avx",
+        "avx2",
+        "avx512bf16",
+        "avx512bitalg",
+        "avx512bw",
+        "avx512cd",
+        "avx512dq",
+        "avx512f",
+        "avx512ifma",
+        "avx512vbmi",
+        "avx512vbmi2",
+        "avx512vl",
+        "avx512vnni",
+        "avx512vpopcntdq",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "gfni",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "rdrand",
+        "rdseed",
+        "sha",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "sse4a",
+        "ssse3",
+        "vaes",
+        "vpclmulqdq",
+        "xsave",
+        "xsavec",
+        "xsaveopt",
+        "xsaves"
+      ],
+      "set": "flexon-ct",
+      "variant": "native"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "jiter"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw",
+          "aes"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "jiter": "sse2",
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "adx",
+        "aes",
+        "avx",
+        "avx2",
+        "avx512bf16",
+        "avx512bitalg",
+        "avx512bw",
+        "avx512cd",
+        "avx512dq",
+        "avx512f",
+        "avx512ifma",
+        "avx512vbmi",
+        "avx512vbmi2",
+        "avx512vl",
+        "avx512vnni",
+        "avx512vpopcntdq",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "gfni",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "rdrand",
+        "rdseed",
+        "sha",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "sse4a",
+        "ssse3",
+        "vaes",
+        "vpclmulqdq",
+        "xsave",
+        "xsavec",
+        "xsaveopt",
+        "xsaves"
+      ],
+      "set": "jiter",
+      "variant": "native"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "hifijson"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw",
+          "aes"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "adx",
+        "aes",
+        "avx",
+        "avx2",
+        "avx512bf16",
+        "avx512bitalg",
+        "avx512bw",
+        "avx512cd",
+        "avx512dq",
+        "avx512f",
+        "avx512ifma",
+        "avx512vbmi",
+        "avx512vbmi2",
+        "avx512vl",
+        "avx512vnni",
+        "avx512vpopcntdq",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "gfni",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "rdrand",
+        "rdseed",
+        "sha",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "sse4a",
+        "ssse3",
+        "vaes",
+        "vpclmulqdq",
+        "xsave",
+        "xsavec",
+        "xsaveopt",
+        "xsaves"
+      ],
+      "set": "hifijson",
+      "variant": "native"
+    },
+    {
+      "cell": {
+        "arch": "x86_64",
+        "backends": [
+          "serde_json",
+          "struson"
+        ],
+        "compiled_features": [
+          "sse2",
+          "ssse3",
+          "sse4.1",
+          "sse4.2",
+          "popcnt",
+          "avx",
+          "avx2",
+          "bmi1",
+          "bmi2",
+          "fma",
+          "lzcnt",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw",
+          "aes"
+        ],
+        "detected_features": [
+          "sse4.2",
+          "avx2",
+          "bmi2",
+          "pclmulqdq",
+          "avx512f",
+          "avx512bw"
+        ],
+        "os": "linux",
+        "paths": {
+          "serde_json": "scalar (SWAR + memchr)"
+        },
+        "serde_json_features": {
+          "float_roundtrip": false
+        }
+      },
+      "rustc_features": [
+        "adx",
+        "aes",
+        "avx",
+        "avx2",
+        "avx512bf16",
+        "avx512bitalg",
+        "avx512bw",
+        "avx512cd",
+        "avx512dq",
+        "avx512f",
+        "avx512ifma",
+        "avx512vbmi",
+        "avx512vbmi2",
+        "avx512vl",
+        "avx512vnni",
+        "avx512vpopcntdq",
+        "bmi1",
+        "bmi2",
+        "cmpxchg16b",
+        "f16c",
+        "fma",
+        "fxsr",
+        "gfni",
+        "lzcnt",
+        "movbe",
+        "pclmulqdq",
+        "popcnt",
+        "rdrand",
+        "rdseed",
+        "sha",
+        "sse",
+        "sse2",
+        "sse3",
+        "sse4.1",
+        "sse4.2",
+        "sse4a",
+        "ssse3",
+        "vaes",
+        "vpclmulqdq",
+        "xsave",
+        "xsavec",
+        "xsaveopt",
+        "xsaves"
+      ],
+      "set": "struson",
+      "variant": "native"
+    }
+  ],
+  "failures": [],
+  "kind": "doctor",
+  "provenance": {
+    "arch": "x86_64",
+    "boost": "1",
+    "container_image": null,
+    "cpu": "AMD Ryzen 7 7800X3D 8-Core Processor",
+    "git_commit": "d70c256e7cfaa75fbc5a63cea3fb5c4e2875d164",
+    "git_dirty": false,
+    "governor": "powersave",
+    "host": "x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor",
+    "kernel": "7.2.4-200.fc44.x86_64",
+    "loadavg": "10.46 12.39 13.82 6/5207 343126",
+    "microcode": "microcode\t: 0xa60120c",
+    "os": "linux",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
+    "timestamp": "2026-09-28T06:50:44Z",
+    "valgrind": null
+  },
+  "schema": 1
+}

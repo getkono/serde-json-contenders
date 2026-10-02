@@ -16,6 +16,10 @@ use crate::counted::{Cell, Filter, merge_rows};
 use crate::matrix::{KYNOS, TIMED_SHAPES, variant};
 use crate::util::{capture, root, shuffle};
 
+/// Rounds per cell unless `--rounds` says otherwise; the report states any
+/// run that took fewer.
+pub const ROUNDS: u64 = 3;
+
 /// The workloads timed by default: the decision shapes, the sweep, and the
 /// real-world documents. Families are counted, not timed.
 fn default_workloads() -> Vec<String> {
@@ -42,7 +46,7 @@ pub fn time(args: &[String]) -> Result<()> {
     if filter.variants.is_none() {
         filter.variants = Some(vec!["native".into()]);
     }
-    let rounds: u64 = flag(args, "--rounds").and_then(|v| v.parse().ok()).unwrap_or(3);
+    let rounds: u64 = flag(args, "--rounds").and_then(|v| v.parse().ok()).unwrap_or(ROUNDS);
     let core = flag(args, "--core").unwrap_or("2").to_owned();
     let trust = flag(args, "--trust").unwrap_or("solo").to_owned();
     anyhow::ensure!(

@@ -1,0 +1,851 @@
+{
+  "kind": "e2e-count",
+  "provenance": {
+    "arch": "x86_64",
+    "boost": "1",
+    "container_image": "b5d5df8d8d32e15abb549586f8321a31abd82014391b45b9184d4604f40357d4",
+    "cpu": "AMD Ryzen 7 7800X3D 8-Core Processor",
+    "git_commit": null,
+    "git_dirty": true,
+    "governor": "powersave",
+    "host": "x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor",
+    "kernel": "7.2.4-200.fc44.x86_64",
+    "loadavg": "30.91 26.74 25.35 27/5293 7327",
+    "microcode": "microcode\t: 0xa60120c",
+    "os": "linux",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
+    "timestamp": "2026-09-28T08:16:53Z",
+    "valgrind": "valgrind-3.24.0"
+  },
+  "rows": [
+    {
+      "backend": "floor",
+      "est_cycles": 35120.13,
+      "ir": 26376.68,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "backend": "floor",
+      "est_cycles": 186578.22,
+      "ir": 155617.22,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "backend": "floor",
+      "est_cycles": 269194.7,
+      "ir": 226336.325,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "backend": "floor",
+      "est_cycles": 26602.98,
+      "ir": 19657.73,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "backend": "serde_json",
+      "est_cycles": 57826.365,
+      "ir": 47707.19,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "backend": "serde_json",
+      "est_cycles": 1380484.94,
+      "ir": 1310540.89,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "backend": "serde_json",
+      "est_cycles": 4121727.565,
+      "ir": 4009467.115,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "backend": "serde_json",
+      "est_cycles": 28581.91,
+      "ir": 21371.61,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "est_cycles": 58218.23,
+      "ir": 48027.88,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "baseline-float-roundtrip",
+      "variant": "portable"
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "est_cycles": 1341921.95,
+      "ir": 1277384.65,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "baseline-float-roundtrip",
+      "variant": "portable"
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "est_cycles": 4154988.18,
+      "ir": 4042652.73,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "baseline-float-roundtrip",
+      "variant": "portable"
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "est_cycles": 28370.19,
+      "ir": 21233.315,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "baseline-float-roundtrip",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-ct",
+      "est_cycles": 49527.98,
+      "ir": 39277.005,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-ct",
+      "est_cycles": 1329170.4,
+      "ir": 1261135.0,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-ct",
+      "est_cycles": 3153388.34,
+      "ir": 3035354.64,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-ct",
+      "est_cycles": 30754.785,
+      "ir": 23089.485,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "est_cycles": 49463.595,
+      "ir": 39310.795,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "est_cycles": 1329191.62,
+      "ir": 1261147.045,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "est_cycles": 3164737.34,
+      "ir": 3046696.64,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "est_cycles": 30787.805,
+      "ir": 23101.38,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-rt",
+      "est_cycles": 49510.065,
+      "ir": 39280.215,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-rt",
+      "est_cycles": 1329287.71,
+      "ir": 1261138.135,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-rt",
+      "est_cycles": 3153456.545,
+      "ir": 3035357.595,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-rt",
+      "est_cycles": 30799.79,
+      "ir": 23089.665,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "est_cycles": 49544.74,
+      "ir": 39311.065,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "est_cycles": 1329271.16,
+      "ir": 1261150.06,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "est_cycles": 3164818.095,
+      "ir": 3046699.595,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "est_cycles": 30842.55,
+      "ir": 23101.35,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "backend": "hifijson",
+      "est_cycles": 4534233.2,
+      "ir": 4421674.8,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "hifijson",
+      "variant": "portable"
+    },
+    {
+      "backend": "jiter",
+      "est_cycles": 3799680.76,
+      "ir": 3686616.935,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "jiter",
+      "variant": "portable"
+    },
+    {
+      "backend": "simd-json",
+      "est_cycles": 54836.475,
+      "ir": 43752.825,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "backend": "simd-json",
+      "est_cycles": 1868768.09,
+      "ir": 1795572.64,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "backend": "simd-json",
+      "est_cycles": 3435807.065,
+      "ir": 3258963.615,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "backend": "simd-json",
+      "est_cycles": 29742.595,
+      "ir": 22359.495,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "backend": "simd-json-buffers",
+      "est_cycles": 51471.855,
+      "ir": 40824.955,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "backend": "simd-json-buffers",
+      "est_cycles": 1868781.845,
+      "ir": 1795584.595,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "backend": "simd-json-buffers",
+      "est_cycles": 3391818.425,
+      "ir": 3221024.575,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "backend": "simd-json-buffers",
+      "est_cycles": 29777.08,
+      "ir": 22374.555,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "backend": "sonic-rs",
+      "est_cycles": 48186.86,
+      "ir": 38230.685,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "sonic-rs",
+      "variant": "portable"
+    },
+    {
+      "backend": "sonic-rs",
+      "est_cycles": 1377038.045,
+      "ir": 1303672.695,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "sonic-rs",
+      "variant": "portable"
+    },
+    {
+      "backend": "sonic-rs",
+      "est_cycles": 3522907.705,
+      "ir": 3404419.005,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "sonic-rs",
+      "variant": "portable"
+    },
+    {
+      "backend": "sonic-rs",
+      "est_cycles": 29738.72,
+      "ir": 22057.345,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "sonic-rs",
+      "variant": "portable"
+    },
+    {
+      "backend": "struson",
+      "est_cycles": 133373.215,
+      "ir": 121975.34,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "struson",
+      "variant": "portable"
+    },
+    {
+      "backend": "struson",
+      "est_cycles": 2925634.515,
+      "ir": 2851670.915,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "struson",
+      "variant": "portable"
+    },
+    {
+      "backend": "struson",
+      "est_cycles": 11399300.24,
+      "ir": 11267427.415,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "struson",
+      "variant": "portable"
+    },
+    {
+      "backend": "struson",
+      "est_cycles": 33681.225,
+      "ir": 25456.2,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "struson",
+      "variant": "portable"
+    },
+    {
+      "backend": "floor",
+      "est_cycles": 34123.15,
+      "ir": 25209.95,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "baseline",
+      "variant": "v3"
+    },
+    {
+      "backend": "floor",
+      "est_cycles": 185326.815,
+      "ir": 154332.49,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "baseline",
+      "variant": "v3"
+    },
+    {
+      "backend": "floor",
+      "est_cycles": 267834.75,
+      "ir": 225026.525,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "baseline",
+      "variant": "v3"
+    },
+    {
+      "backend": "floor",
+      "est_cycles": 25594.9,
+      "ir": 18646.775,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "baseline",
+      "variant": "v3"
+    },
+    {
+      "backend": "serde_json",
+      "est_cycles": 56056.835,
+      "ir": 45882.01,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "baseline",
+      "variant": "v3"
+    },
+    {
+      "backend": "serde_json",
+      "est_cycles": 1368178.665,
+      "ir": 1298005.79,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "baseline",
+      "variant": "v3"
+    },
+    {
+      "backend": "serde_json",
+      "est_cycles": 4088651.825,
+      "ir": 3976440.3,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "baseline",
+      "variant": "v3"
+    },
+    {
+      "backend": "serde_json",
+      "est_cycles": 27580.895,
+      "ir": 20358.195,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "baseline",
+      "variant": "v3"
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "est_cycles": 56305.79,
+      "ir": 46202.915,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "baseline-float-roundtrip",
+      "variant": "v3"
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "est_cycles": 1329498.81,
+      "ir": 1264846.735,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "baseline-float-roundtrip",
+      "variant": "v3"
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "est_cycles": 4121690.245,
+      "ir": 4009625.295,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "baseline-float-roundtrip",
+      "variant": "v3"
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "est_cycles": 27362.62,
+      "ir": 20219.245,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "baseline-float-roundtrip",
+      "variant": "v3"
+    },
+    {
+      "backend": "flexon-ct",
+      "est_cycles": 47576.725,
+      "ir": 37418.725,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "flexon-ct",
+      "variant": "v3"
+    },
+    {
+      "backend": "flexon-ct",
+      "est_cycles": 1316584.545,
+      "ir": 1248583.97,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "flexon-ct",
+      "variant": "v3"
+    },
+    {
+      "backend": "flexon-ct",
+      "est_cycles": 3086563.55,
+      "ir": 2968668.65,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "flexon-ct",
+      "variant": "v3"
+    },
+    {
+      "backend": "flexon-ct",
+      "est_cycles": 29830.875,
+      "ir": 22066.275,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "flexon-ct",
+      "variant": "v3"
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "est_cycles": 47634.765,
+      "ir": 37442.815,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "flexon-ct",
+      "variant": "v3"
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "est_cycles": 1316583.06,
+      "ir": 1248580.86,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "flexon-ct",
+      "variant": "v3"
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "est_cycles": 3078134.23,
+      "ir": 2960282.58,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "flexon-ct",
+      "variant": "v3"
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "est_cycles": 29843.905,
+      "ir": 22071.13,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "flexon-ct",
+      "variant": "v3"
+    },
+    {
+      "backend": "flexon-rt",
+      "est_cycles": 47704.445,
+      "ir": 37445.945,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "flexon-rt",
+      "variant": "v3"
+    },
+    {
+      "backend": "flexon-rt",
+      "est_cycles": 1316709.695,
+      "ir": 1248580.995,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "flexon-rt",
+      "variant": "v3"
+    },
+    {
+      "backend": "flexon-rt",
+      "est_cycles": 3147842.875,
+      "ir": 3029801.85,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "flexon-rt",
+      "variant": "v3"
+    },
+    {
+      "backend": "flexon-rt",
+      "est_cycles": 29895.78,
+      "ir": 22065.78,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "flexon-rt",
+      "variant": "v3"
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "est_cycles": 47770.29,
+      "ir": 37497.24,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "flexon-rt",
+      "variant": "v3"
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "est_cycles": 1316702.005,
+      "ir": 1248580.68,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "flexon-rt",
+      "variant": "v3"
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "est_cycles": 3156328.35,
+      "ir": 3038329.85,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "flexon-rt",
+      "variant": "v3"
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "est_cycles": 29876.235,
+      "ir": 22067.335,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "flexon-rt",
+      "variant": "v3"
+    },
+    {
+      "backend": "hifijson",
+      "est_cycles": 4534800.205,
+      "ir": 4422501.43,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "hifijson",
+      "variant": "v3"
+    },
+    {
+      "backend": "jiter",
+      "est_cycles": 3800481.255,
+      "ir": 3687531.58,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "jiter",
+      "variant": "v3"
+    },
+    {
+      "backend": "simd-json",
+      "est_cycles": 53032.79,
+      "ir": 41707.665,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "simd-json",
+      "variant": "v3"
+    },
+    {
+      "backend": "simd-json",
+      "est_cycles": 1748460.49,
+      "ir": 1675161.865,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "simd-json",
+      "variant": "v3"
+    },
+    {
+      "backend": "simd-json",
+      "est_cycles": 3353340.86,
+      "ir": 3176292.135,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "simd-json",
+      "variant": "v3"
+    },
+    {
+      "backend": "simd-json",
+      "est_cycles": 28638.75,
+      "ir": 21163.225,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "simd-json",
+      "variant": "v3"
+    },
+    {
+      "backend": "simd-json-buffers",
+      "est_cycles": 49630.3,
+      "ir": 38779.675,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "simd-json",
+      "variant": "v3"
+    },
+    {
+      "backend": "simd-json-buffers",
+      "est_cycles": 1748453.285,
+      "ir": 1675159.76,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "simd-json",
+      "variant": "v3"
+    },
+    {
+      "backend": "simd-json-buffers",
+      "est_cycles": 3309288.845,
+      "ir": 3138346.42,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "simd-json",
+      "variant": "v3"
+    },
+    {
+      "backend": "simd-json-buffers",
+      "est_cycles": 28633.395,
+      "ir": 21161.27,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "simd-json",
+      "variant": "v3"
+    },
+    {
+      "backend": "sonic-rs",
+      "est_cycles": 45683.42,
+      "ir": 35495.82,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "sonic-rs",
+      "variant": "v3"
+    },
+    {
+      "backend": "sonic-rs",
+      "est_cycles": 1312318.81,
+      "ir": 1239687.585,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "sonic-rs",
+      "variant": "v3"
+    },
+    {
+      "backend": "sonic-rs",
+      "est_cycles": 3364638.045,
+      "ir": 3246010.92,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "sonic-rs",
+      "variant": "v3"
+    },
+    {
+      "backend": "sonic-rs",
+      "est_cycles": 28788.0,
+      "ir": 20959.075,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "sonic-rs",
+      "variant": "v3"
+    },
+    {
+      "backend": "struson",
+      "est_cycles": 132041.37,
+      "ir": 120461.345,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "struson",
+      "variant": "v3"
+    },
+    {
+      "backend": "struson",
+      "est_cycles": 2925032.335,
+      "ir": 2851100.41,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "struson",
+      "variant": "v3"
+    },
+    {
+      "backend": "struson",
+      "est_cycles": 11437272.06,
+      "ir": 11323142.86,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "struson",
+      "variant": "v3"
+    },
+    {
+      "backend": "struson",
+      "est_cycles": 32693.59,
+      "ir": 24446.065,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "struson",
+      "variant": "v3"
+    }
+  ],
+  "schema": 1
+}

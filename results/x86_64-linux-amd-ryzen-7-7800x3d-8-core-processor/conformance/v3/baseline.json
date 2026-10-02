@@ -1,0 +1,43 @@
+{
+  "provenance": {
+    "arch": "x86_64",
+    "boost": "1",
+    "container_image": null,
+    "cpu": "AMD Ryzen 7 7800X3D 8-Core Processor",
+    "git_commit": "429dbc42e1ba98e81b69d224c78b094499ad4f34",
+    "git_dirty": false,
+    "governor": "powersave",
+    "host": "x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor",
+    "kernel": "7.2.4-200.fc44.x86_64",
+    "loadavg": "8.07 7.75 10.88 8/4172 524554",
+    "microcode": "microcode\t: 0xa60120c",
+    "os": "linux",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
+    "timestamp": "2026-09-28T07:08:02Z",
+    "valgrind": null
+  },
+  "report": {
+    "backends": {},
+    "reference": "serde_json",
+    "schema": 1,
+    "serde_json_features": {
+      "arbitrary_precision": false,
+      "float_roundtrip": false
+    },
+    "target_features": [
+      "sse2",
+      "ssse3",
+      "sse4.1",
+      "sse4.2",
+      "popcnt",
+      "avx",
+      "avx2",
+      "bmi1",
+      "bmi2",
+      "fma",
+      "lzcnt",
+      "pclmulqdq"
+    ]
+  },
+  "schema": 1
+}

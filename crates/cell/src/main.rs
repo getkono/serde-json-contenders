@@ -15,6 +15,8 @@ static ALLOCATOR: alloc_count::Counting = alloc_count::Counting;
 mod doctor;
 mod job;
 mod modes;
+#[cfg(test)]
+mod sensitivity;
 mod verify;
 
 use std::process::ExitCode;

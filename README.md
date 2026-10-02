@@ -225,7 +225,7 @@ Individual tasks are listed by `cargo xtask`. Every result file under `results/`
 | `serde_json+float_roundtrip` | serde_json | ❌ fail | yes — unicode decode CPU 0.55× serde_json at x86_64 native (cycles). Correctly rounded float parsing, which the default parser is not (see conformance, numbers). | no route ≥10 % better in throughput or p99 beyond the A/A band |
 | `sonic-rs` | sonic-rs | ❌ fail | yes — echo-post encode CPU 0.19× serde_json at x86_64 v3 (est. cycles). Lazy path lookups without a full parse (`get`, `get_many`, `LazyValue`); errors carry a byte offset as well as line and column. | grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs; fuzz decode_struct (portable); fuzz decode_struct (v3) |
 | `simd-json` | simd-json | ❌ fail | yes — echo-post encode CPU 0.28× serde_json at x86_64 v3 (est. cycles). Borrowing decode of escaped strings, unescaped in place: 1,175 allocations against serde_json's 4,584 for twitter-like into borrowed types from a unique buffer. A tape API (`to_tape`) traverses without building values. | status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3) |
-| `simd-json-buffers` | simd-json | ❌ fail | yes — echo-post encode CPU 0.28× serde_json at x86_64 portable (est. cycles). Reusing `Buffers` across calls roughly halves plain `from_slice`'s allocated bytes: 2.93 MB against 5.54 MB for twitter-like into borrowed types from a unique buffer. | status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3) |
+| `simd-json-buffers` | simd-json | ❌ fail | yes — echo-post encode CPU 0.28× serde_json at x86_64 v3 (est. cycles). Reusing `Buffers` across calls roughly halves plain `from_slice`'s allocated bytes: 2.93 MB against 5.54 MB for twitter-like into borrowed types from a unique buffer. | status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3) |
 | `flexon-rt` | flexon | ❌ fail | yes — echo-post encode CPU 0.35× serde_json at x86_64 v3 (est. cycles). `from_mut_slice` borrows escaped strings in place; JSON-pointer access. Its latest release (0.4.9) does not compile on stable Rust. | grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence |
 | `flexon-rt-mut` | flexon | ❌ fail | yes — echo-post encode CPU 0.35× serde_json at x86_64 v3 (est. cycles). In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-rt`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer. | grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence |
 | `flexon-ct` | flexon | ❌ fail | yes — echo-post encode CPU 0.35× serde_json at x86_64 v3 (est. cycles). The compile-time SIMD configuration of flexon; same API as `flexon-rt`. | grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence |
@@ -238,7 +238,7 @@ Individual tasks are listed by `cargo xtask`. Every result file under `results/`
 
 | Entry point | 1 Frontier | 2 Conformance | 3 Soundness | 4 End to end |
 | --- | --- | --- | --- | --- |
-| `sonic-rs` | ⏳ json-small decode CPU 0.83× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded | ❌ grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs; fuzz decode_struct (portable); fuzz decode_struct (v3) | ✅ no advisory at advisory-db e2111519 | ❌ no route ≥10 % better in throughput or p99 beyond the A/A band |
+| `sonic-rs` | ⏳ json-small decode CPU 0.84× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded | ❌ grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs; fuzz decode_struct (portable); fuzz decode_struct (v3) | ✅ no advisory at advisory-db e2111519 | ❌ no route ≥10 % better in throughput or p99 beyond the A/A band |
 | `simd-json` | ⏳ json-small encode CPU 0.81× at x86_64 native (cycles); aarch64 counts not yet recorded | ❌ status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3) | ✅ no advisory at advisory-db e2111519 | ⏳ provisional pass: echo-post +13 % rps, +66 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun |
 | `simd-json-buffers` | ⏳ json-small decode CPU 0.88× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded | ❌ status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3) | ✅ no advisory at advisory-db e2111519 | ⏳ provisional pass: echo-post -16 % rps, +65 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun |
 | `flexon-rt` | ⏳ json-small decode CPU 0.73× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded | ❌ grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence | ✅ no advisory at advisory-db e2111519 | ❌ gains inconsistent with counted codec share: x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor json-large-post: +59 % measured, +30 % predicted |
@@ -257,11 +257,11 @@ serde_json is the absolute figure; every other column is a ratio to it (below 1 
 
 | Workload | Point | serde_json | `serde_json+float_roundtrip` | `sonic-rs` | `simd-json` | `simd-json-buffers` | `flexon-rt` | `flexon-rt-mut` | `flexon-ct` | `flexon-ct-mut` | `jiter` | `hifijson` | `struson` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| json-small | x86_64 v3 (est. cycles) | 4040 | 1.01× | 0.83× | 1.30× | 0.88× | 0.73× | 0.76× | 0.72× | 0.75× | 0.90× | 1.17× | 3.65× |
+| json-small | x86_64 v3 (est. cycles) | 4040 | 1.01× | 0.84× | 1.30× | 0.88× | 0.73× | 0.76× | 0.72× | 0.75× | 0.90× | 1.17× | 3.65× |
 | json-small | x86_64 v3 (Ir) | 4040 | 1.01× | 0.83× | 1.30× | 0.88× | 0.73× | 0.76× | 0.72× | 0.75× | 0.90× | 1.17× | 3.65× |
 | json-small | x86_64 native (cycles) | 1633 | 0.65× | 0.71× | 0.83× | 0.86× | 0.68× | 0.72× | 0.65× | 0.44× | 0.62× | 0.71× | 2.55× |
 | json-small | x86_64 native (instructions) | 3802 | 1.01× | 0.82× | 1.27× | 0.85× | 0.71× | 0.72× | 0.71× | 0.72× | 0.89× | 1.19× | 3.68× |
-| echo-post | x86_64 v3 (est. cycles) | 4471 | 1.02× | 0.60× | 1.87× | 1.19× | 0.51× | 0.63× | 0.51× | 0.62× | 0.53× | 3.01× | 14.60× |
+| echo-post | x86_64 v3 (est. cycles) | 4471 | 1.02× | 0.60× | 1.87× | 1.19× | 0.51× | 0.63× | 0.51× | 0.62× | 0.53× | 3.01× | 14.57× |
 | echo-post | x86_64 v3 (Ir) | 4471 | 1.02× | 0.60× | 1.87× | 1.19× | 0.51× | 0.63× | 0.51× | 0.62× | 0.53× | 3.01× | 14.57× |
 | echo-post | x86_64 native (cycles) | 1628 | 0.60× | 0.58× | 1.22× | 0.85× | 0.52× | 0.63× | 0.48× | 0.42× | 0.59× | 1.83× | 10.14× |
 | echo-post | x86_64 native (instructions) | 4368 | 1.01× | 0.58× | 1.74× | 1.05× | 0.46× | 0.54× | 0.45× | 0.53× | 0.48× | 3.06× | 14.76× |
@@ -293,13 +293,13 @@ serde_json is the absolute figure; every other column is a ratio to it (below 1 
 
 | Workload | Point | serde_json | `serde_json+float_roundtrip` | `sonic-rs` | `simd-json` | `simd-json-buffers` | `flexon-rt` | `flexon-rt-mut` | `flexon-ct` | `flexon-ct-mut` | `jiter` | `hifijson` | `struson` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| sweep-64b | x86_64 v3 (est. cycles) | 2879 | 1.01× | 0.82× | 1.42× | 0.93× | 0.73× | 0.77× | 0.75× | 0.78× | 0.91× | 1.15× | 4.08× |
+| sweep-64b | x86_64 v3 (est. cycles) | 2879 | 1.01× | 0.82× | 1.42× | 0.93× | 0.73× | 0.77× | 0.75× | 0.78× | 0.91× | 1.15× | 4.07× |
 | sweep-256b | x86_64 v3 (est. cycles) | 7244 | 1.01× | 0.75× | 1.17× | 0.85× | 0.69× | 0.69× | 0.68× | 0.68× | 0.88× | 1.26× | 4.33× |
 | sweep-1kib | x86_64 v3 (est. cycles) | 43.5 k | 1.01× | 0.75× | 0.97× | 0.88× | 0.71× | 0.70× | 0.69× | 0.68× | 0.90× | 1.17× | 3.57× |
-| sweep-4kib | x86_64 v3 (est. cycles) | 182.9 k | 1.00× | 0.77× | 0.96× | 0.93× | 0.72× | 0.88× | 0.70× | 0.86× | 0.90× | 1.16× | 3.42× |
-| sweep-16kib | x86_64 v3 (est. cycles) | 891.6 k | 1.01× | 0.81× | 0.84× | 0.82× | 0.76× | 0.77× | 0.75× | 0.76× | 0.92× | 1.13× | 3.03× |
+| sweep-4kib | x86_64 v3 (est. cycles) | 182.9 k | 1.00× | 0.77× | 0.96× | 0.93× | 0.72× | 0.87× | 0.70× | 0.86× | 0.90× | 1.16× | 3.41× |
+| sweep-16kib | x86_64 v3 (est. cycles) | 891.5 k | 1.01× | 0.81× | 0.84× | 0.82× | 0.76× | 0.77× | 0.75× | 0.76× | 0.92× | 1.13× | 3.02× |
 | sweep-64kib | x86_64 v3 (est. cycles) | 3.62 M | 1.01× | 0.81× | 0.83× | 0.82× | 0.77× | 0.77× | 0.75× | 0.76× | 0.92× | 1.13× | 3.00× |
-| sweep-256kib | x86_64 v3 (est. cycles) | 14.58 M | 1.01× | 0.81× | 0.82× | 0.82× | 0.77× | 0.78× | 0.75× | 0.76× | 0.92× | 1.14× | 2.99× |
+| sweep-256kib | x86_64 v3 (est. cycles) | 14.58 M | 1.01× | 0.81× | 0.82× | 0.82× | 0.77× | 0.78× | 0.75× | 0.76× | 0.92× | 1.14× | 2.98× |
 | sweep-1mib | x86_64 v3 (est. cycles) | 58.39 M | 1.01× | 0.81× | 0.89× | 0.88× | 0.77× | 0.76× | 0.75× | 0.74× | 0.92× | 1.14× | 2.98× |
 
 **Encode**
@@ -307,10 +307,10 @@ serde_json is the absolute figure; every other column is a ratio to it (below 1 
 | Workload | Point | serde_json | `serde_json+float_roundtrip` | `sonic-rs` | `simd-json` | `simd-json-buffers` | `flexon-rt` | `flexon-rt-mut` | `flexon-ct` | `flexon-ct-mut` | `struson` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | sweep-64b | x86_64 v3 (est. cycles) | 1201 | 1.00× | 1.04× | 1.09× | 1.09× | 1.75× | 1.75× | 1.75× | 1.75× | 3.30× |
-| sweep-256b | x86_64 v3 (est. cycles) | 4122 | 1.00× | 0.81× | 0.85× | 0.85× | 1.17× | 1.17× | 1.17× | 1.17× | 2.63× |
-| sweep-1kib | x86_64 v3 (est. cycles) | 17.6 k | 1.00× | 0.88× | 1.18× | 1.18× | 0.98× | 0.98× | 0.98× | 0.98× | 2.37× |
-| sweep-4kib | x86_64 v3 (est. cycles) | 67.1 k | 1.00× | 0.90× | 1.24× | 1.24× | 0.93× | 0.93× | 0.93× | 0.93× | 2.36× |
-| sweep-16kib | x86_64 v3 (est. cycles) | 280.1 k | 1.00× | 0.95× | 1.27× | 1.27× | 0.94× | 0.94× | 0.94× | 0.94× | 2.32× |
+| sweep-256b | x86_64 v3 (est. cycles) | 4156 | 0.99× | 0.80× | 0.84× | 0.84× | 1.16× | 1.16× | 1.16× | 1.16× | 2.60× |
+| sweep-1kib | x86_64 v3 (est. cycles) | 17.6 k | 0.99× | 0.87× | 1.18× | 1.18× | 0.97× | 0.97× | 0.97× | 0.97× | 2.36× |
+| sweep-4kib | x86_64 v3 (est. cycles) | 67.1 k | 1.00× | 0.89× | 1.23× | 1.23× | 0.93× | 0.93× | 0.93× | 0.93× | 2.36× |
+| sweep-16kib | x86_64 v3 (est. cycles) | 280.2 k | 1.00× | 0.95× | 1.27× | 1.27× | 0.94× | 0.94× | 0.94× | 0.94× | 2.32× |
 | sweep-64kib | x86_64 v3 (est. cycles) | 1.12 M | 1.00× | 0.93× | 1.26× | 1.26× | 0.94× | 0.94× | 0.94× | 0.94× | 2.34× |
 | sweep-256kib | x86_64 v3 (est. cycles) | 4.47 M | 1.00× | 0.91× | 1.29× | 1.29× | 0.94× | 0.94× | 0.94× | 0.94× | 2.35× |
 | sweep-1mib | x86_64 v3 (est. cycles) | 18.49 M | 1.00× | 0.90× | 1.28× | 1.28× | 0.95× | 0.95× | 0.95× | 0.95× | 2.31× |
@@ -323,34 +323,34 @@ A `—` under a nested workload is a rejection at that depth (see conformance), 
 
 | Workload | Point | serde_json | `serde_json+float_roundtrip` | `sonic-rs` | `simd-json` | `simd-json-buffers` | `flexon-rt` | `flexon-rt-mut` | `flexon-ct` | `flexon-ct-mut` | `jiter` | `hifijson` | `struson` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ints | x86_64 v3 (est. cycles) | 346.7 k | 1.14× | 0.90× | 1.19× | 1.17× | 0.86× | 0.91× | 0.82× | 0.86× | — | 2.32× | 5.04× |
-| floats | x86_64 v3 (est. cycles) | 358.3 k | 1.39× | 1.03× | 0.90× | 0.89× | 0.96× | 1.01× | 0.78× | 0.83× | 1.04× | 2.18× | — |
+| ints | x86_64 v3 (est. cycles) | 346.8 k | 1.14× | 0.90× | 1.19× | 1.17× | 0.86× | 0.91× | 0.82× | 0.86× | — | 2.32× | 5.04× |
+| floats | x86_64 v3 (est. cycles) | 358.6 k | 1.39× | 1.03× | 0.90× | 0.88× | 0.96× | 1.01× | 0.78× | 0.83× | 1.04× | 2.18× | — |
 | escapes | x86_64 v3 (est. cycles) | 517.9 k | 0.98× | 0.70× | 0.73× | 0.72× | 0.92× | 0.82× | 0.90× | 0.81× | 0.97× | 1.74× | 2.72× |
-| unicode | x86_64 v3 (est. cycles) | 396.7 k | 1.01× | 0.56× | 0.79× | 0.78× | 0.55× | 0.66× | 0.52× | 0.64× | 0.98× | 1.31× | 3.47× |
-| nested-100 | x86_64 v3 (est. cycles) | 99.9 k | 1.02× | 0.82× | 1.18× | 1.13× | 0.67× | 0.86× | 0.68× | 0.85× | 0.95× | — | 4.26× |
-| nested-127 | x86_64 v3 (est. cycles) | 127.2 k | 1.02× | 0.83× | 1.18× | 1.14× | 0.68× | 0.87× | 0.69× | 0.86× | 0.96× | — | 4.42× |
+| unicode | x86_64 v3 (est. cycles) | 396.8 k | 1.01× | 0.56× | 0.79× | 0.78× | 0.55× | 0.66× | 0.52× | 0.64× | 0.98× | 1.31× | 3.46× |
+| nested-100 | x86_64 v3 (est. cycles) | 99.9 k | 1.02× | 0.82× | 1.18× | 1.13× | 0.67× | 0.86× | 0.68× | 0.85× | 0.95× | — | 4.27× |
+| nested-127 | x86_64 v3 (est. cycles) | 127.2 k | 1.02× | 0.83× | 1.18× | 1.14× | 0.68× | 0.87× | 0.69× | 0.86× | 0.96× | — | 4.41× |
 | nested-129 | x86_64 v3 (est. cycles) | — | — | — | — | — | — | — | — | — | — | — | — |
 | nested-10000 | x86_64 v3 (est. cycles) | — | — | — | — | — | — | — | — | — | — | — | — |
 | wide-1000 | x86_64 v3 (est. cycles) | 1.97 M | 1.02× | 0.91× | 1.10× | 1.09× | 0.91× | 1.02× | 0.90× | 1.01× | 0.98× | 1.28× | 2.26× |
 | array-small | x86_64 v3 (est. cycles) | 679.4 k | 1.06× | 0.86× | 1.04× | 1.01× | 0.75× | 0.75× | 0.72× | 0.75× | 0.96× | 1.36× | 5.11× |
-| twitter-like | x86_64 v3 (est. cycles) | 25.46 M | 1.01× | 0.67× | 0.73× | 0.71× | 0.80× | 0.72× | 0.80× | 0.72× | 0.88× | — | 3.53× |
-| citm-like | x86_64 v3 (est. cycles) | 15.64 M | 1.03× | 0.76× | 0.91× | 0.89× | 0.62× | 0.64× | 0.60× | 0.63× | 0.88× | — | 4.50× |
+| twitter-like | x86_64 v3 (est. cycles) | 25.49 M | 1.01× | 0.66× | 0.73× | 0.71× | 0.80× | 0.71× | 0.79× | 0.72× | 0.88× | — | 3.53× |
+| citm-like | x86_64 v3 (est. cycles) | 15.66 M | 1.03× | 0.76× | 0.91× | 0.89× | 0.62× | 0.64× | 0.60× | 0.63× | 0.88× | — | 4.49× |
 | canada-like | x86_64 v3 (est. cycles) | 53.43 M | 1.19× | 1.03× | 1.02× | 0.99× | 0.90× | 0.91× | 0.70× | 0.71× | 1.12× | — | 4.19× |
 
 **Encode**
 
 | Workload | Point | serde_json | `serde_json+float_roundtrip` | `sonic-rs` | `simd-json` | `simd-json-buffers` | `flexon-rt` | `flexon-rt-mut` | `flexon-ct` | `flexon-ct-mut` | `struson` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ints | x86_64 v3 (est. cycles) | 157.8 k | 1.00× | 1.05× | 1.01× | 1.01× | 1.01× | 1.01× | 1.01× | 1.01× | 3.40× |
-| floats | x86_64 v3 (est. cycles) | 131.0 k | 1.00× | 1.02× | 1.77× | 1.77× | 1.00× | 1.00× | 1.00× | 1.00× | 14.10× |
+| ints | x86_64 v3 (est. cycles) | 157.7 k | 1.00× | 1.05× | 1.01× | 1.01× | 1.01× | 1.01× | 1.01× | 1.01× | 3.40× |
+| floats | x86_64 v3 (est. cycles) | 131.1 k | 1.00× | 1.02× | 1.77× | 1.77× | 1.00× | 1.00× | 1.00× | 1.00× | 14.10× |
 | escapes | x86_64 v3 (est. cycles) | 220.9 k | 1.00× | 0.52× | 1.16× | 1.16× | 0.92× | 0.92× | 0.92× | 0.92× | 1.89× |
 | unicode | x86_64 v3 (est. cycles) | 168.6 k | 1.00× | 0.30× | 0.62× | 0.62× | 0.54× | 0.54× | 0.54× | 0.54× | 1.52× |
 | nested-100 | x86_64 v3 (est. cycles) | 37.1 k | 1.00× | 1.16× | 1.04× | 1.04× | 0.95× | 0.95× | 0.95× | 0.95× | 2.43× |
-| nested-127 | x86_64 v3 (est. cycles) | 47.3 k | 1.00× | 1.17× | 1.05× | 1.05× | 0.95× | 0.95× | 0.95× | 0.95× | 2.40× |
+| nested-127 | x86_64 v3 (est. cycles) | 47.3 k | 1.00× | 1.16× | 1.05× | 1.05× | 0.95× | 0.95× | 0.95× | 0.95× | 2.40× |
 | nested-129 | x86_64 v3 (est. cycles) | — | — | — | — | — | — | — | — | — | — |
 | nested-10000 | x86_64 v3 (est. cycles) | — | — | — | — | — | — | — | — | — | — |
 | wide-1000 | x86_64 v3 (est. cycles) | 332.3 k | 1.00× | 0.83× | 1.19× | 1.19× | 1.20× | 1.20× | 1.20× | 1.20× | 2.50× |
-| array-small | x86_64 v3 (est. cycles) | 327.3 k | 1.00× | 1.31× | 1.05× | 1.05× | 0.96× | 0.96× | 0.96× | 0.96× | 2.45× |
+| array-small | x86_64 v3 (est. cycles) | 327.2 k | 1.00× | 1.31× | 1.05× | 1.05× | 0.96× | 0.96× | 0.96× | 0.96× | 2.45× |
 | twitter-like | x86_64 v3 (est. cycles) | 9.55 M | 1.00× | 0.70× | 0.96× | 0.96× | 0.90× | 0.90× | 0.90× | 0.90× | 2.08× |
 | citm-like | x86_64 v3 (est. cycles) | 6.17 M | 1.00× | 1.03× | 1.10× | 1.10× | 0.94× | 0.94× | 0.94× | 0.94× | 2.59× |
 | canada-like | x86_64 v3 (est. cycles) | 25.15 M | 1.00× | 1.01× | 1.68× | 1.68× | 1.00× | 1.00× | 1.00× | 1.00× | 6.47× |
@@ -361,40 +361,40 @@ At `native`, owned decode of one shared frame and `to_vec` encode. Bytes are tho
 
 | Entry point | Workload | Decode allocations | Decode reallocations | Decode bytes | Decode peak | Encode allocations | Encode reallocations | Encode bytes | Encode peak |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `serde_json` | json-small | 5 | 0 | 123 | 671 | 1 | 0 | 128 | 671 |
+| `serde_json` | json-small | 5 | 0 | 123 | 123 | 1 | 0 | 128 | 128 |
 | `serde_json` | echo-post | 1 | 0 | 1024 | 1024 | 1 | 2 | 2086 | 2086 |
 | `serde_json` | json-large | 3526 | 8 | 160.4 k | 160.4 k | 1 | 10 | 131.1 k | 131.1 k |
-| `serde_json+float_roundtrip` | json-small | 5 | 0 | 123 | 671 | 1 | 0 | 128 | 671 |
+| `serde_json+float_roundtrip` | json-small | 5 | 0 | 123 | 123 | 1 | 0 | 128 | 128 |
 | `serde_json+float_roundtrip` | echo-post | 1 | 0 | 1024 | 1024 | 1 | 2 | 2086 | 2086 |
 | `serde_json+float_roundtrip` | json-large | 3526 | 8 | 160.4 k | 160.4 k | 1 | 10 | 131.1 k | 131.1 k |
-| `sonic-rs` | json-small | 5 | 0 | 123 | 671 | 1 | 1 | 256 | 671 |
+| `sonic-rs` | json-small | 5 | 0 | 123 | 123 | 1 | 1 | 256 | 256 |
 | `sonic-rs` | echo-post | 1 | 0 | 1024 | 1024 | 1 | 1 | 6197 | 6197 |
 | `sonic-rs` | json-large | 3526 | 8 | 160.4 k | 160.4 k | 1 | 10 | 131.1 k | 131.1 k |
-| `simd-json` | json-small | 11 | 2 | 2276 | 2177 | 1 | 0 | 512 | 671 |
+| `simd-json` | json-small | 11 | 2 | 2276 | 2177 | 1 | 0 | 512 | 512 |
 | `simd-json` | echo-post | 7 | 2 | 5580 | 4556 | 1 | 2 | 2086 | 2086 |
 | `simd-json` | json-large | 3532 | 4 | 947.1 k | 826.6 k | 1 | 8 | 131.1 k | 131.1 k |
-| `simd-json-buffers` | json-small | 7 | 0 | 838 | 838 | 1 | 0 | 512 | 671 |
+| `simd-json-buffers` | json-small | 7 | 0 | 838 | 838 | 1 | 0 | 512 | 512 |
 | `simd-json-buffers` | echo-post | 3 | 0 | 2412 | 2412 | 1 | 2 | 2086 | 2086 |
 | `simd-json-buffers` | json-large | 3528 | 0 | 660.1 k | 660.1 k | 1 | 8 | 131.1 k | 131.1 k |
-| `flexon-rt` | json-small | 5 | 0 | 123 | 671 | 1 | 4 | 128 | 671 |
+| `flexon-rt` | json-small | 5 | 0 | 123 | 123 | 1 | 4 | 128 | 128 |
 | `flexon-rt` | echo-post | 1 | 0 | 1024 | 1024 | 1 | 4 | 2086 | 2086 |
 | `flexon-rt` | json-large | 3526 | 8 | 160.4 k | 160.4 k | 1 | 14 | 131.1 k | 131.1 k |
-| `flexon-rt-mut` | json-small | 6 | 0 | 214 | 671 | 1 | 4 | 128 | 671 |
+| `flexon-rt-mut` | json-small | 6 | 0 | 214 | 214 | 1 | 4 | 128 | 128 |
 | `flexon-rt-mut` | echo-post | 2 | 0 | 2100 | 2100 | 1 | 4 | 2086 | 2086 |
 | `flexon-rt-mut` | json-large | 3527 | 8 | 225.9 k | 225.9 k | 1 | 14 | 131.1 k | 131.1 k |
-| `flexon-ct` | json-small | 5 | 0 | 123 | 671 | 1 | 4 | 128 | 671 |
+| `flexon-ct` | json-small | 5 | 0 | 123 | 123 | 1 | 4 | 128 | 128 |
 | `flexon-ct` | echo-post | 1 | 0 | 1024 | 1024 | 1 | 4 | 2086 | 2086 |
 | `flexon-ct` | json-large | 3526 | 8 | 160.4 k | 160.4 k | 1 | 14 | 131.1 k | 131.1 k |
-| `flexon-ct-mut` | json-small | 6 | 0 | 214 | 671 | 1 | 4 | 128 | 671 |
+| `flexon-ct-mut` | json-small | 6 | 0 | 214 | 214 | 1 | 4 | 128 | 128 |
 | `flexon-ct-mut` | echo-post | 2 | 0 | 2100 | 2100 | 1 | 4 | 2086 | 2086 |
 | `flexon-ct-mut` | json-large | 3527 | 8 | 225.9 k | 225.9 k | 1 | 14 | 131.1 k | 131.1 k |
-| `jiter` | json-small | 5 | 0 | 123 | 671 | — | — | — | — |
+| `jiter` | json-small | 5 | 0 | 123 | 123 | — | — | — | — |
 | `jiter` | echo-post | 1 | 0 | 1024 | 1024 | — | — | — | — |
 | `jiter` | json-large | 3526 | 8 | 160.4 k | 160.4 k | — | — | — | — |
-| `hifijson` | json-small | 5 | 0 | 123 | 671 | — | — | — | — |
+| `hifijson` | json-small | 5 | 0 | 123 | 123 | — | — | — | — |
 | `hifijson` | echo-post | 1 | 0 | 1024 | 1024 | — | — | — | — |
 | `hifijson` | json-large | 3526 | 8 | 160.4 k | 160.4 k | — | — | — | — |
-| `struson` | json-small | 14 | 0 | 675 | 671 | 4 | 4 | 155 | 671 |
+| `struson` | json-small | 14 | 0 | 675 | 662 | 4 | 4 | 155 | 152 |
 | `struson` | echo-post | 8 | 1 | 1572 | 1567 | 4 | 4 | 2122 | 2121 |
 | `struson` | json-large | 7763 | 8 | 177.8 k | 160.9 k | 1414 | 14 | 138.7 k | 131.1 k |
 
@@ -415,7 +415,7 @@ x86-64-v3 estimated cycles for `json-large`, relative to the same backend's owne
 | `flexon-ct-mut` | 2.94 M | 0.98× | 0.90× | 0.88× |
 | `jiter` | 3.58 M | 1.00× | 0.92× | 0.92× |
 | `hifijson` | 4.36 M | 1.00× | 1.00× | 1.00× |
-| `struson` | 11.43 M | 1.00× | 0.99× | 0.99× |
+| `struson` | 11.42 M | 1.00× | 0.99× | 0.99× |
 
 ### Encoding into a reused buffer
 
@@ -427,7 +427,7 @@ x86-64-v3 estimated cycles: `to_vec` into a fresh `Vec`, and `to_writer` into a 
 | `serde_json+float_roundtrip` | 1699 | 0.91× | 10.5 k | 0.86× | 1.12 M | 0.97× |
 | `sonic-rs` | 2276 | 0.65× | 1957 | 0.66× | 1.07 M | 0.97× |
 | `simd-json` | 2482 | 0.95× | 2910 | 0.50× | 1.50 M | 1.00× |
-| `simd-json-buffers` | 2482 | 0.95× | 2945 | 0.50× | 1.50 M | 1.00× |
+| `simd-json-buffers` | 2482 | 0.95× | 2910 | 0.50× | 1.50 M | 1.00× |
 | `flexon-rt` | 2902 | 0.51× | 3721 | 0.46× | 1.08 M | 0.97× |
 | `flexon-rt-mut` | 2902 | 0.51× | 3721 | 0.46× | 1.08 M | 0.97× |
 | `flexon-ct` | 2902 | 0.51× | 3721 | 0.46× | 1.08 M | 0.97× |
@@ -683,8 +683,8 @@ Median ns per operation at `native`, median of rounds; ratios to serde_json. The
 
 | Source | Host / arch | Commit | Recorded | Notes |
 | --- | --- | --- | --- | --- |
-| callgrind | x86_64 | `?` | 2026-09-28T08:07:42Z | valgrind-3.24.0; cpu AMD Ryzen 7 7800X3D 8-Core Processor |
-| host | x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor | `3df3357a` | 2026-09-28T08:17:18Z | kernel 7.2.4-200.fc44.x86_64, governor powersave, boost 1; doctor: every build runs its claimed SIMD path |
+| callgrind | x86_64 | `907befb4` | 2026-10-02T23:56:14Z | valgrind-3.24.0; cpu AMD Ryzen 7 7800X3D 8-Core Processor |
+| host | x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor | `907befb4` | 2026-10-02T23:52:02Z | kernel 7.2.4-200.fc44.x86_64, governor powersave, boost 1; doctor: every build runs its claimed SIMD path |
 
 
 <!-- results:end -->

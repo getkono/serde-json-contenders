@@ -373,15 +373,19 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
         .collect();
     let set = e.set;
     let fuzz: Vec<&Value> = data.fuzz.iter().filter(|r| r["set"] == set).collect();
-    for r in &fuzz {
-        if r["divergence_found"] == true {
-            failures.push(format!(
+    let mut divergences: Vec<String> = fuzz
+        .iter()
+        .filter(|r| r["divergence_found"] == true)
+        .map(|r| {
+            format!(
                 "fuzz {} ({})",
                 r["target"].as_str().unwrap_or("?"),
                 r["config"].as_str().unwrap_or("?")
-            ));
-        }
-    }
+            )
+        })
+        .collect();
+    divergences.sort();
+    divergences.dedup();
     let miri = data.miri.iter().find(|r| r["set"] == set);
     if let Some(r) = miri.filter(|r| r["outcome"] == "undefined-behavior") {
         // "error: Undefined Behavior: <what>: <where>" -> "<what>".
@@ -399,10 +403,19 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
     if e.backend.starts_with("serde_json") {
         return Outcome::Pass("reference".into());
     }
+    // Conformance cases and Miri are always stated in full; fuzz divergences
+    // fill what room is left of three entries and the rest are counted.
+    let room = 3usize.saturating_sub(failures.len());
+    let dropped = divergences.len().saturating_sub(room);
+    failures.extend(divergences.into_iter().take(room));
+    if dropped > 0 {
+        failures.push(format!(
+            "{dropped} more fuzz divergence{}",
+            if dropped == 1 { "" } else { "s" }
+        ));
+    }
     if !failures.is_empty() {
-        failures.sort();
-        failures.dedup();
-        return Outcome::Fail(failures.into_iter().take(3).collect::<Vec<_>>().join("; "));
+        return Outcome::Fail(failures.join("; "));
     }
     if runs == 0 {
         return Outcome::Pending("conformance not yet run".into());
@@ -692,7 +705,39 @@ mod tests {
         assert_eq!(
             rule2(&data, e),
             Outcome::Fail(
-                "Miri reports undefined behavior (in-bounds pointer arithmetic failed); grammar n_x.json fails 2 of 3 conformance runs"
+                "grammar n_x.json fails 2 of 3 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed)"
+                    .into()
+            )
+        );
+    }
+
+    #[test]
+    fn fuzz_divergences_never_push_out_a_conformance_case_or_miri() {
+        let e = sonic();
+        let failing = json!({ "backends": { e.backend: { "gate": "fail",
+            "gating_failures": [{ "section": "status", "case": "shape/x" }] } } });
+        let mut host = crate::report::data::Host::default();
+        host.conformance.insert(("native".into(), e.set.into()), failing);
+        let diverged = |target: &str, config: &str| {
+            json!({ "set": e.set, "config": config, "target": target,
+                "divergence_found": true, "sanitizer_report": null })
+        };
+        let data = Data {
+            hosts: vec![host],
+            fuzz: vec![
+                diverged("decode_struct", "portable"),
+                diverged("decode_struct", "v3"),
+                diverged("decode_value", "v3"),
+                diverged("roundtrip", "v3"),
+            ],
+            miri: vec![json!({ "set": e.set, "outcome": "undefined-behavior",
+                "detail": "error: Undefined Behavior: in-bounds pointer arithmetic failed: attempting to offset" })],
+            ..Data::default()
+        };
+        assert_eq!(
+            rule2(&data, e),
+            Outcome::Fail(
+                "status shape/x fails 1 of 1 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (portable); 3 more fuzz divergences"
                     .into()
             )
         );

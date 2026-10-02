@@ -58,7 +58,7 @@
       "crate": "sonic-rs",
       "deserves_to_exist": true,
       "exists_evidence": "echo-post encode CPU 0.19× serde_json at x86_64 v3 (est. cycles). Lazy path lookups without a full parse (`get`, `get_many`, `LazyValue`); errors carry a byte offset as well as line and column.",
-      "reason": "fuzz decode_struct (portable); fuzz decode_struct (v3); grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs",
+      "reason": "grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs; fuzz decode_struct (portable); fuzz decode_struct (v3)",
       "recommended": "fail",
       "rules": [
         {
@@ -66,7 +66,7 @@
           "outcome": "pending"
         },
         {
-          "detail": "fuzz decode_struct (portable); fuzz decode_struct (v3); grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs",
+          "detail": "grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs; fuzz decode_struct (portable); fuzz decode_struct (v3)",
           "outcome": "fail"
         },
         {
@@ -84,7 +84,7 @@
       "crate": "simd-json",
       "deserves_to_exist": true,
       "exists_evidence": "echo-post encode CPU 0.29× serde_json at x86_64 native (cycles). Borrowing decode of escaped strings, unescaped in place: 1,175 allocations against serde_json's 4,584 for twitter-like into borrowed types from a unique buffer. A tape API (`to_tape`) traverses without building values.",
-      "reason": "fuzz decode_struct (v3); fuzz decode_value (v3); status shape/variant-wrong-type fails 4 of 4 conformance runs",
+      "reason": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
       "recommended": "fail",
       "rules": [
         {
@@ -92,7 +92,7 @@
           "outcome": "pending"
         },
         {
-          "detail": "fuzz decode_struct (v3); fuzz decode_value (v3); status shape/variant-wrong-type fails 4 of 4 conformance runs",
+          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
           "outcome": "fail"
         },
         {
@@ -110,7 +110,7 @@
       "crate": "simd-json",
       "deserves_to_exist": true,
       "exists_evidence": "echo-post encode CPU 0.28× serde_json at x86_64 portable (est. cycles). Reusing `Buffers` across calls roughly halves plain `from_slice`'s allocated bytes: 2.93 MB against 5.54 MB for twitter-like into borrowed types from a unique buffer.",
-      "reason": "fuzz decode_struct (v3); fuzz decode_value (v3); status shape/variant-wrong-type fails 4 of 4 conformance runs",
+      "reason": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
       "recommended": "fail",
       "rules": [
         {
@@ -118,7 +118,7 @@
           "outcome": "pending"
         },
         {
-          "detail": "fuzz decode_struct (v3); fuzz decode_value (v3); status shape/variant-wrong-type fails 4 of 4 conformance runs",
+          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
           "outcome": "fail"
         },
         {
@@ -136,7 +136,7 @@
       "crate": "flexon",
       "deserves_to_exist": true,
       "exists_evidence": "sweep-256b decode CPU 0.67× serde_json at x86_64 native (cycles). `from_mut_slice` borrows escaped strings in place; JSON-pointer access. Its latest release (0.4.9) does not compile on stable Rust.",
-      "reason": "Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); fuzz decode_value (v3)",
+      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
       "recommended": "fail",
       "rules": [
         {
@@ -144,7 +144,7 @@
           "outcome": "pending"
         },
         {
-          "detail": "Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); fuzz decode_value (v3)",
+          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
           "outcome": "fail"
         },
         {
@@ -162,7 +162,7 @@
       "crate": "flexon",
       "deserves_to_exist": true,
       "exists_evidence": "In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-rt`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer.",
-      "reason": "Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); fuzz decode_value (v3)",
+      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
       "recommended": "fail",
       "rules": [
         {
@@ -170,7 +170,7 @@
           "outcome": "pending"
         },
         {
-          "detail": "Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); fuzz decode_value (v3)",
+          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
           "outcome": "fail"
         },
         {
@@ -188,7 +188,7 @@
       "crate": "flexon",
       "deserves_to_exist": true,
       "exists_evidence": "echo-post encode CPU 0.35× serde_json at x86_64 v3 (est. cycles). The compile-time SIMD configuration of flexon; same API as `flexon-rt`.",
-      "reason": "Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); fuzz decode_value (v3)",
+      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
       "recommended": "fail",
       "rules": [
         {
@@ -196,7 +196,7 @@
           "outcome": "pending"
         },
         {
-          "detail": "Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); fuzz decode_value (v3)",
+          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
           "outcome": "fail"
         },
         {
@@ -214,7 +214,7 @@
       "crate": "flexon",
       "deserves_to_exist": true,
       "exists_evidence": "echo-post encode CPU 0.26× serde_json at x86_64 native (cycles). In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-ct`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer.",
-      "reason": "Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); fuzz decode_value (v3)",
+      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
       "recommended": "fail",
       "rules": [
         {
@@ -222,7 +222,7 @@
           "outcome": "pending"
         },
         {
-          "detail": "Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); fuzz decode_value (v3)",
+          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
           "outcome": "fail"
         },
         {
@@ -240,7 +240,7 @@
       "crate": "jiter",
       "deserves_to_exist": true,
       "exists_evidence": "floats decode CPU 0.47× serde_json at x86_64 native (cycles). Partial mode parses truncated documents (built for streamed model output); decode only.",
-      "reason": "fuzz decode_struct (v3); fuzz decode_value (v3); fuzz roundtrip (v3)",
+      "reason": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence",
       "recommended": "fail",
       "rules": [
         {
@@ -248,7 +248,7 @@
           "outcome": "pending"
         },
         {
-          "detail": "fuzz decode_struct (v3); fuzz decode_value (v3); fuzz roundtrip (v3)",
+          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence",
           "outcome": "fail"
         },
         {
@@ -274,7 +274,7 @@
           "outcome": "fail"
         },
         {
-          "detail": "fuzz decode_struct (v3); fuzz decode_value (v3); status shape/valid fails 4 of 4 conformance runs",
+          "detail": "status shape/valid fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
           "outcome": "fail"
         },
         {
@@ -300,7 +300,7 @@
           "outcome": "fail"
         },
         {
-          "detail": "fuzz decode_struct (v3); fuzz decode_value (v3); fuzz roundtrip (v3)",
+          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence",
           "outcome": "fail"
         },
         {

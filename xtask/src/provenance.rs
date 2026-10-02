@@ -64,18 +64,25 @@ pub fn git_state() -> (Option<String>, bool) {
     let commit = first_line(Command::new("git").current_dir(root()).args(["rev-parse", "HEAD"]));
     // Results and the README they generate are what a run writes; any other
     // change means the measured code is not the committed code.
-    let dirty = capture(Command::new("git").current_dir(root()).args([
+    let dirty = status_is_dirty(capture(Command::new("git").current_dir(root()).args([
         "status",
         "--porcelain",
         "--",
         ".",
         ":!results",
         ":!README.md",
-    ]))
-    .ok()
-    .filter(|(ok, _, _)| *ok)
-    .is_none_or(|(_, out, _)| !out.trim().is_empty());
+    ])));
     (commit, dirty)
+}
+
+/// Whether a `git status --porcelain` run says the checkout is dirty. A run
+/// that could not start or exited non-zero counts as dirty, since its empty
+/// stdout does not mean nothing changed.
+fn status_is_dirty(status: anyhow::Result<(bool, String, String)>) -> bool {
+    status
+        .ok()
+        .filter(|(ok, _, _)| *ok)
+        .is_none_or(|(_, out, _)| !out.trim().is_empty())
 }
 
 /// The git state the host passed into the container through
@@ -119,7 +126,7 @@ pub fn stamp() -> Value {
 
 #[cfg(test)]
 mod tests {
-    use super::passed_git_state;
+    use super::{passed_git_state, status_is_dirty};
 
     const COMMIT: &str = "675987c9";
 
@@ -143,5 +150,24 @@ mod tests {
             passed_git_state(Some(COMMIT), Some("no")),
             (Some(COMMIT.to_owned()), true)
         );
+    }
+
+    fn status(ok: bool, out: &str) -> (bool, String, String) {
+        (ok, out.to_owned(), String::new())
+    }
+
+    #[test]
+    fn reads_a_successful_status_by_its_output() {
+        assert!(!status_is_dirty(Ok(status(true, ""))));
+        assert!(!status_is_dirty(Ok(status(true, "\n"))));
+        assert!(status_is_dirty(Ok(status(true, " M xtask/src/provenance.rs\n"))));
+    }
+
+    /// A status that failed printed nothing, and that silence must not be
+    /// read as a clean checkout.
+    #[test]
+    fn counts_a_failed_or_unspawned_status_as_dirty() {
+        assert!(status_is_dirty(Ok(status(false, ""))));
+        assert!(status_is_dirty(Err(anyhow::anyhow!("git not found"))));
     }
 }

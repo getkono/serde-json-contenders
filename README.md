@@ -186,6 +186,23 @@ Separately from Kynos, a library **deserves to exist** if either of these holds:
 - It is on the frontier, with a win of more than 5 %, for *any* workload, variant or architecture.
 - It offers a capability serde_json lacks. The capability is stated with its evidence.
 
+### Verification
+
+The results stand only after four checks:
+
+1. **The harness is correct.** The unit and integration tests (`mise run test`).
+2. **The counts reproduce.** callgrind has no noise, so a recount on the host that took the committed counts, from an empty `target/`, must return every count unchanged: `cargo xtask count --check --tolerance 0`. On another x86-64 host, CI's `count --check` holds the Kynos shapes to 0.5 %, which covers differences in libc and kernel. A committed count that a recount fails to produce fails the check.
+3. **The harness can fail.** A faulty backend is caught exactly where it is faulty, and nowhere else:
+   - An `n_` file accepted, a wrong shape answered 400, and floats one bit off each fail conformance in their own section. Floats written in a different format appear in `encode_diff` as a difference that does not gate (`crates/conformance/tests/harness.rs`).
+   - An adapter that copies its input once more shows exactly one more allocation, of the input's size, and that much more peak. Under callgrind it costs the copy's instructions (`crates/cell/src/sensitivity.rs`). The callgrind half needs valgrind, so it runs in the container rather than in `mise run test`: `cargo xtask image`, then `podman run --rm -v "$PWD:/work" serde-json-contenders:valgrind cargo test -p cell --locked -- --ignored sensitivity`.
+   - An adapter that does less work than it should, the kind of variant an optimizer could delete, is refused by the result check in every mode and never measured.
+4. **Nothing is left out.** Every requirement above maps to a task, a result file and a table below, or to a deviation listed here.
+
+Deviations, each pending something this machine cannot do:
+
+- aarch64 counts, aarch64 end-to-end counts, and aarch64 conformance at `native` and `native-counted` come from a Measure run on `ubuntu-24.04-arm`. Until one is committed, rule 1 is pending for every candidate.
+- The arm64 Measure run has not yet completed, so the counts' reproducibility on aarch64 is unchecked.
+
 ### Reproduce
 
 ```sh

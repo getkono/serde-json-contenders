@@ -4,6 +4,7 @@ use std::process::Command;
 
 use anyhow::Result;
 
+use crate::provenance;
 use crate::util::{output, root, run};
 
 /// The image tag `xtask image` builds from `Containerfile`.
@@ -42,8 +43,16 @@ pub fn reexec(task: &str, args: &[String]) -> Result<()> {
     let home = std::env::var("CARGO_HOME")
         .map(std::path::PathBuf::from)
         .or_else(|_| std::env::var("HOME").map(|h| std::path::Path::new(&h).join(".cargo")))?;
+    // Git cannot read the mounted checkout from inside the container, so the
+    // host reads it here and passes what the stamp records.
+    let (commit, dirty) = provenance::git_state();
+    let mut git = vec!["-e".to_owned(), format!("{}={dirty}", provenance::GIT_DIRTY_VAR)];
+    if let Some(commit) = commit {
+        git.extend(["-e".to_owned(), format!("{}={commit}", provenance::GIT_COMMIT_VAR)]);
+    }
     run(Command::new(engine())
         .args(["run", "--rm", "--security-opt", "label=disable", "--ulimit", "core=0"])
+        .args(&git)
         .arg("-v")
         .arg(format!("{}:/work", root().display()))
         .arg("-v")

@@ -11,16 +11,38 @@ on:
         default: ""
 
 jobs:
-  # One job per task: each writes its own result file, builds its own targets
-  # and needs its own share of the runner's disk, so a runner lost in one task
-  # loses only that task's results.
-  measure:
-    name: ${{ matrix.task }} (${{ matrix.os }})
+  # Every build must run the path it claims on these runners before anything
+  # is measured on them: a failed doctor refuses the run.
+  doctor:
+    name: doctor (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, ubuntu-24.04-arm]
-        task: [count, e2e-count, alloc]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: cargo xtask doctor
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: results-doctor-${{ matrix.os }}
+          path: results/
+
+  # One job per task: each writes its own result file, builds its own targets
+  # and needs its own share of the runner's disk, so a runner lost in one task
+  # loses only that task's results. Conformance runs here too, so aarch64's
+  # variants are gated as x86-64's are, not only its portable build in CI.
+  measure:
+    name: ${{ matrix.task }} (${{ matrix.os }})
+    needs: doctor
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        task: [count, e2e-count, alloc, conformance]
         include:
           - task: count
             args: --jobs 4

@@ -8,7 +8,7 @@ use anyhow::{Context, Result};
 use serde_json::{Value, json};
 
 use crate::build::{Place, bin, build};
-use crate::counted::{CACHE, Filter, estimated_cycles, parse_callgrind};
+use crate::counted::{CACHE, Filter, counted_env, estimated_cycles, parse_callgrind};
 use crate::util::{capture, parallel, root, shuffle};
 
 /// Routes, with the method, path and request body each is driven with.
@@ -61,7 +61,7 @@ pub fn count(args: &[String]) -> Result<()> {
                         let label = crate::matrix::label(set, backend);
                         let mut row = json!({ "variant": variant, "set": set_name, "backend": label, "route": route.0, "requests": requests });
                         let mut cmd = Command::new("valgrind");
-                        cmd.args(["--tool=callgrind", "--collect-atstart=no", "--toggle-collect=*e2e_measured*", "--cache-sim=yes"])
+                        counted_env(&mut cmd).args(["--tool=callgrind", "--collect-atstart=no", "--toggle-collect=*e2e_measured*", "--cache-sim=yes"])
                             .args(CACHE)
                             .arg(format!("--callgrind-out-file={}", out.display()))
                             .arg(&exe)

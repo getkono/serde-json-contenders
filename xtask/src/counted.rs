@@ -15,6 +15,20 @@ use crate::util::{capture, parallel, root};
 /// 8 MiB 16-way last level, 64-byte lines.
 pub const CACHE: [&str; 3] = ["--I1=32768,8,64", "--D1=32768,8,64", "--LL=8388608,16,64"];
 
+/// The only environment a counted process gets.
+const COUNTED_PATH: &str = "/usr/local/bin:/usr/bin:/bin";
+
+/// Give a process callgrind counts an environment of nothing but a fixed
+/// `PATH`. The environment is copied onto the client's initial stack, so its
+/// size moves the stack's alignment, and with it the instructions that
+/// alignment-sensitive routines execute: struson's json-small decode counts
+/// 14 731 or 14 743 instructions depending on the length of one unrelated
+/// variable. Inheriting the environment made a count depend on whatever the
+/// caller had set, down to whether the checkout was dirty.
+pub fn counted_env(cmd: &mut Command) -> &mut Command {
+    cmd.env_clear().env("PATH", COUNTED_PATH)
+}
+
 /// Estimated cycles from callgrind's events: `Ir + 5·L1 misses + 35·LL misses`.
 #[must_use]
 pub fn estimated_cycles(e: &Events) -> u64 {
@@ -316,17 +330,18 @@ fn check_reproduced(committed: &Value, fresh: &[Value], tolerance: f64) -> Resul
 fn callgrind_cell(cell_bin: &std::path::Path, cell: &Cell, out_file: &std::path::Path, variant: &str) -> Value {
     let mut row = cell.key(variant);
     let mut cmd = Command::new("valgrind");
-    cmd.args([
-        "--tool=callgrind",
-        "--collect-atstart=no",
-        "--toggle-collect=*cell_measured*",
-        "--cache-sim=yes",
-    ])
-    .args(CACHE)
-    .arg(format!("--callgrind-out-file={}", out_file.display()))
-    .arg(cell_bin)
-    .arg("callgrind")
-    .args(cell.args());
+    counted_env(&mut cmd)
+        .args([
+            "--tool=callgrind",
+            "--collect-atstart=no",
+            "--toggle-collect=*cell_measured*",
+            "--cache-sim=yes",
+        ])
+        .args(CACHE)
+        .arg(format!("--callgrind-out-file={}", out_file.display()))
+        .arg(cell_bin)
+        .arg("callgrind")
+        .args(cell.args());
     match capture(&mut cmd) {
         Ok((ok, stdout, stderr)) => {
             let result = cell_json(&stdout);
@@ -475,6 +490,18 @@ mod tests {
             row["error"] = json!("valgrind died");
         }
         row
+    }
+
+    #[test]
+    fn a_counted_process_sees_only_a_fixed_path() {
+        let mut cmd = std::process::Command::new("env");
+        cmd.env("SJC_GIT_DIRTY", "true");
+        let out = super::counted_env(&mut cmd).output().unwrap();
+        assert!(out.status.success());
+        assert_eq!(
+            String::from_utf8_lossy(&out.stdout),
+            format!("PATH={}\n", super::COUNTED_PATH)
+        );
     }
 
     #[test]

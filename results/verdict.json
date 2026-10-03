@@ -32,12 +32,12 @@
       "crate": "serde_json",
       "deserves_to_exist": true,
       "exists_evidence": "unicode decode CPU 0.55× serde_json at x86_64 native (cycles). Correctly rounded float parsing, which the default parser is not (see conformance, numbers).",
-      "reason": "no route ≥10 % better in throughput or p99 beyond the A/A band",
+      "reason": "json-small decode CPU 0.65× at x86_64 native (cycles), but no material frontier win on aarch64",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "json-small decode CPU 0.65× at x86_64 native (cycles); aarch64 counts not yet recorded",
-          "outcome": "pending"
+          "detail": "json-small decode CPU 0.65× at x86_64 native (cycles), but no material frontier win on aarch64",
+          "outcome": "fail"
         },
         {
           "detail": "reference",
@@ -62,8 +62,8 @@
       "recommended": "fail",
       "rules": [
         {
-          "detail": "json-small decode CPU 0.84× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded",
-          "outcome": "pending"
+          "detail": "json-small decode CPU 0.84× at x86_64 v3 (est. cycles); json-small decode CPU 0.82× at aarch64 native-counted (est. cycles)",
+          "outcome": "pass"
         },
         {
           "detail": "grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs; fuzz decode_struct (portable); fuzz decode_struct (v3)",
@@ -88,8 +88,8 @@
       "recommended": "fail",
       "rules": [
         {
-          "detail": "json-small encode CPU 0.81× at x86_64 native (cycles); aarch64 counts not yet recorded",
-          "outcome": "pending"
+          "detail": "json-small encode CPU 0.81× at x86_64 native (cycles); echo-post encode CPU 0.39× at aarch64 native-counted (est. cycles)",
+          "outcome": "pass"
         },
         {
           "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
@@ -114,8 +114,8 @@
       "recommended": "fail",
       "rules": [
         {
-          "detail": "json-small decode CPU 0.88× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded",
-          "outcome": "pending"
+          "detail": "json-small decode CPU 0.88× at x86_64 v3 (est. cycles); echo-post encode CPU 0.39× at aarch64 native-counted (est. cycles)",
+          "outcome": "pass"
         },
         {
           "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
@@ -140,8 +140,8 @@
       "recommended": "fail",
       "rules": [
         {
-          "detail": "json-small decode CPU 0.73× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded",
-          "outcome": "pending"
+          "detail": "json-small decode CPU 0.73× at x86_64 v3 (est. cycles); json-small decode CPU 0.78× at aarch64 native-counted (est. cycles)",
+          "outcome": "pass"
         },
         {
           "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
@@ -166,8 +166,8 @@
       "recommended": "fail",
       "rules": [
         {
-          "detail": "json-small decode CPU 0.76× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded",
-          "outcome": "pending"
+          "detail": "json-small decode CPU 0.76× at x86_64 v3 (est. cycles); json-small decode CPU 0.83× at aarch64 native-counted (est. cycles)",
+          "outcome": "pass"
         },
         {
           "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
@@ -192,8 +192,8 @@
       "recommended": "fail",
       "rules": [
         {
-          "detail": "json-small decode CPU 0.72× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded",
-          "outcome": "pending"
+          "detail": "json-small decode CPU 0.72× at x86_64 v3 (est. cycles); json-small decode CPU 0.78× at aarch64 native-counted (est. cycles)",
+          "outcome": "pass"
         },
         {
           "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
@@ -218,8 +218,8 @@
       "recommended": "fail",
       "rules": [
         {
-          "detail": "json-small decode CPU 0.75× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded",
-          "outcome": "pending"
+          "detail": "json-small decode CPU 0.75× at x86_64 v3 (est. cycles); json-small decode CPU 0.83× at aarch64 native-counted (est. cycles)",
+          "outcome": "pass"
         },
         {
           "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
@@ -244,8 +244,8 @@
       "recommended": "fail",
       "rules": [
         {
-          "detail": "json-small decode CPU 0.90× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded",
-          "outcome": "pending"
+          "detail": "json-small decode CPU 0.90× at x86_64 v3 (est. cycles); echo-post decode CPU 0.65× at aarch64 native-counted (est. cycles)",
+          "outcome": "pass"
         },
         {
           "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence",

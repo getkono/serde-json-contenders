@@ -62,7 +62,7 @@
       "recommended": "fail",
       "rules": [
         {
-          "detail": "json-small decode CPU 0.83× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded",
+          "detail": "json-small decode CPU 0.84× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded",
           "outcome": "pending"
         },
         {
@@ -83,7 +83,7 @@
       "backend": "simd-json",
       "crate": "simd-json",
       "deserves_to_exist": true,
-      "exists_evidence": "echo-post encode CPU 0.29× serde_json at x86_64 native (cycles). Borrowing decode of escaped strings, unescaped in place: 1,175 allocations against serde_json's 4,584 for twitter-like into borrowed types from a unique buffer. A tape API (`to_tape`) traverses without building values.",
+      "exists_evidence": "echo-post encode CPU 0.28× serde_json at x86_64 v3 (est. cycles). Borrowing decode of escaped strings, unescaped in place: 1,175 allocations against serde_json's 4,584 for twitter-like into borrowed types from a unique buffer. A tape API (`to_tape`) traverses without building values.",
       "reason": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
       "recommended": "fail",
       "rules": [
@@ -109,7 +109,7 @@
       "backend": "simd-json-buffers",
       "crate": "simd-json",
       "deserves_to_exist": true,
-      "exists_evidence": "echo-post encode CPU 0.28× serde_json at x86_64 portable (est. cycles). Reusing `Buffers` across calls roughly halves plain `from_slice`'s allocated bytes: 2.93 MB against 5.54 MB for twitter-like into borrowed types from a unique buffer.",
+      "exists_evidence": "echo-post encode CPU 0.28× serde_json at x86_64 v3 (est. cycles). Reusing `Buffers` across calls roughly halves plain `from_slice`'s allocated bytes: 2.93 MB against 5.54 MB for twitter-like into borrowed types from a unique buffer.",
       "reason": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
       "recommended": "fail",
       "rules": [
@@ -135,7 +135,7 @@
       "backend": "flexon-rt",
       "crate": "flexon",
       "deserves_to_exist": true,
-      "exists_evidence": "sweep-256b decode CPU 0.67× serde_json at x86_64 native (cycles). `from_mut_slice` borrows escaped strings in place; JSON-pointer access. Its latest release (0.4.9) does not compile on stable Rust.",
+      "exists_evidence": "echo-post encode CPU 0.35× serde_json at x86_64 v3 (est. cycles). `from_mut_slice` borrows escaped strings in place; JSON-pointer access. Its latest release (0.4.9) does not compile on stable Rust.",
       "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
       "recommended": "fail",
       "rules": [
@@ -161,7 +161,7 @@
       "backend": "flexon-rt-mut",
       "crate": "flexon",
       "deserves_to_exist": true,
-      "exists_evidence": "In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-rt`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer.",
+      "exists_evidence": "echo-post encode CPU 0.35× serde_json at x86_64 v3 (est. cycles). In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-rt`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer.",
       "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
       "recommended": "fail",
       "rules": [
@@ -265,7 +265,7 @@
       "backend": "hifijson",
       "crate": "hifijson",
       "deserves_to_exist": true,
-      "exists_evidence": "No `unsafe`: 0 unsafe blocks, functions or impls in its 1 runtime crate. Lexes any byte iterator (`IterLexer`), so input need not be in memory; numbers kept as text.",
+      "exists_evidence": "sweep-1kib decode CPU 0.92× serde_json at x86_64 native (cycles). No `unsafe`: 0 unsafe blocks, functions or impls in its 1 runtime crate. Lexes any byte iterator (`IterLexer`), so input need not be in memory; numbers kept as text.",
       "reason": "reference point: no borrowed slice decode plus `to_vec`-style encoder",
       "recommended": "fail",
       "rules": [
@@ -291,7 +291,7 @@
       "backend": "struson",
       "crate": "struson",
       "deserves_to_exist": true,
-      "exists_evidence": "No `unsafe`: 0 unsafe blocks, functions or impls across its 5 runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors.",
+      "exists_evidence": "sweep-64b encode heap 0.70× serde_json at x86_64 portable (est. cycles). No `unsafe`: 0 unsafe blocks, functions or impls across its 5 runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors.",
       "reason": "reference point: no borrowed slice decode plus `to_vec`-style encoder",
       "recommended": "fail",
       "rules": [

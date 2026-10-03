@@ -68,12 +68,16 @@ fn alloc(job: &mut impl Job, iters: u64) -> Value {
     alloc_count::reset_peak();
     cell_measured(job, iters);
     let after = alloc_count::Snapshot::now();
+    // Read before anything else allocates: the report built below allocates
+    // too, and a peak read inside it counted its map (671 bytes for the
+    // first entries) whenever that exceeded the operation's own peak.
+    let peak = alloc_count::peak();
     let per = |a: u64, b: u64| (b - a) as f64 / iters as f64;
     json!({
         "allocations": per(before.allocations, after.allocations),
         "reallocations": per(before.reallocations, after.reallocations),
         "bytes": per(before.bytes, after.bytes),
-        "peak_bytes": alloc_count::peak().saturating_sub(before.live),
+        "peak_bytes": peak.saturating_sub(before.live),
         "leaked_bytes": after.live.saturating_sub(before.live),
     })
 }

@@ -58,8 +58,10 @@ pub fn render(data: &Data, verdicts: &[Verdict]) -> String {
     families(&mut out, data);
     heap_table(&mut out, data);
     arrival(&mut out, data);
+    encode_into(&mut out, data);
     costs(&mut out, data);
     conformance(&mut out, data);
+    depth_limits(&mut out, data);
     end_to_end(&mut out, data);
     timed(&mut out, data);
     let notes = limitations(data);
@@ -275,25 +277,17 @@ fn encoders() -> Vec<&'static Entry> {
 
 fn kynos_cpu(out: &mut String, data: &Data) {
     out.push_str("### CPU per operation at the three Kynos shapes\n\n");
-    out.push_str("serde_json is the absolute figure; every other column is a ratio to it (below 1 is faster). Owned decode of one shared frame, and `to_vec` encode: what a server does.\n\n");
-    cpu_block(
-        out,
-        data,
-        "**Decode**",
-        KYNOS,
-        "decode",
-        &[X86_V3, X86_NATIVE, ARM_NATIVE],
-        &all_entries(),
-    );
-    cpu_block(
-        out,
-        data,
-        "**Encode**",
-        KYNOS,
-        "encode",
-        &[X86_V3, X86_NATIVE, ARM_NATIVE],
-        &encoders(),
-    );
+    out.push_str("serde_json is the absolute figure; every other column is a ratio to it (below 1 is faster). Owned decode of one shared frame, and `to_vec` encode: what a server does. The rule reads the cycle rows; the instruction rows beside them are the same builds counted as instructions.\n\n");
+    let points = [
+        X86_V3,
+        X86_V3.instructions(),
+        X86_NATIVE,
+        X86_NATIVE.instructions(),
+        ARM_NATIVE,
+        ARM_NATIVE.instructions(),
+    ];
+    cpu_block(out, data, "**Decode**", KYNOS, "decode", &points, &all_entries());
+    cpu_block(out, data, "**Encode**", KYNOS, "encode", &points, &encoders());
 }
 
 fn sweep(out: &mut String, data: &Data) {
@@ -343,14 +337,18 @@ fn heap_table(out: &mut String, data: &Data) {
         return;
     }
     out.push_str("### Heap per operation\n\n");
+    out.push_str("At `native`, owned decode of one shared frame and `to_vec` encode. Bytes are those requested, counting only the growth of a reallocation; peak is the most live at once.\n\n");
     out.push_str(&header(&[
         "Entry point",
         "Workload",
         "Decode allocations",
+        "Decode reallocations",
         "Decode bytes",
         "Decode peak",
         "Encode allocations",
+        "Encode reallocations",
         "Encode bytes",
+        "Encode peak",
     ]));
     for e in ENTRIES {
         for w in KYNOS {
@@ -361,10 +359,13 @@ fn heap_table(out: &mut String, data: &Data) {
                 format!("`{}`", e.backend),
                 (*w).to_owned(),
                 f(d, "allocations"),
+                f(d, "reallocations"),
                 f(d, "bytes"),
                 f(d, "peak_bytes"),
                 f(n, "allocations"),
+                f(n, "reallocations"),
                 f(n, "bytes"),
+                f(n, "peak_bytes"),
             ]));
         }
     }
@@ -404,6 +405,36 @@ fn arrival(out: &mut String, data: &Data) {
     out.push('\n');
 }
 
+/// `to_writer` into a reused buffer beside `to_vec` into a fresh one.
+fn encode_into(out: &mut String, data: &Data) {
+    let Some(table) = data.callgrind.get("x86_64") else {
+        return;
+    };
+    let get = |backend: &str, workload: &str, op: &str| table.get(&Key::new("v3", backend, workload, op), "est_cycles");
+    if get("serde_json", KYNOS[0], "encode-into").is_none() {
+        return;
+    }
+    out.push_str("### Encoding into a reused buffer\n\n");
+    out.push_str("x86-64-v3 estimated cycles: `to_vec` into a fresh `Vec`, and `to_writer` into a reused `Vec` that already has capacity, relative to the same backend's `to_vec`.\n\n");
+    let mut cols = vec!["Entry point".to_owned()];
+    for w in KYNOS {
+        cols.push(format!("{w} `to_vec` (abs.)"));
+        cols.push(format!("{w} `to_writer`"));
+    }
+    let refs: Vec<&str> = cols.iter().map(String::as_str).collect();
+    out.push_str(&header(&refs));
+    for e in encoders() {
+        let mut cells = vec![format!("`{}`", e.backend)];
+        for w in KYNOS {
+            let base = get(e.backend, w, "encode");
+            cells.push(num(base));
+            cells.push(ratio(get(e.backend, w, "encode-into"), base));
+        }
+        out.push_str(&row(&cells));
+    }
+    out.push('\n');
+}
+
 fn costs(out: &mut String, data: &Data) {
     let Some(host) = data.primary() else { return };
     out.push_str("### What adopting it costs besides CPU\n\n");
@@ -412,11 +443,12 @@ fn costs(out: &mut String, data: &Data) {
         "`.text` +full (native)",
         "`.text` +decode-only",
         "Clean release build",
+        "Clean dev build",
         "Incremental dev build",
         "Builds on 1.85",
         "Declared MSRV",
         "Crates added",
-        "`unsafe` blocks / fns / impls",
+        "`unsafe` blocks / fns / impls / traits",
         "Advisories",
     ]));
     for set in crate::matrix::SETS {
@@ -450,6 +482,7 @@ fn costs(out: &mut String, data: &Data) {
             s(size, "full_delta").map_or("—".into(), |v| format!("{:+.0} KiB", v / 1024.0)),
             s(size, "decode_delta").map_or("—".into(), |v| format!("{:+.0} KiB", v / 1024.0)),
             s(compile, "release_s").map_or("—".into(), |v| format!("{v:.1} s")),
+            s(compile, "dev_s").map_or("—".into(), |v| format!("{v:.1} s")),
             s(compile, "incremental_s").map_or("—".into(), |v| format!("{v:.2} s")),
             msrv.map_or("—".into(), |m| {
                 if m["builds_on_msrv"] == true {
@@ -461,7 +494,10 @@ fn costs(out: &mut String, data: &Data) {
             msrv.and_then(|m| m["declared"].as_str()).unwrap_or("none").to_owned(),
             fp.map_or("—".into(), |f| f["crates_added"].to_string()),
             fp.map_or("—".into(), |f| {
-                format!("{} / {} / {}", f["unsafe_blocks"], f["unsafe_fns"], f["unsafe_impls"])
+                format!(
+                    "{} / {} / {} / {}",
+                    f["unsafe_blocks"], f["unsafe_fns"], f["unsafe_impls"], f["unsafe_traits"]
+                )
             }),
             if advisories.is_empty() {
                 "none".into()
@@ -580,6 +616,88 @@ fn conformance(out: &mut String, data: &Data) {
     if !listed.is_empty() {
         out.push('\n');
     }
+}
+
+/// One depth limit: the deepest input accepted, and what happened next.
+fn depth_limit(limit: &Value) -> String {
+    let max = limit["max_accepted"]
+        .as_u64()
+        .map_or_else(|| "none".to_owned(), |m| m.to_string());
+    if let Some(n) = limit["first_crashed"].as_u64() {
+        format!("≤{max}, crashes at {n}")
+    } else if let Some(n) = limit["first_rejected"].as_u64() {
+        format!("≤{max}, rejects {n}")
+    } else {
+        format!("all, to {max}")
+    }
+}
+
+/// The depth limits at one target and stack, arrays and objects together
+/// where they agree.
+fn depth_cell(limits: &Value, target: &str, stack: &str) -> String {
+    let array = &limits[format!("array/{target}/{stack}")];
+    let object = &limits[format!("object/{target}/{stack}")];
+    match (array.is_null(), object.is_null()) {
+        (true, true) => "—".into(),
+        (false, true) => format!("array {}", depth_limit(array)),
+        (true, false) => format!("object {}", depth_limit(object)),
+        _ if array == object => depth_limit(array),
+        _ => format!("array {}; object {}", depth_limit(array), depth_limit(object)),
+    }
+}
+
+/// The depth section's limits, which it records but gates only on a crash.
+fn depth_limits(out: &mut String, data: &Data) {
+    let Some(host) = data.primary() else { return };
+    let report = |set: &str| {
+        ["native", "v3", "portable"].iter().find_map(|v| {
+            host.conformance
+                .get(&((*v).to_owned(), set.to_owned()))
+                .map(|r| (*v, r))
+        })
+    };
+    let limits = |e: &Entry| -> Option<(&str, &Value)> {
+        if e.backend == "serde_json" {
+            // serde_json against itself reports no backend; every other
+            // report carries its limits as the reference.
+            return ENTRIES.iter().skip(1).find_map(|o| {
+                let (variant, r) = report(o.set)?;
+                let b = r["backends"].as_object()?.values().next()?;
+                Some((variant, &b["sections"]["depth"]["data"]["limits"]["reference"]))
+            });
+        }
+        let (variant, r) = report(e.set)?;
+        let l = &r["backends"][e.backend]["sections"]["depth"]["data"]["limits"]["backend"];
+        (!l.is_null()).then_some((variant, l))
+    };
+    let rows: Vec<(&Entry, &str, &Value)> = ENTRIES
+        .iter()
+        .filter(|e| e.backend != "serde_json+float_roundtrip")
+        .filter_map(|e| limits(e).map(|(v, l)| (e, v, l)))
+        .collect();
+    if rows.is_empty() {
+        return;
+    }
+    out.push_str("**Nesting depth limits**, which the depth section records and gates only on a crash: the deepest document accepted, and the next depth tried, from 100 up to 1 000 000 levels, decoded into `Value` and into `IgnoredAny` on a 2 MiB (tokio's worker) and an 8 MiB stack.\n\n");
+    out.push_str(&header(&[
+        "Entry point",
+        "Variant",
+        "`Value`, 2 MiB",
+        "`Value`, 8 MiB",
+        "`IgnoredAny`, 2 MiB",
+        "`IgnoredAny`, 8 MiB",
+    ]));
+    for (e, variant, l) in rows {
+        out.push_str(&row(&[
+            format!("`{}`", e.backend),
+            variant.to_owned(),
+            depth_cell(l, "value", "2MiB"),
+            depth_cell(l, "value", "8MiB"),
+            depth_cell(l, "ignored", "2MiB"),
+            depth_cell(l, "ignored", "8MiB"),
+        ]));
+    }
+    out.push('\n');
 }
 
 fn end_to_end(out: &mut String, data: &Data) {
@@ -758,7 +876,7 @@ mod tests {
 
     use super::verdict::ENTRIES;
     use super::verdict::tests::arm_e2e_counts;
-    use super::{end_to_end, limitations};
+    use super::{depth_cell, depth_limits, end_to_end, limitations};
     use crate::report::data::{Data, Host, Key, Table};
 
     #[test]
@@ -820,6 +938,57 @@ mod tests {
         assert!(!notes.contains("No macOS host"));
         assert!(!notes.contains("solo"));
         assert!(!notes.contains("reduced"));
+    }
+
+    #[test]
+    fn depth_limits_say_what_came_after_the_deepest_accepted() {
+        let limits = json!({
+            "array/value/2MiB": { "max_accepted": 1025, "first_rejected": null, "first_crashed": 10000 },
+            "object/value/2MiB": { "max_accepted": 1025, "first_rejected": null, "first_crashed": 10000 },
+            "array/ignored/2MiB": { "max_accepted": 127, "first_rejected": 128, "first_crashed": null },
+            "object/ignored/2MiB": { "max_accepted": 1000000, "first_rejected": null, "first_crashed": null },
+        });
+        assert_eq!(depth_cell(&limits, "value", "2MiB"), "≤1025, crashes at 10000");
+        assert_eq!(
+            depth_cell(&limits, "ignored", "2MiB"),
+            "array ≤127, rejects 128; object all, to 1000000"
+        );
+        assert_eq!(depth_cell(&limits, "value", "8MiB"), "—");
+    }
+
+    #[test]
+    fn serde_json_depth_limits_come_from_another_report_s_reference() {
+        let limit = |max: u64, rejected: u64| json!({ "array/value/2MiB": { "max_accepted": max, "first_rejected": rejected, "first_crashed": null } });
+        let mut host = Host {
+            slug: "x86_64-linux-amd-x".into(),
+            ..Host::default()
+        };
+        host.conformance.insert(
+            ("native".into(), "baseline-float-roundtrip".into()),
+            json!({ "backends": {} }),
+        );
+        host.conformance.insert(
+            ("native".into(), "sonic-rs".into()),
+            json!({ "backends": { "sonic-rs": { "sections": { "depth": { "data": { "limits": {
+                "backend": limit(200, 255), "reference": limit(127, 128) } } } } } } }),
+        );
+        let mut out = String::new();
+        depth_limits(
+            &mut out,
+            &Data {
+                hosts: vec![host],
+                ..Data::default()
+            },
+        );
+        // Only arrays were recorded, so the cells say which they describe.
+        assert!(
+            out.contains("| `serde_json` | native | array ≤127, rejects 128 | — |"),
+            "{out}"
+        );
+        assert!(
+            out.contains("| `sonic-rs` | native | array ≤200, rejects 255 | — |"),
+            "{out}"
+        );
     }
 
     #[test]

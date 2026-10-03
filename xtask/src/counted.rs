@@ -15,6 +15,20 @@ use crate::util::{capture, parallel, root};
 /// 8 MiB 16-way last level, 64-byte lines.
 pub const CACHE: [&str; 3] = ["--I1=32768,8,64", "--D1=32768,8,64", "--LL=8388608,16,64"];
 
+/// The only environment a counted process gets.
+const COUNTED_PATH: &str = "/usr/local/bin:/usr/bin:/bin";
+
+/// Give a process callgrind counts an environment of nothing but a fixed
+/// `PATH`. The environment is copied onto the client's initial stack, so its
+/// size moves the stack's alignment, and with it the instructions that
+/// alignment-sensitive routines execute: struson's json-small decode counts
+/// 14 731 or 14 743 instructions depending on the length of one unrelated
+/// variable. Inheriting the environment made a count depend on whatever the
+/// caller had set, down to whether the checkout was dirty.
+pub fn counted_env(cmd: &mut Command) -> &mut Command {
+    cmd.env_clear().env("PATH", COUNTED_PATH)
+}
+
 /// Estimated cycles from callgrind's events: `Ir + 5·L1 misses + 35·LL misses`.
 #[must_use]
 pub fn estimated_cycles(e: &Events) -> u64 {
@@ -225,7 +239,15 @@ pub fn count(args: &[String]) -> Result<()> {
         .join("results/callgrind")
         .join(format!("{}.json", std::env::consts::ARCH));
     if args.iter().any(|a| a == "--check") {
-        return check_reproduced(&path, &rows);
+        let committed = crate::util::read_json(&path)?;
+        let tolerance = tolerance(args)?;
+        let compared = check_reproduced(&committed, &rows, tolerance)
+            .with_context(|| format!("comparing with {}", path.display()))?;
+        eprintln!(
+            "count --check: {compared} counts reproduce within {} %",
+            tolerance * 100.0
+        );
+        return Ok(());
     }
     merge_rows(&path, &rows, "callgrind")
 }
@@ -235,70 +257,98 @@ pub fn count(args: &[String]) -> Result<()> {
 /// what the measured region calls, not noise: callgrind has none).
 const REPRODUCIBLE: f64 = 0.005;
 
-/// `count --check`: compare fresh rows with the committed ones.
-fn check_reproduced(path: &std::path::Path, fresh: &[Value]) -> Result<()> {
-    let committed = crate::util::read_json(path)?;
+/// `--tolerance PCT`, as a fraction; [`REPRODUCIBLE`] when absent. A rerun on
+/// the host that took the committed counts passes `--tolerance 0`: there,
+/// every count must come back identical.
+fn tolerance(args: &[String]) -> Result<f64> {
+    let Some(i) = args.iter().position(|a| a == "--tolerance") else {
+        return Ok(REPRODUCIBLE);
+    };
+    let pct: f64 = args
+        .get(i + 1)
+        .context("--tolerance needs a percentage")?
+        .parse()
+        .context("--tolerance needs a percentage")?;
+    anyhow::ensure!(
+        pct.is_finite() && pct >= 0.0,
+        "--tolerance must be a non-negative percentage"
+    );
+    Ok(pct / 100.0)
+}
+
+/// `count --check`: compare fresh rows with the committed ones; returns how
+/// many were compared. A committed count that the rerun failed to produce is
+/// a failure too, not a row to skip.
+///
+/// Counts are compared as the whole-run totals callgrind reported: a row
+/// stores the total divided by its iterations, and the committed quotient
+/// comes back from JSON through a parser that need not round it exactly, so
+/// identical totals can differ in the quotient's last bit.
+fn check_reproduced(committed: &Value, fresh: &[Value], tolerance: f64) -> Result<usize> {
     let key = |r: &Value| {
         ["variant", "set", "backend", "workload", "op", "form", "arrival"]
             .map(|k| r[k].to_string())
             .join("|")
     };
+    // The run's total, from a row's per-iteration count.
+    let total = |r: &Value| Some((r["ir"].as_f64()? * r["iters"].as_f64().unwrap_or(1.0)).round());
     let old: std::collections::HashMap<String, f64> = committed["rows"]
         .as_array()
         .into_iter()
         .flatten()
-        .filter_map(|r| Some((key(r), r["ir"].as_f64()?)))
+        .filter_map(|r| Some((key(r), total(r)?)))
         .collect();
     let mut compared = 0;
     let mut off = Vec::new();
     for row in fresh {
-        let (Some(new), Some(old)) = (row["ir"].as_f64(), old.get(&key(row))) else {
+        let Some(old) = old.get(&key(row)) else {
             continue;
         };
         compared += 1;
-        let drift = (new - old).abs() / old;
-        if drift > REPRODUCIBLE {
+        let Some(new) = total(row) else {
             off.push(format!(
-                "{}: {old:.0} -> {new:.0} ({:+.2} %)",
+                "{}: {old:.0} -> no count ({})",
+                key(row),
+                row["error"].as_str().or(row["verdict"].as_str()).unwrap_or("no result")
+            ));
+            continue;
+        };
+        let drift = (new - old).abs() / old;
+        if drift > tolerance {
+            off.push(format!(
+                "{}: {old:.0} -> {new:.0} ({:+.4} %)",
                 key(row),
                 (new / old - 1.0) * 100.0
             ));
         }
     }
-    anyhow::ensure!(
-        compared > 0,
-        "no committed rows to compare against in {}",
-        path.display()
-    );
+    anyhow::ensure!(compared > 0, "no committed rows to compare against");
     if !off.is_empty() {
         anyhow::bail!(
-            "{} of {compared} counts moved more than {:.1} %:\n{}",
+            "{} of {compared} counts moved more than {} %:\n{}",
             off.len(),
-            REPRODUCIBLE * 100.0,
+            tolerance * 100.0,
             off.join("\n")
         );
     }
-    eprintln!(
-        "count --check: {compared} counts reproduce within {:.1} %",
-        REPRODUCIBLE * 100.0
-    );
-    Ok(())
+    Ok(compared)
 }
 
 fn callgrind_cell(cell_bin: &std::path::Path, cell: &Cell, out_file: &std::path::Path, variant: &str) -> Value {
     let mut row = cell.key(variant);
     let mut cmd = Command::new("valgrind");
-    cmd.args([
-        "--tool=callgrind",
-        "--collect-atstart=no",
-        "--toggle-collect=*cell_measured*",
-        "--cache-sim=yes",
-    ])
-    .args(CACHE)
-    .arg(format!("--callgrind-out-file={}", out_file.display()))
-    .arg(cell_bin)
-    .arg("callgrind")
-    .args(cell.args());
+    counted_env(&mut cmd)
+        .args([
+            "--tool=callgrind",
+            "--collect-atstart=no",
+            "--toggle-collect=*cell_measured*",
+            "--cache-sim=yes",
+        ])
+        .args(CACHE)
+        .arg(format!("--callgrind-out-file={}", out_file.display()))
+        .arg(cell_bin)
+        .arg("callgrind")
+        .args(cell.args());
     match capture(&mut cmd) {
         Ok((ok, stdout, stderr)) => {
             let result = cell_json(&stdout);
@@ -431,8 +481,95 @@ fn host_mode(args: &[String], mode: &str, shapes: &[Shape], host: &str, threads:
 
 #[cfg(test)]
 mod tests {
-    use super::{Cell, callgrind_cell, valgrind_error};
+    use serde_json::{Value, json};
+
+    use super::{Cell, REPRODUCIBLE, callgrind_cell, check_reproduced, tolerance, valgrind_error};
     use crate::matrix::{SETS, SHAPES};
+
+    fn row(workload: &str, ir: Option<f64>) -> Value {
+        let mut row = json!({
+            "variant": "portable", "set": "baseline", "backend": "serde_json",
+            "workload": workload, "op": "decode", "form": "owned", "arrival": "shared",
+        });
+        if let Some(ir) = ir {
+            row["ir"] = json!(ir);
+        } else {
+            row["error"] = json!("valgrind died");
+        }
+        row
+    }
+
+    #[test]
+    fn a_counted_process_sees_only_a_fixed_path() {
+        let mut cmd = std::process::Command::new("env");
+        cmd.env("SJC_GIT_DIRTY", "true");
+        let out = super::counted_env(&mut cmd).output().unwrap();
+        assert!(out.status.success());
+        assert_eq!(
+            String::from_utf8_lossy(&out.stdout),
+            format!("PATH={}\n", super::COUNTED_PATH)
+        );
+    }
+
+    #[test]
+    fn identical_counts_reproduce_at_zero_tolerance() {
+        let committed = json!({ "rows": [row("json-small", Some(1000.0)), row("echo-post", Some(2000.0))] });
+        let fresh = [row("json-small", Some(1000.0)), row("echo-post", Some(2000.0))];
+        assert_eq!(check_reproduced(&committed, &fresh, 0.0).unwrap(), 2);
+    }
+
+    #[test]
+    fn a_quotient_off_in_its_last_bit_is_the_same_count() {
+        let per: f64 = 70_725_443.0 / 64.0;
+        let mut committed = row("json-large", Some(f64::from_bits(per.to_bits() + 1)));
+        committed["iters"] = json!(64);
+        let mut fresh = row("json-large", Some(per));
+        fresh["iters"] = json!(64);
+        assert_eq!(
+            check_reproduced(&json!({ "rows": [committed] }), &[fresh], 0.0).unwrap(),
+            1
+        );
+    }
+
+    #[test]
+    fn one_instruction_off_fails_at_zero_tolerance_but_not_at_the_default() {
+        let committed = json!({ "rows": [row("json-small", Some(1000.0))] });
+        let fresh = [row("json-small", Some(1001.0))];
+        let err = check_reproduced(&committed, &fresh, 0.0).unwrap_err().to_string();
+        assert!(err.contains("1 of 1 counts moved"), "{err}");
+        assert_eq!(check_reproduced(&committed, &fresh, REPRODUCIBLE).unwrap(), 1);
+    }
+
+    #[test]
+    fn a_count_the_rerun_lost_is_a_failure_not_a_skip() {
+        let committed = json!({ "rows": [row("json-small", Some(1000.0))] });
+        let err = check_reproduced(&committed, &[row("json-small", None)], REPRODUCIBLE)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("no count (valgrind died)"), "{err}");
+    }
+
+    #[test]
+    fn nothing_to_compare_is_a_failure() {
+        let committed = json!({ "rows": [row("json-small", Some(1000.0))] });
+        assert!(check_reproduced(&committed, &[row("echo-post", Some(1.0))], REPRODUCIBLE).is_err());
+    }
+
+    #[test]
+    fn tolerance_is_a_percentage() {
+        let args = |v: &[&str]| v.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>();
+        assert_eq!(
+            tolerance(&args(&["--check"])).unwrap().to_bits(),
+            REPRODUCIBLE.to_bits()
+        );
+        assert_eq!(
+            tolerance(&args(&["--tolerance", "0"])).unwrap().to_bits(),
+            0f64.to_bits()
+        );
+        assert!((tolerance(&args(&["--tolerance", "0.5"])).unwrap() - 0.005).abs() < 1e-12);
+        assert!(tolerance(&args(&["--tolerance", "-1"])).is_err());
+        assert!(tolerance(&args(&["--tolerance"])).is_err());
+    }
 
     /// A cell that yields no counts still has its callgrind output removed:
     /// valgrind is absent (a spawn error) or cannot run the missing binary (a

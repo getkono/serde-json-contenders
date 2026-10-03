@@ -279,17 +279,24 @@ fn tolerance(args: &[String]) -> Result<f64> {
 /// `count --check`: compare fresh rows with the committed ones; returns how
 /// many were compared. A committed count that the rerun failed to produce is
 /// a failure too, not a row to skip.
+///
+/// Counts are compared as the whole-run totals callgrind reported: a row
+/// stores the total divided by its iterations, and the committed quotient
+/// comes back from JSON through a parser that need not round it exactly, so
+/// identical totals can differ in the quotient's last bit.
 fn check_reproduced(committed: &Value, fresh: &[Value], tolerance: f64) -> Result<usize> {
     let key = |r: &Value| {
         ["variant", "set", "backend", "workload", "op", "form", "arrival"]
             .map(|k| r[k].to_string())
             .join("|")
     };
+    // The run's total, from a row's per-iteration count.
+    let total = |r: &Value| Some((r["ir"].as_f64()? * r["iters"].as_f64().unwrap_or(1.0)).round());
     let old: std::collections::HashMap<String, f64> = committed["rows"]
         .as_array()
         .into_iter()
         .flatten()
-        .filter_map(|r| Some((key(r), r["ir"].as_f64()?)))
+        .filter_map(|r| Some((key(r), total(r)?)))
         .collect();
     let mut compared = 0;
     let mut off = Vec::new();
@@ -298,7 +305,7 @@ fn check_reproduced(committed: &Value, fresh: &[Value], tolerance: f64) -> Resul
             continue;
         };
         compared += 1;
-        let Some(new) = row["ir"].as_f64() else {
+        let Some(new) = total(row) else {
             off.push(format!(
                 "{}: {old:.0} -> no count ({})",
                 key(row),
@@ -509,6 +516,19 @@ mod tests {
         let committed = json!({ "rows": [row("json-small", Some(1000.0)), row("echo-post", Some(2000.0))] });
         let fresh = [row("json-small", Some(1000.0)), row("echo-post", Some(2000.0))];
         assert_eq!(check_reproduced(&committed, &fresh, 0.0).unwrap(), 2);
+    }
+
+    #[test]
+    fn a_quotient_off_in_its_last_bit_is_the_same_count() {
+        let per: f64 = 70_725_443.0 / 64.0;
+        let mut committed = row("json-large", Some(f64::from_bits(per.to_bits() + 1)));
+        committed["iters"] = json!(64);
+        let mut fresh = row("json-large", Some(per));
+        fresh["iters"] = json!(64);
+        assert_eq!(
+            check_reproduced(&json!({ "rows": [committed] }), &[fresh], 0.0).unwrap(),
+            1
+        );
     }
 
     #[test]

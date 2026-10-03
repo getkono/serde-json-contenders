@@ -291,7 +291,7 @@
       "backend": "struson",
       "crate": "struson",
       "deserves_to_exist": true,
-      "exists_evidence": "sweep-64b encode heap 0.70× serde_json at x86_64 portable (est. cycles). No `unsafe`: 0 unsafe blocks, functions or impls across its 5 runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors.",
+      "exists_evidence": "sweep-64b encode heap 0.70× serde_json at x86_64 portable. No `unsafe`: 0 unsafe blocks, functions or impls across its 5 runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors.",
       "reason": "reference point: no borrowed slice decode plus `to_vec`-style encoder",
       "recommended": "fail",
       "rules": [

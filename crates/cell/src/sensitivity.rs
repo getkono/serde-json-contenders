@@ -145,10 +145,33 @@ fn field(output: &Value, name: &str) -> f64 {
     output[name].as_f64().unwrap_or_else(|| panic!("no {name} in {output}"))
 }
 
+/// Fields of an `alloc` cell that only grow when something else allocates.
+const ALLOC_FIELDS: [&str; 5] = ["allocations", "reallocations", "bytes", "peak_bytes", "leaked_bytes"];
+
+/// The smallest of each allocation field across `outputs`.
+///
+/// libtest's main thread records the test it just spawned (a map insert and
+/// a queue push) while the test already runs, and the counter is
+/// process-wide: on a loaded runner those allocations land inside a
+/// measurement. They happen once per process, so a repeated measurement
+/// misses them; a field's smallest value is the operation's own.
+fn least(outputs: &[Value]) -> Value {
+    let mut out = outputs[0].clone();
+    for name in ALLOC_FIELDS {
+        let min = outputs.iter().map(|o| field(o, name)).fold(f64::INFINITY, f64::min);
+        out[name] = serde_json::json!(min);
+    }
+    out
+}
+
 #[test]
 fn a_copy_of_the_body_is_one_more_allocation_of_its_size() {
-    let base = cell::<SerdeJson>("alloc", Op::Decode, "json-small", None);
-    let clone = cell::<CloneOnce>("alloc", Op::Decode, "json-small", None);
+    let (mut bases, mut clones) = (Vec::new(), Vec::new());
+    for _ in 0..3 {
+        bases.push(cell::<SerdeJson>("alloc", Op::Decode, "json-small", None));
+        clones.push(cell::<CloneOnce>("alloc", Op::Decode, "json-small", None));
+    }
+    let (base, clone) = (least(&bases), least(&clones));
     let size = field(&base, "size");
     let more = |name: &str| field(&clone, name) - field(&base, name);
     assert!((more("allocations") - 1.0).abs() < 1e-9, "{base}\n{clone}");

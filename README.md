@@ -191,15 +191,16 @@ Separately from Kynos, a library **deserves to exist** if either of these holds:
 The results stand only after four checks:
 
 1. **The harness is correct.** The unit and integration tests (`mise run test`).
-2. **The counts reproduce.** callgrind has no noise, so a recount on the host that took the committed counts, from an empty `target/`, must return every count unchanged: `cargo xtask count --check --tolerance 0`. On another x86-64 host, CI's `count --check` holds the Kynos shapes to 0.5 %, which covers differences in libc and kernel. A committed count that a recount fails to produce fails the check.
+2. **The counts reproduce.** callgrind has no noise, so a recount on the host that took the committed counts, from an empty `target/`, must return every count unchanged: `cargo xtask count --check --tolerance 0`. That holds only because every counted process runs with the same environment, nothing but a fixed `PATH`: the environment sits on the process's stack, and its length alone moves some counts by up to 0.4 %. On another x86-64 host, CI's `count --check` holds the Kynos shapes to 0.5 %, which covers differences in libc and kernel. A committed count that a recount fails to produce fails the check.
 3. **The harness can fail.** A faulty backend is caught exactly where it is faulty, and nowhere else:
    - An `n_` file accepted, a wrong shape answered 400, and floats one bit off each fail conformance in their own section. Floats written in a different format appear in `encode_diff` as a difference that does not gate (`crates/conformance/tests/harness.rs`).
    - An adapter that copies its input once more shows exactly one more allocation, of the input's size, and that much more peak. Under callgrind it costs the copy's instructions (`crates/cell/src/sensitivity.rs`). The callgrind half needs valgrind, so it runs in the container rather than in `mise run test`: `cargo xtask image`, then `podman run --rm -v "$PWD:/work" serde-json-contenders:valgrind cargo test -p cell --locked -- --ignored sensitivity`.
    - An adapter that does less work than it should, the kind of variant an optimizer could delete, is refused by the result check in every mode and never measured.
 4. **Nothing is left out.** Every requirement above maps to a task, a result file and a table below, or to a deviation listed here.
 
-Deviations, each pending something this machine cannot do:
+Deviations:
 
+- End-to-end counts are not exactly reproducible: two recounts from an empty `target/` differ by up to 0.015 % per request. That is far inside what any rule reads (the codec share and the timed prediction), but it is not the exact agreement the operation counts have.
 - aarch64 counts, aarch64 end-to-end counts, and aarch64 conformance at `native` and `native-counted` come from a Measure run on `ubuntu-24.04-arm`. Until one is committed, rule 1 is pending for every candidate.
 - The arm64 Measure run has not yet completed, so the counts' reproducibility on aarch64 is unchecked.
 
@@ -550,16 +551,16 @@ Disagreements per section, summed over every build variant and host; **bold** se
 
 | Route | Entry point | Cycles / request | vs serde_json | Codec share |
 | --- | --- | --- | --- | --- |
-| echo-post | `serde_json` | 56.1 k | 1.00× | 39 % |
-| echo-post | `serde_json+float_roundtrip` | 56.3 k | 1.00× | 39 % |
+| echo-post | `serde_json` | 56.2 k | 1.00× | 39 % |
+| echo-post | `serde_json+float_roundtrip` | 56.4 k | 1.00× | 39 % |
 | echo-post | `sonic-rs` | 45.7 k | 0.81× | 25 % |
-| echo-post | `simd-json` | 53.0 k | 0.95× | 36 % |
-| echo-post | `simd-json-buffers` | 49.6 k | 0.89× | 31 % |
+| echo-post | `simd-json` | 53.0 k | 0.94× | 36 % |
+| echo-post | `simd-json-buffers` | 49.7 k | 0.88× | 31 % |
 | echo-post | `flexon-rt` | 47.7 k | 0.85× | 28 % |
-| echo-post | `flexon-rt-mut` | 47.8 k | 0.85× | 29 % |
+| echo-post | `flexon-rt-mut` | 47.7 k | 0.85× | 28 % |
 | echo-post | `flexon-ct` | 47.6 k | 0.85× | 28 % |
 | echo-post | `flexon-ct-mut` | 47.6 k | 0.85× | 28 % |
-| echo-post | `struson` | 132.0 k | 2.36× | 74 % |
+| echo-post | `struson` | 132.1 k | 2.35× | 74 % |
 | json-large-get | `serde_json` | 1.37 M | 1.00× | 86 % |
 | json-large-get | `serde_json+float_roundtrip` | 1.33 M | 0.97× | 86 % |
 | json-large-get | `sonic-rs` | 1.31 M | 0.96× | 86 % |
@@ -583,33 +584,33 @@ Disagreements per section, summed over every build variant and host; **bold** se
 | json-large-post | `hifijson` | 4.53 M | 1.11× | 94 % |
 | json-large-post | `struson` | 11.44 M | 2.80× | 98 % |
 | json-small-get | `serde_json` | 27.6 k | 1.00× | 7 % |
-| json-small-get | `serde_json+float_roundtrip` | 27.4 k | 0.99× | 6 % |
+| json-small-get | `serde_json+float_roundtrip` | 27.4 k | 0.99× | 7 % |
 | json-small-get | `sonic-rs` | 28.8 k | 1.04× | 11 % |
 | json-small-get | `simd-json` | 28.6 k | 1.04× | 11 % |
-| json-small-get | `simd-json-buffers` | 28.6 k | 1.04× | 11 % |
-| json-small-get | `flexon-rt` | 29.9 k | 1.08× | 14 % |
-| json-small-get | `flexon-rt-mut` | 29.9 k | 1.08× | 14 % |
-| json-small-get | `flexon-ct` | 29.8 k | 1.08× | 14 % |
-| json-small-get | `flexon-ct-mut` | 29.8 k | 1.08× | 14 % |
-| json-small-get | `struson` | 32.7 k | 1.19× | 22 % |
+| json-small-get | `simd-json-buffers` | 28.7 k | 1.04× | 11 % |
+| json-small-get | `flexon-rt` | 30.0 k | 1.08× | 15 % |
+| json-small-get | `flexon-rt-mut` | 30.0 k | 1.08× | 15 % |
+| json-small-get | `flexon-ct` | 29.9 k | 1.08× | 14 % |
+| json-small-get | `flexon-ct-mut` | 29.9 k | 1.08× | 14 % |
+| json-small-get | `struson` | 32.7 k | 1.18× | 22 % |
 
 **Timed, x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo)** — closed-loop throughput at 64 connections, and p99 open-loop at 70 % of serde_json's throughput; median of reps, relative to serde_json.
 
 | Route | Entry point | Throughput | p99 | A/A band (rps, p99) | Counted prediction |
 | --- | --- | --- | --- | --- | --- |
 | echo-post | `serde_json+float_roundtrip` | -15.3 % | +39.3 % | ±22.5 %, ±27.3 % | -0.4 % |
-| echo-post | `sonic-rs` | -66.7 % | +36.1 % | ±22.5 %, ±27.3 % | +22.7 % |
-| echo-post | `simd-json` | +13.1 % | -65.6 % | ±22.5 %, ±27.3 % | +5.7 % |
-| echo-post | `simd-json-buffers` | -15.7 % | -64.6 % | ±22.5 %, ±27.3 % | +12.9 % |
-| echo-post | `flexon-rt` | -2.4 % | +15.0 % | ±22.5 %, ±27.3 % | +17.5 % |
-| echo-post | `flexon-rt-mut` | +8.3 % | -84.7 % | ±22.5 %, ±27.3 % | +17.3 % |
-| echo-post | `flexon-ct` | +15.3 % | +32.8 % | ±22.5 %, ±27.3 % | +17.8 % |
-| echo-post | `flexon-ct-mut` | -57.9 % | +33.1 % | ±22.5 %, ±27.3 % | +17.7 % |
+| echo-post | `sonic-rs` | -66.7 % | +36.1 % | ±22.5 %, ±27.3 % | +22.8 % |
+| echo-post | `simd-json` | +13.1 % | -65.6 % | ±22.5 %, ±27.3 % | +6.0 % |
+| echo-post | `simd-json-buffers` | -15.7 % | -64.6 % | ±22.5 %, ±27.3 % | +13.0 % |
+| echo-post | `flexon-rt` | -2.4 % | +15.0 % | ±22.5 %, ±27.3 % | +17.8 % |
+| echo-post | `flexon-rt-mut` | +8.3 % | -84.7 % | ±22.5 %, ±27.3 % | +17.7 % |
+| echo-post | `flexon-ct` | +15.3 % | +32.8 % | ±22.5 %, ±27.3 % | +18.1 % |
+| echo-post | `flexon-ct-mut` | -57.9 % | +33.1 % | ±22.5 %, ±27.3 % | +18.0 % |
 | echo-post | `struson` | -73.6 % | +47.3 % | ±22.5 %, ±27.3 % | -57.5 % |
 | json-large-get | `serde_json+float_roundtrip` | -1.0 % | -90.2 % | ±20.4 %, ±91.7 % | +2.9 % |
 | json-large-get | `sonic-rs` | -77.6 % | +237.3 % | ±20.4 %, ±91.7 % | +4.3 % |
 | json-large-get | `simd-json` | -7.5 % | -37.1 % | ±20.4 %, ±91.7 % | -21.7 % |
-| json-large-get | `simd-json-buffers` | -24.2 % | -29.1 % | ±20.4 %, ±91.7 % | -21.7 % |
+| json-large-get | `simd-json-buffers` | -24.2 % | -29.1 % | ±20.4 %, ±91.7 % | -21.8 % |
 | json-large-get | `flexon-rt` | -20.4 % | -75.4 % | ±20.4 %, ±91.7 % | +3.9 % |
 | json-large-get | `flexon-rt-mut` | +8.9 % | +3.0 % | ±20.4 %, ±91.7 % | +3.9 % |
 | json-large-get | `flexon-ct` | -21.5 % | -89.1 % | ±20.4 %, ±91.7 % | +3.9 % |
@@ -628,12 +629,12 @@ Disagreements per section, summed over every build variant and host; **bold** se
 | json-large-post | `struson` | -70.0 % | +9313.4 % | ±21.6 %, ±10092.9 % | -64.3 % |
 | json-small-get | `serde_json+float_roundtrip` | +3.2 % | -38.2 % | ±0.3 %, ±330.5 % | +0.8 % |
 | json-small-get | `sonic-rs` | -25.6 % | +242.5 % | ±0.3 %, ±330.5 % | -4.2 % |
-| json-small-get | `simd-json` | -54.2 % | +217.4 % | ±0.3 %, ±330.5 % | -3.7 % |
-| json-small-get | `simd-json-buffers` | -2.8 % | +288.5 % | ±0.3 %, ±330.5 % | -3.7 % |
-| json-small-get | `flexon-rt` | -1.8 % | +56.7 % | ±0.3 %, ±330.5 % | -7.7 % |
-| json-small-get | `flexon-rt-mut` | -3.0 % | -92.7 % | ±0.3 %, ±330.5 % | -7.7 % |
-| json-small-get | `flexon-ct` | +1.8 % | +177.5 % | ±0.3 %, ±330.5 % | -7.5 % |
-| json-small-get | `flexon-ct-mut` | -20.4 % | +4.6 % | ±0.3 %, ±330.5 % | -7.6 % |
+| json-small-get | `simd-json` | -54.2 % | +217.4 % | ±0.3 %, ±330.5 % | -3.5 % |
+| json-small-get | `simd-json-buffers` | -2.8 % | +288.5 % | ±0.3 %, ±330.5 % | -3.6 % |
+| json-small-get | `flexon-rt` | -1.8 % | +56.7 % | ±0.3 %, ±330.5 % | -7.8 % |
+| json-small-get | `flexon-rt-mut` | -3.0 % | -92.7 % | ±0.3 %, ±330.5 % | -7.8 % |
+| json-small-get | `flexon-ct` | +1.8 % | +177.5 % | ±0.3 %, ±330.5 % | -7.6 % |
+| json-small-get | `flexon-ct-mut` | -20.4 % | +4.6 % | ±0.3 %, ±330.5 % | -7.7 % |
 | json-small-get | `struson` | -7.1 % | +224.8 % | ±0.3 %, ±330.5 % | -15.6 % |
 
 ### Timed, x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo)

@@ -166,6 +166,17 @@ impl Point {
         )
     }
 
+    /// The point a [`frontier_win`] on `axis` was found at. A heap figure is
+    /// read from the allocation counts, not from this point's CPU source, so
+    /// a heap win names the build alone.
+    pub fn win_label(&self, axis: &str) -> String {
+        if axis.ends_with("heap") {
+            format!("{} {}", self.arch, self.variant)
+        } else {
+            self.label()
+        }
+    }
+
     /// The same build, read as instructions instead of cycles.
     #[must_use]
     pub fn instructions(self) -> Self {
@@ -347,13 +358,14 @@ fn rule1(data: &Data, e: &Entry, pool: &[&Entry]) -> Outcome {
     for w in KYNOS {
         for p in [X86_V3, X86_NATIVE] {
             if x86.is_none() {
-                x86 = frontier_win(data, p, e, w, pool).map(|(axis, r)| format!("{w} {axis} {r:.2}× at {}", p.label()));
+                x86 = frontier_win(data, p, e, w, pool)
+                    .map(|(axis, r)| format!("{w} {axis} {r:.2}× at {}", p.win_label(&axis)));
             }
         }
         any_arm_data |= cpu(data, ARM_NATIVE, e.backend, w, "decode").is_some();
         if arm.is_none() {
             arm = frontier_win(data, ARM_NATIVE, e, w, pool)
-                .map(|(axis, r)| format!("{w} {axis} {r:.2}× at {}", ARM_NATIVE.label()));
+                .map(|(axis, r)| format!("{w} {axis} {r:.2}× at {}", ARM_NATIVE.win_label(&axis)));
         }
     }
     match (x86, arm) {
@@ -607,7 +619,7 @@ fn exists(data: &Data, e: &Entry, pool: &[&Entry]) -> (bool, String) {
             if let Some((axis, r)) = frontier_win(data, *p, e, w, pool)
                 && best.as_ref().is_none_or(|(b, _)| r < *b)
             {
-                best = Some((r, format!("{w} {axis} {r:.2}× serde_json at {}", p.label())));
+                best = Some((r, format!("{w} {axis} {r:.2}× serde_json at {}", p.win_label(&axis))));
             }
         }
     }
@@ -744,6 +756,35 @@ pub(super) mod tests {
                 .starts_with("json-small decode CPU 0.80× serde_json at x86_64 v3"),
             "{:?}",
             simd.exists
+        );
+    }
+
+    /// simd-json ties serde_json on decode cycles and allocates half its
+    /// bytes. The heap figure comes from the allocation counts, so the win
+    /// names the build without a cycles source.
+    #[test]
+    fn a_heap_win_claims_no_cycles_source() {
+        let mut table = Table::default();
+        let mut host = crate::report::data::Host::default();
+        for (backend, bytes) in [("serde_json", 100.0), ("simd-json", 50.0)] {
+            let key = Key::new("v3", backend, "json-small", "decode");
+            table.rows.insert(key.clone(), json!({ "est_cycles": 100.0 }));
+            host.alloc.rows.insert(key, json!({ "bytes": bytes }));
+        }
+        let data = Data {
+            callgrind: [("x86_64".to_owned(), table)].into(),
+            hosts: vec![host],
+            ..Data::default()
+        };
+        let verdicts = super::judge(&data);
+        let simd = verdicts.iter().find(|v| v.entry.backend == "simd-json").unwrap();
+        assert_eq!(simd.exists.1, "json-small decode heap 0.50× serde_json at x86_64 v3");
+        assert!(
+            simd.rules[0]
+                .detail()
+                .starts_with("json-small decode heap 0.50× at x86_64 v3;"),
+            "{:?}",
+            simd.rules[0]
         );
     }
 

@@ -1,0 +1,851 @@
+{
+  "kind": "e2e-count",
+  "provenance": {
+    "arch": "aarch64",
+    "boost": null,
+    "container_image": "6742fc23e1a507fd2fd01be00d9fb0bc9c193d65a53218d2ca49529d63ea35b0",
+    "cpu": "unknown",
+    "git_commit": "684ecf81e4e4de8c9518401fddae3c75739d0417",
+    "git_dirty": false,
+    "governor": null,
+    "host": "aarch64-linux-unknown",
+    "kernel": "6.17.0-1022-azure",
+    "loadavg": "1.67 2.03 1.34 1/258 11873",
+    "microcode": null,
+    "os": "linux",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: aarch64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
+    "timestamp": "2026-10-03T03:36:51Z",
+    "valgrind": "valgrind-3.24.0"
+  },
+  "rows": [
+    {
+      "backend": "floor",
+      "est_cycles": 38961.98,
+      "ir": 29635.18,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "baseline",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "floor",
+      "est_cycles": 96231.2,
+      "ir": 53499.85,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "baseline",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "floor",
+      "est_cycles": 99147.34,
+      "ir": 56159.665,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "baseline",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "floor",
+      "est_cycles": 29626.355,
+      "ir": 22233.13,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "baseline",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "serde_json",
+      "est_cycles": 61518.095,
+      "ir": 50653.495,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "baseline",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "serde_json",
+      "est_cycles": 1259842.46,
+      "ir": 1178016.135,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "baseline",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "serde_json",
+      "est_cycles": 3873370.35,
+      "ir": 3760672.925,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "baseline",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "serde_json",
+      "est_cycles": 34676.28,
+      "ir": 26711.48,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "baseline",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "est_cycles": 61628.25,
+      "ir": 50914.175,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "baseline-float-roundtrip",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "est_cycles": 1249708.065,
+      "ir": 1173554.115,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "baseline-float-roundtrip",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "est_cycles": 3901558.675,
+      "ir": 3788967.925,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "baseline-float-roundtrip",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "est_cycles": 34226.48,
+      "ir": 26578.03,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "baseline-float-roundtrip",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "flexon-ct",
+      "est_cycles": 56847.17,
+      "ir": 46121.47,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "flexon-ct",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "flexon-ct",
+      "est_cycles": 1193150.575,
+      "ir": 1113339.875,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "flexon-ct",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "flexon-ct",
+      "est_cycles": 3149381.85,
+      "ir": 3031243.6,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "flexon-ct",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "flexon-ct",
+      "est_cycles": 36973.845,
+      "ir": 28492.345,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "flexon-ct",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "est_cycles": 56890.815,
+      "ir": 46155.69,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "flexon-ct",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "est_cycles": 1193177.775,
+      "ir": 1113340.125,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "flexon-ct",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "est_cycles": 3130420.21,
+      "ir": 3012266.86,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "flexon-ct",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "est_cycles": 37005.645,
+      "ir": 28491.52,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "flexon-ct",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "flexon-rt",
+      "est_cycles": 56913.405,
+      "ir": 46124.205,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "flexon-rt",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "flexon-rt",
+      "est_cycles": 1193056.0,
+      "ir": 1113337.15,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "flexon-rt",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "flexon-rt",
+      "est_cycles": 3149307.2,
+      "ir": 3031243.6,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "flexon-rt",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "flexon-rt",
+      "est_cycles": 37001.355,
+      "ir": 28492.255,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "flexon-rt",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "est_cycles": 56934.82,
+      "ir": 46158.445,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "flexon-rt",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "est_cycles": 1193093.23,
+      "ir": 1113337.38,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "flexon-rt",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "est_cycles": 3130318.19,
+      "ir": 3012266.84,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "flexon-rt",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "est_cycles": 37018.56,
+      "ir": 28494.335,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "flexon-rt",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "hifijson",
+      "est_cycles": 4222048.475,
+      "ir": 4109074.6,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "hifijson",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "jiter",
+      "est_cycles": 3736394.045,
+      "ir": 3622842.995,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "jiter",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "simd-json",
+      "est_cycles": 63052.42,
+      "ir": 51208.62,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "simd-json",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "simd-json",
+      "est_cycles": 1570872.31,
+      "ir": 1486085.085,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "simd-json",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "simd-json",
+      "est_cycles": 3440957.15,
+      "ir": 3263776.7,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "simd-json",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "simd-json",
+      "est_cycles": 35449.435,
+      "ir": 27337.935,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "simd-json",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "simd-json-buffers",
+      "est_cycles": 58682.77,
+      "ir": 47570.345,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "simd-json",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "simd-json-buffers",
+      "est_cycles": 1570884.42,
+      "ir": 1486085.17,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "simd-json",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "simd-json-buffers",
+      "est_cycles": 3424865.29,
+      "ir": 3253723.065,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "simd-json",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "simd-json-buffers",
+      "est_cycles": 35462.075,
+      "ir": 27338.1,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "simd-json",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "sonic-rs",
+      "est_cycles": 53668.405,
+      "ir": 43021.73,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "sonic-rs",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "sonic-rs",
+      "est_cycles": 1124882.235,
+      "ir": 1039927.91,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "sonic-rs",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "sonic-rs",
+      "est_cycles": 3193269.44,
+      "ir": 3074375.54,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "sonic-rs",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "sonic-rs",
+      "est_cycles": 36940.715,
+      "ir": 28409.29,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "sonic-rs",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "struson",
+      "est_cycles": 137586.04,
+      "ir": 125388.14,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "struson",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "struson",
+      "est_cycles": 2810794.39,
+      "ir": 2725263.19,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "struson",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "struson",
+      "est_cycles": 11670283.725,
+      "ir": 11555609.05,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "struson",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "struson",
+      "est_cycles": 39970.885,
+      "ir": 31018.385,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "struson",
+      "variant": "native-counted"
+    },
+    {
+      "backend": "floor",
+      "est_cycles": 40876.57,
+      "ir": 31118.445,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "backend": "floor",
+      "est_cycles": 98102.68,
+      "ir": 54883.355,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "backend": "floor",
+      "est_cycles": 100989.07,
+      "ir": 57708.745,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "backend": "floor",
+      "est_cycles": 30991.06,
+      "ir": 23293.26,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "backend": "serde_json",
+      "est_cycles": 63741.68,
+      "ir": 52584.905,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "backend": "serde_json",
+      "est_cycles": 1262504.39,
+      "ir": 1180088.715,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "backend": "serde_json",
+      "est_cycles": 3778476.015,
+      "ir": 3665476.99,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "backend": "serde_json",
+      "est_cycles": 36123.06,
+      "ir": 27756.685,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "baseline",
+      "variant": "portable"
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "est_cycles": 64264.31,
+      "ir": 52845.585,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "baseline-float-roundtrip",
+      "variant": "portable"
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "est_cycles": 1252690.23,
+      "ir": 1175623.93,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "baseline-float-roundtrip",
+      "variant": "portable"
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "est_cycles": 3807082.765,
+      "ir": 3693863.99,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "baseline-float-roundtrip",
+      "variant": "portable"
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "est_cycles": 35908.03,
+      "ir": 27620.38,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "baseline-float-roundtrip",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-ct",
+      "est_cycles": 59146.51,
+      "ir": 48109.86,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-ct",
+      "est_cycles": 1195648.565,
+      "ir": 1115411.34,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-ct",
+      "est_cycles": 3137907.725,
+      "ir": 3019387.65,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-ct",
+      "est_cycles": 38205.525,
+      "ir": 29533.7,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "est_cycles": 59161.9,
+      "ir": 48131.1,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "est_cycles": 1195646.725,
+      "ir": 1115411.575,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "est_cycles": 3102578.44,
+      "ir": 2984185.89,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "est_cycles": 38198.165,
+      "ir": 29532.89,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "flexon-ct",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-rt",
+      "est_cycles": 59233.41,
+      "ir": 48109.86,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-rt",
+      "est_cycles": 1195684.04,
+      "ir": 1115411.39,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-rt",
+      "est_cycles": 3138054.325,
+      "ir": 3019387.65,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-rt",
+      "est_cycles": 38290.295,
+      "ir": 29533.72,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "est_cycles": 59278.7,
+      "ir": 48131.1,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "est_cycles": 1195697.075,
+      "ir": 1115411.6,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "est_cycles": 3102765.29,
+      "ir": 2984185.89,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "est_cycles": 38262.96,
+      "ir": 29532.985,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "flexon-rt",
+      "variant": "portable"
+    },
+    {
+      "backend": "hifijson",
+      "est_cycles": 4178119.02,
+      "ir": 4064771.67,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "hifijson",
+      "variant": "portable"
+    },
+    {
+      "backend": "jiter",
+      "est_cycles": 3706983.485,
+      "ir": 3593345.06,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "jiter",
+      "variant": "portable"
+    },
+    {
+      "backend": "simd-json",
+      "est_cycles": 65386.445,
+      "ir": 53233.295,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "backend": "simd-json",
+      "est_cycles": 1573376.27,
+      "ir": 1488161.52,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "backend": "simd-json",
+      "est_cycles": 3429703.075,
+      "ir": 3252252.75,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "backend": "simd-json",
+      "est_cycles": 36701.605,
+      "ir": 28380.355,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "backend": "simd-json-buffers",
+      "est_cycles": 60954.16,
+      "ir": 49588.735,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "backend": "simd-json-buffers",
+      "est_cycles": 1573394.125,
+      "ir": 1488161.65,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "backend": "simd-json-buffers",
+      "est_cycles": 3413498.99,
+      "ir": 3242189.115,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "backend": "simd-json-buffers",
+      "est_cycles": 36722.19,
+      "ir": 28380.49,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "simd-json",
+      "variant": "portable"
+    },
+    {
+      "backend": "sonic-rs",
+      "est_cycles": 56232.32,
+      "ir": 45016.145,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "sonic-rs",
+      "variant": "portable"
+    },
+    {
+      "backend": "sonic-rs",
+      "est_cycles": 1126915.985,
+      "ir": 1041296.36,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "sonic-rs",
+      "variant": "portable"
+    },
+    {
+      "backend": "sonic-rs",
+      "est_cycles": 3181259.825,
+      "ir": 3061743.35,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "sonic-rs",
+      "variant": "portable"
+    },
+    {
+      "backend": "sonic-rs",
+      "est_cycles": 38493.035,
+      "ir": 29447.96,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "sonic-rs",
+      "variant": "portable"
+    },
+    {
+      "backend": "struson",
+      "est_cycles": 141013.795,
+      "ir": 128347.795,
+      "requests": 200,
+      "route": "echo-post",
+      "set": "struson",
+      "variant": "portable"
+    },
+    {
+      "backend": "struson",
+      "est_cycles": 2817579.625,
+      "ir": 2731571.675,
+      "requests": 200,
+      "route": "json-large-get",
+      "set": "struson",
+      "variant": "portable"
+    },
+    {
+      "backend": "struson",
+      "est_cycles": 11574979.865,
+      "ir": 11460437.79,
+      "requests": 200,
+      "route": "json-large-post",
+      "set": "struson",
+      "variant": "portable"
+    },
+    {
+      "backend": "struson",
+      "est_cycles": 41378.75,
+      "ir": 32067.8,
+      "requests": 200,
+      "route": "json-small-get",
+      "set": "struson",
+      "variant": "portable"
+    }
+  ],
+  "schema": 1
+}

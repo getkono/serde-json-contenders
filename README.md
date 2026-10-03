@@ -201,8 +201,8 @@ The results stand only after four checks:
 Deviations:
 
 - End-to-end counts are not exactly reproducible: two recounts from an empty `target/` differ by up to 0.015 % per request. That is far inside what any rule reads (the codec share and the timed prediction), but it is not the exact agreement the operation counts have.
-- aarch64 counts, aarch64 end-to-end counts, and aarch64 conformance at `native` and `native-counted` come from a Measure run on `ubuntu-24.04-arm`. Until one is committed, rule 1 is pending for every candidate.
-- The arm64 Measure run has not yet completed, so the counts' reproducibility on aarch64 is unchecked.
+- aarch64 counts and aarch64 end-to-end counts come from one Measure run on `ubuntu-24.04-arm` (run 37091012208, at 684ecf8). aarch64 conformance at `native` and `native-counted` is not committed.
+- Only one arm64 Measure run has been counted. CI's reproduce job recounts the `portable` Kynos shapes on aarch64; the rest of the aarch64 counts have no recount.
 
 ### Reproduce
 
@@ -223,7 +223,7 @@ Individual tasks are listed by `cargo xtask`. Every result file under `results/`
 | Entry point | Crate | Add to Kynos? | Deserves to exist? | Why |
 | --- | --- | --- | --- | --- |
 | `serde_json` | serde_json | baseline | yes — the baseline | all four rules hold |
-| `serde_json+float_roundtrip` | serde_json | ❌ fail | yes — unicode decode CPU 0.55× serde_json at x86_64 native (cycles). Correctly rounded float parsing, which the default parser is not (see conformance, numbers). | no route ≥10 % better in throughput or p99 beyond the A/A band |
+| `serde_json+float_roundtrip` | serde_json | ❌ fail | yes — unicode decode CPU 0.55× serde_json at x86_64 native (cycles). Correctly rounded float parsing, which the default parser is not (see conformance, numbers). | json-small decode CPU 0.65× at x86_64 native (cycles), but no material frontier win on aarch64 |
 | `sonic-rs` | sonic-rs | ❌ fail | yes — echo-post encode CPU 0.19× serde_json at x86_64 v3 (est. cycles). Lazy path lookups without a full parse (`get`, `get_many`, `LazyValue`); errors carry a byte offset as well as line and column. | grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs; fuzz decode_struct (portable); fuzz decode_struct (v3) |
 | `simd-json` | simd-json | ❌ fail | yes — echo-post encode CPU 0.28× serde_json at x86_64 v3 (est. cycles). Borrowing decode of escaped strings, unescaped in place: 1,175 allocations against serde_json's 4,584 for twitter-like into borrowed types from a unique buffer. A tape API (`to_tape`) traverses without building values. | status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3) |
 | `simd-json-buffers` | simd-json | ❌ fail | yes — echo-post encode CPU 0.28× serde_json at x86_64 v3 (est. cycles). Reusing `Buffers` across calls roughly halves plain `from_slice`'s allocated bytes: 2.93 MB against 5.54 MB for twitter-like into borrowed types from a unique buffer. | status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3) |
@@ -239,14 +239,14 @@ Individual tasks are listed by `cargo xtask`. Every result file under `results/`
 
 | Entry point | 1 Frontier | 2 Conformance | 3 Soundness | 4 End to end |
 | --- | --- | --- | --- | --- |
-| `sonic-rs` | ⏳ json-small decode CPU 0.84× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded | ❌ grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs; fuzz decode_struct (portable); fuzz decode_struct (v3) | ✅ no advisory at advisory-db e2111519 | ❌ no route ≥10 % better in throughput or p99 beyond the A/A band |
-| `simd-json` | ⏳ json-small encode CPU 0.81× at x86_64 native (cycles); aarch64 counts not yet recorded | ❌ status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3) | ✅ no advisory at advisory-db e2111519 | ⏳ provisional pass: echo-post +13 % rps, +66 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun |
-| `simd-json-buffers` | ⏳ json-small decode CPU 0.88× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded | ❌ status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3) | ✅ no advisory at advisory-db e2111519 | ⏳ provisional pass: echo-post -16 % rps, +65 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun |
-| `flexon-rt` | ⏳ json-small decode CPU 0.73× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded | ❌ grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence | ✅ no advisory at advisory-db e2111519 | ❌ gains inconsistent with counted codec share: x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor json-large-post: +59 % measured, +30 % predicted |
-| `flexon-rt-mut` | ⏳ json-small decode CPU 0.76× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded | ❌ grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence | ✅ no advisory at advisory-db e2111519 | ⏳ provisional pass: echo-post +8 % rps, +85 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun |
-| `flexon-ct` | ⏳ json-small decode CPU 0.72× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded | ❌ grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence | ✅ no advisory at advisory-db e2111519 | ❌ no route ≥10 % better in throughput or p99 beyond the A/A band |
-| `flexon-ct-mut` | ⏳ json-small decode CPU 0.75× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded | ❌ grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence | ✅ no advisory at advisory-db e2111519 | ⏳ provisional pass: json-large-post +52 % rps, +42 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun |
-| `jiter` | ⏳ json-small decode CPU 0.90× at x86_64 v3 (est. cycles); aarch64 counts not yet recorded | ❌ status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence | ✅ no advisory at advisory-db e2111519 | ❌ no route ≥10 % better in throughput or p99 beyond the A/A band |
+| `sonic-rs` | ✅ json-small decode CPU 0.84× at x86_64 v3 (est. cycles); json-small decode CPU 0.82× at aarch64 native-counted (est. cycles) | ❌ grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs; fuzz decode_struct (portable); fuzz decode_struct (v3) | ✅ no advisory at advisory-db e2111519 | ❌ no route ≥10 % better in throughput or p99 beyond the A/A band |
+| `simd-json` | ✅ json-small encode CPU 0.81× at x86_64 native (cycles); echo-post encode CPU 0.39× at aarch64 native-counted (est. cycles) | ❌ status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3) | ✅ no advisory at advisory-db e2111519 | ⏳ provisional pass: echo-post +13 % rps, +66 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun |
+| `simd-json-buffers` | ✅ json-small decode CPU 0.88× at x86_64 v3 (est. cycles); echo-post encode CPU 0.39× at aarch64 native-counted (est. cycles) | ❌ status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3) | ✅ no advisory at advisory-db e2111519 | ⏳ provisional pass: echo-post -16 % rps, +65 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun |
+| `flexon-rt` | ✅ json-small decode CPU 0.73× at x86_64 v3 (est. cycles); json-small decode CPU 0.78× at aarch64 native-counted (est. cycles) | ❌ grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence | ✅ no advisory at advisory-db e2111519 | ❌ gains inconsistent with counted codec share: x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor json-large-post: +59 % measured, +30 % predicted |
+| `flexon-rt-mut` | ✅ json-small decode CPU 0.76× at x86_64 v3 (est. cycles); json-small decode CPU 0.83× at aarch64 native-counted (est. cycles) | ❌ grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence | ✅ no advisory at advisory-db e2111519 | ⏳ provisional pass: echo-post +8 % rps, +85 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun |
+| `flexon-ct` | ✅ json-small decode CPU 0.72× at x86_64 v3 (est. cycles); json-small decode CPU 0.78× at aarch64 native-counted (est. cycles) | ❌ grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence | ✅ no advisory at advisory-db e2111519 | ❌ no route ≥10 % better in throughput or p99 beyond the A/A band |
+| `flexon-ct-mut` | ✅ json-small decode CPU 0.75× at x86_64 v3 (est. cycles); json-small decode CPU 0.83× at aarch64 native-counted (est. cycles) | ❌ grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence | ✅ no advisory at advisory-db e2111519 | ⏳ provisional pass: json-large-post +52 % rps, +42 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun |
+| `jiter` | ✅ json-small decode CPU 0.90× at x86_64 v3 (est. cycles); echo-post decode CPU 0.65× at aarch64 native-counted (est. cycles) | ❌ status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence | ✅ no advisory at advisory-db e2111519 | ❌ no route ≥10 % better in throughput or p99 beyond the A/A band |
 | `hifijson` | ❌ not on the frontier with a ≥5 % CPU or heap win on any Kynos shape at x86-64-v3 or native | ❌ status shape/valid fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3) | ✅ no advisory at advisory-db e2111519 | ❌ no route ≥10 % better in throughput or p99 beyond the A/A band |
 | `struson` | ❌ not on the frontier with a ≥5 % CPU or heap win on any Kynos shape at x86-64-v3 or native | ❌ status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence | ✅ no advisory at advisory-db e2111519 | ❌ no route ≥10 % better in throughput or p99 beyond the A/A band |
 
@@ -262,14 +262,20 @@ serde_json is the absolute figure; every other column is a ratio to it (below 1 
 | json-small | x86_64 v3 (Ir) | 4040 | 1.01× | 0.83× | 1.30× | 0.88× | 0.73× | 0.76× | 0.72× | 0.75× | 0.90× | 1.17× | 3.65× |
 | json-small | x86_64 native (cycles) | 1633 | 0.65× | 0.71× | 0.83× | 0.86× | 0.68× | 0.72× | 0.65× | 0.44× | 0.62× | 0.71× | 2.55× |
 | json-small | x86_64 native (instructions) | 3802 | 1.01× | 0.82× | 1.27× | 0.85× | 0.71× | 0.72× | 0.71× | 0.72× | 0.89× | 1.19× | 3.68× |
+| json-small | aarch64 native-counted (est. cycles) | 4021 | 1.01× | 0.82× | 1.46× | 1.02× | 0.78× | 0.83× | 0.78× | 0.83× | 0.95× | 1.13× | 3.84× |
+| json-small | aarch64 native-counted (Ir) | 4021 | 1.01× | 0.82× | 1.46× | 1.02× | 0.78× | 0.83× | 0.78× | 0.83× | 0.95× | 1.13× | 3.84× |
 | echo-post | x86_64 v3 (est. cycles) | 4471 | 1.02× | 0.60× | 1.87× | 1.19× | 0.51× | 0.63× | 0.51× | 0.62× | 0.53× | 3.01× | 14.57× |
 | echo-post | x86_64 v3 (Ir) | 4471 | 1.02× | 0.60× | 1.87× | 1.19× | 0.51× | 0.63× | 0.51× | 0.62× | 0.53× | 3.01× | 14.57× |
 | echo-post | x86_64 native (cycles) | 1628 | 0.60× | 0.58× | 1.22× | 0.85× | 0.52× | 0.63× | 0.48× | 0.42× | 0.59× | 1.83× | 10.14× |
 | echo-post | x86_64 native (instructions) | 4368 | 1.01× | 0.58× | 1.74× | 1.05× | 0.46× | 0.54× | 0.45× | 0.53× | 0.48× | 3.06× | 14.76× |
+| echo-post | aarch64 native-counted (est. cycles) | 4105 | 1.00× | 0.89× | 2.53× | 1.76× | 0.88× | 1.02× | 0.88× | 1.02× | 0.65× | 3.24× | 15.29× |
+| echo-post | aarch64 native-counted (Ir) | 4105 | 1.00× | 0.89× | 2.53× | 1.76× | 0.88× | 1.02× | 0.88× | 1.02× | 0.65× | 3.24× | 15.28× |
 | json-large | x86_64 v3 (est. cycles) | 3.88 M | 1.01× | 0.81× | 0.83× | 0.82× | 0.77× | 0.77× | 0.75× | 0.76× | 0.92× | 1.12× | 2.94× |
 | json-large | x86_64 v3 (Ir) | 3.82 M | 1.01× | 0.80× | 0.81× | 0.79× | 0.76× | 0.76× | 0.74× | 0.75× | 0.92× | 1.12× | 2.97× |
 | json-large | x86_64 native (cycles) | 1.52 M | 0.67× | 0.56× | 0.60× | 0.71× | 0.71× | 0.61× | 0.68× | 0.40× | 0.68× | 0.73× | 2.27× |
 | json-large | x86_64 native (instructions) | 3.65 M | 1.01× | 0.79× | 0.77× | 0.77× | 0.75× | 0.73× | 0.73× | 0.72× | 0.91× | 1.14× | 2.95× |
+| json-large | aarch64 native-counted (est. cycles) | 3.82 M | 1.01× | 0.82× | 0.89× | 0.89× | 0.82× | 0.82× | 0.82× | 0.82× | 0.97× | 1.09× | 3.09× |
+| json-large | aarch64 native-counted (Ir) | 3.76 M | 1.01× | 0.82× | 0.87× | 0.87× | 0.81× | 0.81× | 0.81× | 0.81× | 0.97× | 1.09× | 3.12× |
 
 **Encode**
 
@@ -279,14 +285,20 @@ serde_json is the absolute figure; every other column is a ratio to it (below 1 
 | json-small | x86_64 v3 (Ir) | 1699 | 1.00× | 1.34× | 1.46× | 1.46× | 1.71× | 1.71× | 1.71× | 1.71× | 3.03× |
 | json-small | x86_64 native (cycles) | 793 | 0.72× | 0.86× | 0.81× | 0.79× | 1.64× | 1.51× | 1.65× | 1.02× | 2.71× |
 | json-small | x86_64 native (instructions) | 1685 | 1.00× | 1.32× | 1.47× | 1.47× | 1.84× | 1.84× | 1.84× | 1.84× | 3.10× |
+| json-small | aarch64 native-counted (est. cycles) | 1829 | 1.00× | 1.28× | 1.34× | 1.34× | 1.67× | 1.67× | 1.67× | 1.67× | 2.96× |
+| json-small | aarch64 native-counted (Ir) | 1828 | 1.00× | 1.28× | 1.34× | 1.34× | 1.67× | 1.67× | 1.67× | 1.67× | 2.96× |
 | echo-post | x86_64 v3 (est. cycles) | 10.6 k | 1.00× | 0.19× | 0.28× | 0.28× | 0.35× | 0.35× | 0.35× | 0.35× | 2.41× |
 | echo-post | x86_64 v3 (Ir) | 10.6 k | 1.00× | 0.19× | 0.28× | 0.28× | 0.35× | 0.35× | 0.35× | 0.35× | 2.41× |
 | echo-post | x86_64 native (cycles) | 3421 | 1.31× | 0.23× | 0.29× | 0.33× | 0.42× | 0.42× | 0.43× | 0.26× | 1.64× |
 | echo-post | x86_64 native (instructions) | 10.4 k | 1.00× | 0.22× | 0.24× | 0.24× | 0.33× | 0.33× | 0.33× | 0.33× | 2.43× |
+| echo-post | aarch64 native-counted (est. cycles) | 9713 | 1.00× | 0.26× | 0.39× | 0.39× | 0.52× | 0.52× | 0.52× | 0.52× | 2.65× |
+| echo-post | aarch64 native-counted (Ir) | 9712 | 1.00× | 0.26× | 0.39× | 0.39× | 0.52× | 0.52× | 0.52× | 0.52× | 2.65× |
 | json-large | x86_64 v3 (est. cycles) | 1.12 M | 1.00× | 0.96× | 1.34× | 1.34× | 0.97× | 0.97× | 0.97× | 0.97× | 2.39× |
 | json-large | x86_64 v3 (Ir) | 1.09 M | 1.00× | 0.96× | 1.35× | 1.35× | 0.97× | 0.97× | 0.97× | 0.97× | 2.42× |
 | json-large | x86_64 native (cycles) | 470.6 k | 0.60× | 0.82× | 0.86× | 0.85× | 0.95× | 0.90× | 0.97× | 0.61× | 2.12× |
 | json-large | x86_64 native (instructions) | 1.10 M | 1.00× | 0.92× | 1.34× | 1.34× | 0.96× | 0.96× | 0.96× | 0.96× | 2.35× |
+| json-large | aarch64 native-counted (est. cycles) | 1.16 M | 1.00× | 0.91× | 1.28× | 1.28× | 0.94× | 0.94× | 0.94× | 0.94× | 2.34× |
+| json-large | aarch64 native-counted (Ir) | 1.14 M | 1.00× | 0.91× | 1.29× | 1.29× | 0.94× | 0.94× | 0.94× | 0.94× | 2.37× |
 
 ### Size sweep: where SIMD starts to pay
 
@@ -295,26 +307,42 @@ serde_json is the absolute figure; every other column is a ratio to it (below 1 
 | Workload | Point | serde_json | `serde_json+float_roundtrip` | `sonic-rs` | `simd-json` | `simd-json-buffers` | `flexon-rt` | `flexon-rt-mut` | `flexon-ct` | `flexon-ct-mut` | `jiter` | `hifijson` | `struson` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | sweep-64b | x86_64 v3 (est. cycles) | 2879 | 1.01× | 0.82× | 1.42× | 0.93× | 0.73× | 0.77× | 0.75× | 0.78× | 0.91× | 1.15× | 4.07× |
+| sweep-64b | aarch64 native-counted (est. cycles) | 2827 | 1.01× | 0.80× | 1.60× | 1.06× | 0.76× | 0.83× | 0.76× | 0.83× | 0.96× | 1.11× | 4.38× |
 | sweep-256b | x86_64 v3 (est. cycles) | 7244 | 1.01× | 0.75× | 1.17× | 0.85× | 0.69× | 0.69× | 0.68× | 0.68× | 0.88× | 1.26× | 4.33× |
+| sweep-256b | aarch64 native-counted (est. cycles) | 7117 | 1.01× | 0.77× | 1.35× | 0.99× | 0.76× | 0.79× | 0.76× | 0.79× | 0.94× | 1.23× | 4.55× |
 | sweep-1kib | x86_64 v3 (est. cycles) | 43.5 k | 1.01× | 0.75× | 0.97× | 0.88× | 0.71× | 0.70× | 0.69× | 0.68× | 0.90× | 1.17× | 3.57× |
+| sweep-1kib | aarch64 native-counted (est. cycles) | 43.6 k | 1.01× | 0.78× | 1.09× | 1.00× | 0.78× | 0.78× | 0.78× | 0.78× | 0.96× | 1.13× | 3.71× |
 | sweep-4kib | x86_64 v3 (est. cycles) | 182.9 k | 1.00× | 0.77× | 0.96× | 0.93× | 0.72× | 0.87× | 0.70× | 0.86× | 0.90× | 1.16× | 3.41× |
+| sweep-4kib | aarch64 native-counted (est. cycles) | 182.8 k | 1.01× | 0.79× | 1.07× | 1.04× | 0.79× | 0.95× | 0.79× | 0.95× | 0.96× | 1.13× | 3.58× |
 | sweep-16kib | x86_64 v3 (est. cycles) | 891.5 k | 1.01× | 0.81× | 0.84× | 0.82× | 0.76× | 0.77× | 0.75× | 0.76× | 0.92× | 1.13× | 3.02× |
+| sweep-16kib | aarch64 native-counted (est. cycles) | 882.5 k | 1.01× | 0.82× | 0.90× | 0.89× | 0.82× | 0.82× | 0.82× | 0.82× | 0.96× | 1.10× | 3.16× |
 | sweep-64kib | x86_64 v3 (est. cycles) | 3.62 M | 1.01× | 0.81× | 0.83× | 0.82× | 0.77× | 0.77× | 0.75× | 0.76× | 0.92× | 1.13× | 3.00× |
+| sweep-64kib | aarch64 native-counted (est. cycles) | 3.56 M | 1.01× | 0.82× | 0.90× | 0.89× | 0.82× | 0.82× | 0.82× | 0.82× | 0.96× | 1.10× | 3.15× |
 | sweep-256kib | x86_64 v3 (est. cycles) | 14.58 M | 1.01× | 0.81× | 0.82× | 0.82× | 0.77× | 0.78× | 0.75× | 0.76× | 0.92× | 1.14× | 2.98× |
+| sweep-256kib | aarch64 native-counted (est. cycles) | 14.28 M | 1.01× | 0.82× | 0.89× | 0.89× | 0.82× | 0.82× | 0.82× | 0.82× | 0.96× | 1.10× | 3.14× |
 | sweep-1mib | x86_64 v3 (est. cycles) | 58.39 M | 1.01× | 0.81× | 0.89× | 0.88× | 0.77× | 0.76× | 0.75× | 0.74× | 0.92× | 1.14× | 2.98× |
+| sweep-1mib | aarch64 native-counted (est. cycles) | 57.19 M | 1.01× | 0.82× | 0.99× | 0.99× | 0.82× | 0.82× | 0.82× | 0.82× | 0.96× | 1.11× | 3.14× |
 
 **Encode**
 
 | Workload | Point | serde_json | `serde_json+float_roundtrip` | `sonic-rs` | `simd-json` | `simd-json-buffers` | `flexon-rt` | `flexon-rt-mut` | `flexon-ct` | `flexon-ct-mut` | `struson` |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | sweep-64b | x86_64 v3 (est. cycles) | 1201 | 1.00× | 1.04× | 1.09× | 1.09× | 1.75× | 1.75× | 1.75× | 1.75× | 3.30× |
+| sweep-64b | aarch64 native-counted (est. cycles) | 1317 | 1.00× | 1.00× | 1.06× | 1.06× | 1.72× | 1.72× | 1.72× | 1.72× | 3.20× |
 | sweep-256b | x86_64 v3 (est. cycles) | 4156 | 0.99× | 0.80× | 0.84× | 0.84× | 1.16× | 1.16× | 1.16× | 1.16× | 2.60× |
+| sweep-256b | aarch64 native-counted (est. cycles) | 4246 | 1.00× | 0.82× | 0.88× | 0.88× | 1.22× | 1.22× | 1.22× | 1.22× | 2.65× |
 | sweep-1kib | x86_64 v3 (est. cycles) | 17.6 k | 0.99× | 0.87× | 1.18× | 1.18× | 0.97× | 0.97× | 0.97× | 0.97× | 2.36× |
+| sweep-1kib | aarch64 native-counted (est. cycles) | 18.4 k | 1.00× | 0.85× | 1.14× | 1.14× | 0.97× | 0.97× | 0.97× | 0.97× | 2.33× |
 | sweep-4kib | x86_64 v3 (est. cycles) | 67.1 k | 1.00× | 0.89× | 1.23× | 1.23× | 0.93× | 0.93× | 0.93× | 0.93× | 2.36× |
+| sweep-4kib | aarch64 native-counted (est. cycles) | 70.5 k | 1.00× | 0.86× | 1.19× | 1.19× | 0.93× | 0.93× | 0.93× | 0.93× | 2.31× |
 | sweep-16kib | x86_64 v3 (est. cycles) | 280.2 k | 1.00× | 0.95× | 1.27× | 1.27× | 0.94× | 0.94× | 0.94× | 0.94× | 2.32× |
+| sweep-16kib | aarch64 native-counted (est. cycles) | 284.6 k | 1.00× | 0.89× | 1.23× | 1.23× | 0.92× | 0.92× | 0.92× | 0.92× | 2.31× |
 | sweep-64kib | x86_64 v3 (est. cycles) | 1.12 M | 1.00× | 0.93× | 1.26× | 1.26× | 0.94× | 0.94× | 0.94× | 0.94× | 2.34× |
+| sweep-64kib | aarch64 native-counted (est. cycles) | 1.12 M | 1.00× | 0.88× | 1.25× | 1.25× | 0.92× | 0.92× | 0.92× | 0.92× | 2.35× |
 | sweep-256kib | x86_64 v3 (est. cycles) | 4.47 M | 1.00× | 0.91× | 1.29× | 1.29× | 0.94× | 0.94× | 0.94× | 0.94× | 2.35× |
+| sweep-256kib | aarch64 native-counted (est. cycles) | 4.46 M | 1.00× | 0.89× | 1.26× | 1.26× | 0.92× | 0.92× | 0.92× | 0.92× | 2.37× |
 | sweep-1mib | x86_64 v3 (est. cycles) | 18.49 M | 1.00× | 0.90× | 1.28× | 1.28× | 0.95× | 0.95× | 0.95× | 0.95× | 2.31× |
+| sweep-1mib | aarch64 native-counted (est. cycles) | 17.95 M | 1.00× | 0.88× | 1.25× | 1.25× | 0.93× | 0.93× | 0.93× | 0.93× | 2.36× |
 
 ### One variable at a time, and real-world shapes
 
@@ -547,6 +575,53 @@ Disagreements per section, summed over every build variant and host; **bold** se
 
 ### End to end: a hyper server
 
+**Counted, aarch64 native-counted** — estimated cycles per request; codec share = (backend − floor) ÷ backend, where the floor serves the same routes with no JSON.
+
+| Route | Entry point | Cycles / request | vs serde_json | Codec share |
+| --- | --- | --- | --- | --- |
+| echo-post | `serde_json` | 61.5 k | 1.00× | 37 % |
+| echo-post | `serde_json+float_roundtrip` | 61.6 k | 1.00× | 37 % |
+| echo-post | `sonic-rs` | 53.7 k | 0.87× | 27 % |
+| echo-post | `simd-json` | 63.1 k | 1.02× | 38 % |
+| echo-post | `simd-json-buffers` | 58.7 k | 0.95× | 34 % |
+| echo-post | `flexon-rt` | 56.9 k | 0.93× | 32 % |
+| echo-post | `flexon-rt-mut` | 56.9 k | 0.93× | 32 % |
+| echo-post | `flexon-ct` | 56.8 k | 0.92× | 31 % |
+| echo-post | `flexon-ct-mut` | 56.9 k | 0.92× | 32 % |
+| echo-post | `struson` | 137.6 k | 2.24× | 72 % |
+| json-large-get | `serde_json` | 1.26 M | 1.00× | 92 % |
+| json-large-get | `serde_json+float_roundtrip` | 1.25 M | 0.99× | 92 % |
+| json-large-get | `sonic-rs` | 1.12 M | 0.89× | 91 % |
+| json-large-get | `simd-json` | 1.57 M | 1.25× | 94 % |
+| json-large-get | `simd-json-buffers` | 1.57 M | 1.25× | 94 % |
+| json-large-get | `flexon-rt` | 1.19 M | 0.95× | 92 % |
+| json-large-get | `flexon-rt-mut` | 1.19 M | 0.95× | 92 % |
+| json-large-get | `flexon-ct` | 1.19 M | 0.95× | 92 % |
+| json-large-get | `flexon-ct-mut` | 1.19 M | 0.95× | 92 % |
+| json-large-get | `struson` | 2.81 M | 2.23× | 97 % |
+| json-large-post | `serde_json` | 3.87 M | 1.00× | 97 % |
+| json-large-post | `serde_json+float_roundtrip` | 3.90 M | 1.01× | 97 % |
+| json-large-post | `sonic-rs` | 3.19 M | 0.82× | 97 % |
+| json-large-post | `simd-json` | 3.44 M | 0.89× | 97 % |
+| json-large-post | `simd-json-buffers` | 3.42 M | 0.88× | 97 % |
+| json-large-post | `flexon-rt` | 3.15 M | 0.81× | 97 % |
+| json-large-post | `flexon-rt-mut` | 3.13 M | 0.81× | 97 % |
+| json-large-post | `flexon-ct` | 3.15 M | 0.81× | 97 % |
+| json-large-post | `flexon-ct-mut` | 3.13 M | 0.81× | 97 % |
+| json-large-post | `jiter` | 3.74 M | 0.96× | 97 % |
+| json-large-post | `hifijson` | 4.22 M | 1.09× | 98 % |
+| json-large-post | `struson` | 11.67 M | 3.01× | 99 % |
+| json-small-get | `serde_json` | 34.7 k | 1.00× | 15 % |
+| json-small-get | `serde_json+float_roundtrip` | 34.2 k | 0.99× | 13 % |
+| json-small-get | `sonic-rs` | 36.9 k | 1.07× | 20 % |
+| json-small-get | `simd-json` | 35.4 k | 1.02× | 16 % |
+| json-small-get | `simd-json-buffers` | 35.5 k | 1.02× | 16 % |
+| json-small-get | `flexon-rt` | 37.0 k | 1.07× | 20 % |
+| json-small-get | `flexon-rt-mut` | 37.0 k | 1.07× | 20 % |
+| json-small-get | `flexon-ct` | 37.0 k | 1.07× | 20 % |
+| json-small-get | `flexon-ct-mut` | 37.0 k | 1.07× | 20 % |
+| json-small-get | `struson` | 40.0 k | 1.15× | 26 % |
+
 **Counted, x86_64 v3** — estimated cycles per request; codec share = (backend − floor) ÷ backend, where the floor serves the same routes with no JSON.
 
 | Route | Entry point | Cycles / request | vs serde_json | Codec share |
@@ -684,6 +759,7 @@ Median ns per operation at `native`, median of rounds; ratios to serde_json. The
 
 | Source | Host / arch | Commit | Recorded | Notes |
 | --- | --- | --- | --- | --- |
+| callgrind | aarch64 | `684ecf81` | 2026-10-03T04:32:35Z | valgrind-3.24.0; cpu unknown |
 | callgrind | x86_64 | `907befb4` | 2026-10-02T23:56:14Z | valgrind-3.24.0; cpu AMD Ryzen 7 7800X3D 8-Core Processor |
 | host | x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor | `907befb4` | 2026-10-02T23:52:02Z | kernel 7.2.4-200.fc44.x86_64, governor powersave, boost 1; doctor: every build runs its claimed SIMD path |
 

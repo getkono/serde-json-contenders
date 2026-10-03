@@ -1,5 +1,6 @@
 //! Fuzzing and Miri: correctness runs that need a nightly toolchain.
 
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::SystemTime;
@@ -232,7 +233,7 @@ impl Findings {
             lines[..end.min(60)].join("\n")
         });
         let mut relayed: Vec<String> = Vec::new();
-        let mut omitted = 0usize;
+        let mut omitted: BTreeSet<String> = BTreeSet::new();
         for line in stderr.lines().filter(|l| is_sanitizer_error(l)).map(normalise) {
             if relayed.contains(&line) {
                 continue;
@@ -240,11 +241,11 @@ impl Findings {
             if relayed.len() < RELAYED_LINES {
                 relayed.push(line);
             } else {
-                omitted += 1;
+                omitted.insert(line);
             }
         }
-        if omitted > 0 {
-            relayed.push(format!("... and {omitted} more distinct sanitizer lines"));
+        if !omitted.is_empty() {
+            relayed.push(format!("... and {} more distinct sanitizer lines", omitted.len()));
         }
         let sanitizer_report = block.or_else(|| (!relayed.is_empty()).then(|| relayed.join("\n")));
         let panicked = replay.contains("panicked at")
@@ -417,6 +418,18 @@ mod tests {
         let report = Findings::read(&stderr, "", 20).sanitizer_report.unwrap_or_default();
         assert_eq!(report.lines().count(), super::RELAYED_LINES + 1);
         assert!(report.ends_with("... and 12 more distinct sanitizer lines"));
+    }
+
+    #[test]
+    fn a_line_past_the_cap_from_many_workers_counts_once() {
+        let stderr = (0..super::RELAYED_LINES)
+            .map(|i| format!("=={i}==ERROR: AddressSanitizer: kind-{i} on address 0x{i}"))
+            .chain((100..105).map(|pid| format!("=={pid}==ERROR: AddressSanitizer: kind-late on address 0x{pid}")))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let report = Findings::read(&stderr, "", 13).sanitizer_report.unwrap_or_default();
+        assert_eq!(report.lines().count(), super::RELAYED_LINES + 1);
+        assert!(report.ends_with("... and 1 more distinct sanitizer lines"));
     }
 
     #[test]

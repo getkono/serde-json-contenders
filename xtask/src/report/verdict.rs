@@ -1024,7 +1024,7 @@ pub fn judge(data: &Data) -> Vec<Verdict> {
         .map(|e| {
             let rules = [rule1(data, e, &pool), rule2(data, e), rule3(data, e), rule4(data, e)];
             let recommended = if !e.eligible {
-                Outcome::Fail("reference point: no borrowed slice decode plus `to_vec`-style encoder".into())
+                Outcome::Fail("reference point: does not borrow strings from the body".into())
             } else if let Some(f) = rules.iter().find(|r| matches!(r, Outcome::Fail(_))) {
                 f.clone()
             } else if let Some(p) = rules.iter().find(|r| matches!(r, Outcome::Pending(_))) {

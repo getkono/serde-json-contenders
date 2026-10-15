@@ -155,12 +155,12 @@ impl Loopback {
 
     /// Send `route`'s request with `body` and check the status is
     /// [`Route::status`]; the response body is collected and dropped.
-    pub async fn exchange(&mut self, route: Route, body: &Bytes) -> Result<(), String> {
+    pub async fn exchange(&mut self, route: Route, body: &Bytes) -> Result<Result<(), String>, String> {
         let (status, _) = self
             .send(request(route, body))
             .await
             .map_err(|error| error.to_string())?;
-        if status == route.status() {
+        Ok(if status == route.status() {
             Ok(())
         } else {
             Err(format!(
@@ -168,7 +168,7 @@ impl Loopback {
                 route.name(),
                 route.status()
             ))
-        }
+        })
     }
 }
 

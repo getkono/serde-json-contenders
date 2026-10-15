@@ -620,6 +620,23 @@ fn wrong_results(data: &Data, backend: &str) -> Vec<String> {
     wrong
 }
 
+/// Rule 2 for serde_json's own entries. serde_json is what the suite
+/// compares against, so it has no disagreements of its own; Miri still runs
+/// on it, and the reference passes only once it has. Built with
+/// `float_roundtrip` it is not the reference, and neither the suite nor the
+/// fuzzer runs it as a backend: its conformance is unmeasured.
+fn reference_rule2(e: &Entry, failures: &[String], miri: Option<&Value>) -> Outcome {
+    if !failures.is_empty() {
+        Outcome::Fail(failures.join("; "))
+    } else if e.backend != "serde_json" {
+        Outcome::Pending("not run through conformance or fuzzing as a backend of its own".into())
+    } else if matches!(miri.and_then(|m| m["outcome"].as_str()), None | Some("error")) {
+        Outcome::Pending("the reference; Miri did not run".into())
+    } else {
+        Outcome::Pass("reference".into())
+    }
+}
+
 fn rule2(data: &Data, e: &Entry) -> Outcome {
     let mut runs = 0;
     // The same first failure recurs at every variant and build of a backend,
@@ -675,27 +692,8 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
     divergences.dedup();
     let miri = data.miri.iter().find(|r| r["set"] == set);
     failures.extend(miri.and_then(miri_failure));
-    // serde_json built with `float_roundtrip` is not the suite's reference,
-    // and neither the suite nor the fuzzer runs it as a backend: its
-    // conformance is unmeasured.
-    if e.backend != "serde_json" && e.backend.starts_with("serde_json") {
-        return if failures.is_empty() {
-            Outcome::Pending("not run through conformance or fuzzing as a backend of its own".into())
-        } else {
-            Outcome::Fail(failures.join("; "))
-        };
-    }
-    // serde_json is what the suite compares against, so it has no
-    // disagreements of its own; Miri still runs on it, and the reference
-    // passes only once it has.
-    if e.backend == "serde_json" {
-        return if !failures.is_empty() {
-            Outcome::Fail(failures.join("; "))
-        } else if matches!(miri.and_then(|m| m["outcome"].as_str()), None | Some("error")) {
-            Outcome::Pending("the reference; Miri did not run".into())
-        } else {
-            Outcome::Pass("reference".into())
-        };
+    if e.backend.starts_with("serde_json") {
+        return reference_rule2(e, &failures, miri);
     }
     // Conformance cases and Miri are always stated in full; fuzz divergences
     // fill what room is left of three entries and the rest are counted.
@@ -1383,6 +1381,9 @@ pub(super) mod tests {
             .find(|e| e.backend == "serde_json+float_roundtrip")
             .unwrap();
         data.miri.push(json!({ "set": e.set, "outcome": "pass" }));
+        if ENTRIES[0].set != e.set {
+            data.miri.push(json!({ "set": ENTRIES[0].set, "outcome": "pass" }));
+        }
         assert!(
             matches!(super::rule2(&data, e), Outcome::Pending(_)),
             "{:?}",

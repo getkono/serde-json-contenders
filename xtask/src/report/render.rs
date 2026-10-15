@@ -314,7 +314,7 @@ fn verdict_table(out: &mut String, verdicts: &[Verdict]) {
                 if v.exists.2 { " (provisional)" } else { "" },
                 v.exists.1
             ),
-            v.recommended.detail().to_owned(),
+            verdict::reason(v).to_owned(),
         ]));
     }
     out.push('\n');

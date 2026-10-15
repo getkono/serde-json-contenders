@@ -602,11 +602,37 @@ fn miri_failure(r: &Value) -> Option<String> {
 /// Each measured cell of `backend` whose result the cell's own check found
 /// wrong: a conformance failure on the benchmark's own inputs.
 fn wrong_results(data: &Data, backend: &str) -> Vec<String> {
-    let mut wrong: Vec<String> = [&data.callgrind, &data.host.alloc, &data.host.hw, &data.host.time]
+    let tables = [&data.callgrind, &data.host.alloc, &data.host.hw, &data.host.time];
+    // A refusal of a body serde_json decodes is a wrong answer to a server's
+    // client too. Depth is the exception: how deep a parser goes is
+    // implementation-defined, and reported in its own section.
+    let refused = |t: &super::data::Table, k: &Key, r: &Value| {
+        r["verdict"] == "rejected"
+            && !k.workload.starts_with("nested-")
+            && t.row(&Key {
+                backend: "serde_json".into(),
+                ..k.clone()
+            })
+            .is_some_and(|sj| matches!(sj["verdict"].as_str(), Some("exact" | "inexact")))
+    };
+    let mut wrong: Vec<String> = tables
         .iter()
-        .flat_map(|t| t.rows.iter())
-        .filter(|(k, r)| k.backend == backend && r["verdict"] == "wrong")
-        .map(|(k, _)| format!("wrong result on {} {} {} {}", k.workload, k.op, k.form, k.arrival))
+        .flat_map(|t| t.rows.iter().map(move |(k, r)| (*t, k, r)))
+        .filter(|(t, k, r)| k.backend == backend && (r["verdict"] == "wrong" || refused(t, k, r)))
+        .map(|(_, k, r)| {
+            format!(
+                "{} on {} {} {} {}",
+                if r["verdict"] == "wrong" {
+                    "wrong result"
+                } else {
+                    "refuses what serde_json decodes"
+                },
+                k.workload,
+                k.op,
+                k.form,
+                k.arrival
+            )
+        })
         .chain(
             data.e2e_count
                 .iter()
@@ -1069,6 +1095,16 @@ pub fn judge(data: &Data) -> Vec<Verdict> {
         .collect()
 }
 
+/// Why an entry is or is not recommended. The baseline is weighed against
+/// itself, so its reason is that, unless one of its rules failed.
+pub fn reason(v: &Verdict) -> &str {
+    if v.entry.backend == "serde_json" && !matches!(v.recommended, Outcome::Fail(_)) {
+        "the baseline every entry is weighed against"
+    } else {
+        v.recommended.detail()
+    }
+}
+
 /// Machine-readable verdicts.
 pub fn to_json(verdicts: &[Verdict]) -> Value {
     json!({
@@ -1079,7 +1115,7 @@ pub fn to_json(verdicts: &[Verdict]) -> Value {
             "backend": v.entry.backend,
             "crate": v.entry.krate,
             "recommended": if v.entry.backend == "serde_json" { "baseline" } else { v.recommended.word() },
-            "reason": if v.entry.backend == "serde_json" { "the baseline every entry is weighed against" } else { v.recommended.detail() },
+            "reason": reason(v),
             "rules": v.rules.iter().map(|r| json!({ "outcome": r.word(), "detail": r.detail() })).collect::<Vec<_>>(),
             "deserves_to_exist": v.exists.0,
             "exists_provisional": v.exists.2,
@@ -1422,6 +1458,25 @@ pub(super) mod tests {
                 .any(|g| g.contains("conformance/native/jiter.json: the suite did not finish")),
             "{:?}",
             crate::report::data::incomplete(&data)
+        );
+    }
+
+    /// Refusing a body serde_json decodes fails rule 2; refusing one deeper
+    /// than a parser's own limit does not.
+    #[test]
+    fn refusing_what_serde_json_decodes_fails_rule2() {
+        let mut data = Data::default();
+        for (w, verdict) in [("ints", "rejected"), ("nested-127", "rejected")] {
+            data.callgrind
+                .rows
+                .insert(Key::new("v3", "serde_json", w, "decode"), json!({ "verdict": "exact" }));
+            data.callgrind
+                .rows
+                .insert(Key::new("v3", "jiter", w, "decode"), json!({ "verdict": verdict }));
+        }
+        assert_eq!(
+            super::wrong_results(&data, "jiter"),
+            ["refuses what serde_json decodes on ints decode owned shared"]
         );
     }
 

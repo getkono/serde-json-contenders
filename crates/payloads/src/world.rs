@@ -523,6 +523,37 @@ pub struct Canada {
     pub features: Vec<Feature>,
 }
 
+/// [`Geometry`], borrowing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[allow(missing_docs)]
+pub struct GeometryRef<'a> {
+    #[serde(rename = "type", borrow)]
+    pub kind: Cow<'a, str>,
+    pub coordinates: Vec<Vec<(f64, f64)>>,
+}
+
+/// [`Feature`], borrowing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[allow(missing_docs)]
+pub struct FeatureRef<'a> {
+    #[serde(rename = "type", borrow)]
+    pub kind: Cow<'a, str>,
+    #[serde(borrow)]
+    pub properties: BTreeMap<Cow<'a, str>, Cow<'a, str>>,
+    #[serde(borrow)]
+    pub geometry: GeometryRef<'a>,
+}
+
+/// [`Canada`], borrowing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[allow(missing_docs)]
+pub struct CanadaRef<'a> {
+    #[serde(rename = "type", borrow)]
+    pub kind: Cow<'a, str>,
+    #[serde(borrow)]
+    pub features: Vec<FeatureRef<'a>>,
+}
+
 /// `canada-like`: ~2.1 MiB, a polygon of ~56 000 coordinate pairs with full
 /// precision floats.
 #[derive(Debug)]
@@ -532,7 +563,7 @@ impl Workload for CanadaLike {
     const NAME: &'static str = "canada-like";
     const GROUP: Group = Group::World;
     type Owned = Canada;
-    type Borrowed<'de> = Canada;
+    type Borrowed<'de> = CanadaRef<'de>;
 
     fn value() -> Canada {
         let mut rng = Rng::new(0xca7ada);

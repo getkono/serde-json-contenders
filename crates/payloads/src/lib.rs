@@ -6,9 +6,12 @@
 //! dependency bump cannot move an input. `tests` pins every corpus by SHA-256.
 //!
 //! Each workload has an owned form (`String` fields) and a borrowed form
-//! (`#[serde(borrow)] Cow<'de, str>`). The borrowed form borrows wherever the
-//! backend can hand out a slice of the input and allocates otherwise, so the
-//! difference between the two forms *is* each backend's ability to borrow.
+//! (`#[serde(borrow)] Cow<'de, str>` wherever the owned form holds a string).
+//! The borrowed form borrows wherever the backend can hand out a slice of the
+//! input and allocates otherwise, so the difference between the two forms *is*
+//! each backend's ability to borrow. Workloads with no strings (`ints`,
+//! `floats`, `nested-*`, `array-small`) use one type for both forms: there
+//! is nothing to borrow, and the two forms measure the same decode.
 
 pub mod families;
 pub mod kynos;

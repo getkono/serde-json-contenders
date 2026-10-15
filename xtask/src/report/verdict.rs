@@ -475,6 +475,24 @@ pub fn weakest<'a>(mut rows: impl Iterator<Item = &'a Value>) -> &'static str {
     }
 }
 
+/// What a Miri row that found undefined behaviour reports, shortened:
+/// "error: Undefined Behavior: <what>: <where>" -> "<what>".
+fn miri_failure(r: &Value) -> Option<String> {
+    if r["outcome"] != "undefined-behavior" {
+        return None;
+    }
+    let what = r["detail"]
+        .as_str()
+        .and_then(|d| d.split("Undefined Behavior: ").nth(1))
+        .and_then(|d| d.split(':').next())
+        .map(str::trim)
+        .filter(|w| !w.is_empty());
+    Some(what.map_or_else(
+        || "Miri reports undefined behavior".to_owned(),
+        |w| format!("Miri reports undefined behavior ({w})"),
+    ))
+}
+
 fn rule2(data: &Data, e: &Entry) -> Outcome {
     let mut runs = 0;
     // The same first failure recurs at every variant and build of a backend,
@@ -508,7 +526,12 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
         .map(|(case, n)| format!("{case} fails {n} of {runs} conformance runs"))
         .collect();
     let set = e.set;
-    let fuzz: Vec<&Value> = data.fuzz.iter().filter(|r| r["set"] == set).collect();
+    // Each backend is fuzzed on its own; its rows are its evidence alone.
+    let fuzz: Vec<&Value> = data
+        .fuzz
+        .iter()
+        .filter(|r| r["set"] == set && r["backend"] == e.backend)
+        .collect();
     let mut divergences: Vec<String> = fuzz
         .iter()
         .filter(|r| r["divergence_found"] == true)
@@ -523,19 +546,7 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
     divergences.sort();
     divergences.dedup();
     let miri = data.miri.iter().find(|r| r["set"] == set);
-    if let Some(r) = miri.filter(|r| r["outcome"] == "undefined-behavior") {
-        // "error: Undefined Behavior: <what>: <where>" -> "<what>".
-        let what = r["detail"]
-            .as_str()
-            .and_then(|d| d.split("Undefined Behavior: ").nth(1))
-            .and_then(|d| d.split(':').next())
-            .map(str::trim)
-            .filter(|w| !w.is_empty());
-        failures.push(what.map_or_else(
-            || "Miri reports undefined behavior".to_owned(),
-            |w| format!("Miri reports undefined behavior ({w})"),
-        ));
-    }
+    failures.extend(miri.and_then(miri_failure));
     // serde_json is what the suite compares against, so it has no
     // disagreements of its own; Miri still runs on it.
     if e.backend.starts_with("serde_json") {
@@ -590,7 +601,7 @@ fn rule3(data: &Data, e: &Entry) -> Outcome {
     let mut problems: Vec<String> = data
         .fuzz
         .iter()
-        .filter(|r| r["set"] == e.set && r["sanitizer_report"].is_string())
+        .filter(|r| r["set"] == e.set && r["backend"] == e.backend && r["sanitizer_report"].is_string())
         .map(|r| {
             format!(
                 "sanitizer report fuzzing {} ({})",
@@ -887,7 +898,7 @@ pub(super) mod tests {
     #[test]
     fn a_sanitizer_report_fails_rule3_even_without_a_footprint() {
         let e = sonic();
-        let row = json!({ "set": e.set, "config": "portable", "target": "decode_value",
+        let row = json!({ "set": e.set, "backend": e.backend, "config": "portable", "target": "decode_value",
             "divergence_found": false, "sanitizer_report": "==1==ERROR: AddressSanitizer: SEGV" });
         for footprint in [false, true] {
             assert_eq!(
@@ -1017,7 +1028,7 @@ pub(super) mod tests {
     #[test]
     fn a_divergence_fails_rule2_not_rule3() {
         let e = sonic();
-        let row = json!({ "set": e.set, "config": "v3", "target": "roundtrip",
+        let row = json!({ "set": e.set, "backend": e.backend, "config": "v3", "target": "roundtrip",
             "divergence_found": true, "sanitizer_report": null });
         let data = with_fuzz(vec![row], true);
         assert!(matches!(rule3(&data, e), Outcome::Pass(_)));
@@ -1055,7 +1066,7 @@ pub(super) mod tests {
         let failing = json!({ "backends": { e.backend: { "gate": "fail",
             "gating_failures": [{ "section": "status", "case": "shape/x" }] } } });
         let diverged = |target: &str, config: &str| {
-            json!({ "set": e.set, "config": config, "target": target,
+            json!({ "set": e.set, "backend": e.backend, "config": config, "target": target,
                 "divergence_found": true, "sanitizer_report": null })
         };
         let mut data = Data {

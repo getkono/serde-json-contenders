@@ -475,23 +475,18 @@ fn per_set(data: &Data) -> Vec<String> {
 /// Fuzz runs that are missing or did not finish, and Miri runs that failed
 /// to run at all.
 fn fuzz_and_miri(data: &Data) -> Vec<String> {
-    use crate::fuzzing::{FUZZ_TARGETS, configs};
     use crate::matrix::SETS;
     let mut gaps = Vec::new();
     let lacking: Vec<String> = SETS
         .iter()
-        .flat_map(|s| {
-            configs(s.name)
-                .iter()
-                .flat_map(move |(c, _)| FUZZ_TARGETS.iter().map(move |t| (s.name, *c, *t)))
-        })
-        .filter(|(set, c, t)| {
+        .flat_map(crate::fuzzing::runs)
+        .filter(|(set, backend, c, _, t)| {
             !data
                 .fuzz
                 .iter()
-                .any(|r| r["set"] == *set && r["config"] == *c && r["target"] == *t)
+                .any(|r| r["set"] == set.name && r["backend"] == *backend && r["config"] == *c && r["target"] == *t)
         })
-        .map(|(set, c, t)| format!("{set} {c} {t}"))
+        .map(|(_, backend, c, _, t)| format!("{backend} {c} {t}"))
         .collect();
     if !lacking.is_empty() && !data.fuzz.is_empty() {
         gaps.push(format!("fuzz.json: no run for {}", lacking.join(", ")));

@@ -161,7 +161,10 @@ fn figure(
                     },
                 ],
                 conforms: conforming.iter().any(|c| c.backend == e.backend),
-                ring: pool.iter().any(|c| c.backend == e.backend)
+                // What the verdict reads: every entry is judged against the
+                // pool, in it or not, and only where its cycles can be
+                // weighed.
+                ring: verdict::unweighable(data, e, workload, pool).is_empty()
                     && verdict::on_frontier(data, X86_NATIVE, e, workload, pool),
             })
         })
@@ -169,20 +172,15 @@ fn figure(
     if pts.len() < 2 {
         return None;
     }
-    // An entry timed here without a count at v3 can be neither dominated nor
-    // dominate, so the frontier is undecided until it is counted: none is
-    // drawn, and no entry ringed.
+    // An entry plotted here without a count at v3 can be neither dominated
+    // nor dominate, so the two-axis frontier is undecided until it is
+    // counted, and none is drawn. The rings are the verdict's own, decided
+    // by its own test above.
     let uncounted: Vec<String> = pts
         .iter()
         .filter(|p| matches!(p.axes[0].count, verdict::Count::Missing))
         .map(|p| format!("`{}`", p.name))
         .collect();
-    let mut pts = pts;
-    if !uncounted.is_empty() {
-        for p in &mut pts {
-            p.ring = false;
-        }
-    }
     let front = if uncounted.is_empty() {
         frontier(&pts)
     } else {

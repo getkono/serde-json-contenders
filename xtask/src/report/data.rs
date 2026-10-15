@@ -141,11 +141,25 @@ impl Loader {
         }
     }
 
+    /// The rows of a per-set or per-route file. Two rows with one identity
+    /// would leave one of them unread (lookups take the first), so that is
+    /// an error.
     fn rows(&mut self, name: &str) -> Result<Vec<Value>> {
-        Ok(self
+        let rows = self
             .doc(name)?
             .and_then(|d| d["rows"].as_array().cloned())
-            .unwrap_or_default())
+            .unwrap_or_default();
+        let mut seen = std::collections::BTreeSet::new();
+        for r in &rows {
+            let id: Vec<String> = ["variant", "set", "backend", "route", "config", "target"]
+                .iter()
+                .map(|k| r[*k].to_string())
+                .collect();
+            if !seen.insert(id.clone()) {
+                bail!("results/{name}: two rows for {}", id.join(" "));
+            }
+        }
+        Ok(rows)
     }
 }
 

@@ -121,7 +121,7 @@ Encoding is measured two ways: `to_vec` into a new `Vec`, and `to_writer` into a
 
 ### Conformance
 
-The differential suite is `crates/conformance`. It compares every backend with serde_json in the same build (so `serde_json+float_roundtrip`, which is serde_json, passes rule 2 as the reference; Miri still runs on it), and runs at every variant, because SIMD paths differ between variants. It also runs once with serde_json's `arbitrary_precision` unified in.
+The differential suite is `crates/conformance`. It compares every backend with serde_json in the same build (serde_json itself passes rule 2 as the reference once Miri has run on it; `serde_json+float_roundtrip` is not run as a backend of its own by the suite or the fuzzer, so its rule 2 stays pending and it cannot be recommended), and runs at every variant, because SIMD paths differ between variants. It also runs once with serde_json's `arbitrary_precision` unified in.
 
 | Section | What | Gates? |
 | --- | --- | --- |
@@ -210,7 +210,7 @@ The results stand only after these checks:
    - An adapter that copies its input once more shows exactly one more allocation, of the input's size, and that much more peak. Under callgrind it costs the copy's instructions (`crates/cell/src/sensitivity.rs`). The callgrind half needs valgrind, so it runs in the container rather than in `mise run test`: `mise run sensitivity`, which `mise run all` runs before measuring.
    - An adapter that does less work than it should, the kind of variant an optimizer could delete, is refused by the result check in every mode and never measured.
    - A cycles "win" inside the A/A band, or one whose count is not lower, is not a win (`xtask/src/report/verdict.rs` tests).
-5. **The commentary matches the report.** Every number quoted under [Findings](#findings) links to the report row it comes from, and `cargo xtask report --check` fails if that row does not hold it, or if a figure in Findings has no link. A figure is any word that begins with a digit (or a sign or `~` before one) or joins one to a name (`p99=12`); rule numbers, list numbers, versions, dates and `#123` are not. A figure spelled out in words is beyond the check.
+5. **The commentary matches the report.** Every number quoted under [Findings](#findings) links to the report row it comes from, and `cargo xtask report --check` fails if that row does not hold it, or if a figure in Findings has no link. A figure is any word that begins with a digit (or a sign or `~` before one) or joins one to a name by anything but a hyphen, underscore, point or `#` (`p99=12`, `cycles(1633)`); rule numbers, list numbers, versions, dates and `#123` are not. A figure spelled out in words is beyond the check.
 6. **Nothing is left out.** Every requirement above maps to a task, a result file and a report table, or to a deviation listed here. Every row of every measured result file is exported to `report/data/`, and so is every figure, note and gating failure in the conformance reports.
 
 Deviations:

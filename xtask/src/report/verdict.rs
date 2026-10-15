@@ -675,10 +675,20 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
     divergences.dedup();
     let miri = data.miri.iter().find(|r| r["set"] == set);
     failures.extend(miri.and_then(miri_failure));
+    // serde_json built with `float_roundtrip` is not the suite's reference,
+    // and neither the suite nor the fuzzer runs it as a backend: its
+    // conformance is unmeasured.
+    if e.backend != "serde_json" && e.backend.starts_with("serde_json") {
+        return if failures.is_empty() {
+            Outcome::Pending("not run through conformance or fuzzing as a backend of its own".into())
+        } else {
+            Outcome::Fail(failures.join("; "))
+        };
+    }
     // serde_json is what the suite compares against, so it has no
     // disagreements of its own; Miri still runs on it, and the reference
     // passes only once it has.
-    if e.backend.starts_with("serde_json") {
+    if e.backend == "serde_json" {
         return if !failures.is_empty() {
             Outcome::Fail(failures.join("; "))
         } else if matches!(miri.and_then(|m| m["outcome"].as_str()), None | Some("error")) {
@@ -1358,8 +1368,27 @@ pub(super) mod tests {
         assert!(matches!(super::rule2(&data, reference), Outcome::Pending(_)));
         data.miri.push(json!({ "set": reference.set, "outcome": "error" }));
         assert!(matches!(super::rule2(&data, reference), Outcome::Pending(_)));
-        data.miri[0]["outcome"] = json!("clean");
+        data.miri[0]["outcome"] = json!("pass");
         assert!(matches!(super::rule2(&data, reference), Outcome::Pass(_)));
+    }
+
+    /// serde_json with `float_roundtrip` is not the suite's reference and is
+    /// not run as a backend: its conformance is unmeasured, so it cannot be
+    /// recommended on the reference's evidence.
+    #[test]
+    fn float_roundtrip_is_not_the_reference() {
+        let mut data = Data::default();
+        let e = ENTRIES
+            .iter()
+            .find(|e| e.backend == "serde_json+float_roundtrip")
+            .unwrap();
+        data.miri.push(json!({ "set": e.set, "outcome": "pass" }));
+        assert!(
+            matches!(super::rule2(&data, e), Outcome::Pending(_)),
+            "{:?}",
+            super::rule2(&data, e)
+        );
+        assert!(matches!(super::rule2(&data, &ENTRIES[0]), Outcome::Pass(_)));
     }
 
     #[test]

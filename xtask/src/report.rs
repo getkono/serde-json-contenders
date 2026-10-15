@@ -184,7 +184,7 @@ fn check_claims(readme: &str, report: &str) -> Vec<String> {
             continue;
         };
         let quoted = link.text;
-        let figure = quoted.chars().any(|c| c.is_ascii_digit());
+        let figure = quoted.chars().any(char::is_numeric);
         let Some(anchor) = rest.strip_prefix('#') else {
             if figure {
                 failures.push(format!("[{quoted}]: a quoted figure must link to its section's anchor"));
@@ -348,7 +348,9 @@ fn is_name_number(token: &str) -> bool {
 /// is not, but a number (`16`, `~0.8`) is. In prose, any word holding a
 /// digit that does not begin as a name does (with a letter), as a footnote
 /// marker (`^1`) or as an issue (`#123`) is. Anywhere, a figure joined to a
-/// name (`p99=12`, `cycles:1633`, `p99<12`) is one. A name with a digit
+/// name by anything but a hyphen, underscore, point or `#` (`p99=12`,
+/// `cycles(1633)`, `json-small@0.84×`) is one; `x86-64` and `nested-129`
+/// are names. A name with a digit
 /// in it that does not begin with a letter (`7800X3D`, `99th`) reads as a
 /// figure too: Findings refers to such things in words, or links them.
 fn is_figure(token: &str, code: bool) -> bool {
@@ -356,7 +358,7 @@ fn is_figure(token: &str, code: bool) -> bool {
         return false;
     }
     if token
-        .split(['=', ':', '≈', '<', '>', '≤', '≥', '~'])
+        .split(|c: char| !c.is_alphanumeric() && !matches!(c, '-' | '_' | '.' | '#' | '^' | '\'' | '’'))
         .skip(1)
         .any(|rest| {
             rest.trim_start_matches(['~', '+', '-', '−'])
@@ -601,6 +603,9 @@ mod tests {
             "Across 12 workloads it never loses.",
             "p99<12 ms",
             "RFC 8259",
+            "sonic-rs(0.84×)",
+            "json-small@0.84×",
+            "speedup×1.19",
         ] {
             let text = format!("## Findings\n\n[sic] it is {bad} faster.\n");
             assert!(!bare_figures(&text).is_empty(), "{bad} passed");

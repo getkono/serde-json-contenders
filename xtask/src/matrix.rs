@@ -204,11 +204,14 @@ pub const TIMED_SHAPES: &[Shape] = &[SHAPES[0], SHAPES[4]];
 pub const KYNOS: &[&str] = &["json-small", "echo-post", "json-large"];
 
 /// Workloads only decoded: those whose value is another workload's, written
-/// differently (their encode is that workload's encode, byte for byte), and
-/// those whose bytes must be refused (nothing to encode).
+/// differently (their encode is that workload's encode, byte for byte),
+/// `skip-unknown` (what it measures is skipping; its encode would be of a
+/// smaller document than its bytes), and those whose bytes must be refused
+/// (nothing to encode).
 pub const DECODE_ONLY: &[&str] = &[
     "pretty-json-large",
     "pretty-twitter-like",
+    "skip-unknown",
     "raw-utf8",
     "reject-truncated",
     "reject-shape",

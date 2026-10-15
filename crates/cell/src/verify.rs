@@ -164,7 +164,19 @@ pub fn judge_encoding<W: Workload>(got: &[u8], canonical: &[u8]) -> Verdict {
     }
     match serde_json::from_slice::<W::Owned>(got) {
         Ok(typed) => match (serde_json::to_value(&typed), serde_json::to_value(W::value())) {
-            (Ok(got), Ok(expected)) => compare(&got, &expected),
+            // The typed reading is what lets an f32 written as its widened
+            // f64 be exact. But this serde_json is built without
+            // `float_roundtrip`, so its f64s can be an ulp or two off the
+            // text; the structural reading parses with the standard library,
+            // which rounds correctly. The output is as good as either says.
+            (Ok(typed), Ok(expected)) => match compare(&typed, &expected) {
+                Verdict::Exact => Verdict::Exact,
+                typed => match compare_json(got, canonical) {
+                    Verdict::Exact => Verdict::Exact,
+                    structural @ Verdict::Inexact { .. } if matches!(typed, Verdict::Wrong(_)) => structural,
+                    _ => typed,
+                },
+            },
             (Err(e), _) | (_, Err(e)) => Verdict::Wrong(format!("not representable as a value: {e}")),
         },
         Err(e) if e.to_string().starts_with("recursion limit exceeded") => compare_json(got, canonical),
@@ -774,7 +786,7 @@ mod tests {
         );
     }
 
-    use payloads::families::{F32s, Nested};
+    use payloads::families::{F32s, Floats, Nested};
 
     /// `values` written as simd-json writes `f32`s: widened to `f64` first.
     fn widened(values: &[f32]) -> Vec<u8> {
@@ -818,6 +830,17 @@ mod tests {
             judge_encoding::<Nested<129>>(other.as_bytes(), &canonical),
             Verdict::Wrong(_)
         ));
+    }
+
+    #[test]
+    fn floats_are_read_correctly_rounded() {
+        // An encoder that writes 17 significant digits rather than the
+        // shortest text is exact, though this build's serde_json (without
+        // `float_roundtrip`) reads some of those texts an ulp or two off.
+        let canonical = Floats::bytes();
+        let long: Vec<String> = Floats::value().iter().map(|f| format!("{f:.16e}")).collect();
+        let long = format!("[{}]", long.join(","));
+        assert_eq!(judge_encoding::<Floats>(long.as_bytes(), &canonical), Verdict::Exact);
     }
 
     #[test]

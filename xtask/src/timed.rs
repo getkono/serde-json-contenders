@@ -179,8 +179,10 @@ fn busy_over(cpus: &[String], window: std::time::Duration) -> f64 {
 
 /// The most of the SMT sibling's time other work may take around a cell.
 const MAX_SIBLING_BUSY: f64 = 0.10;
-/// How long the sibling is watched before and after each cell.
-const SIBLING_WINDOW: std::time::Duration = std::time::Duration::from_millis(100);
+/// How long the sibling is watched before and after each cell. `/proc/stat`
+/// counts in 10 ms ticks, so a window of 250 ms reads in 4 % steps, fine
+/// enough for the 10 % limit (one in 100 ms would read in 10 % steps).
+const SIBLING_WINDOW: std::time::Duration = std::time::Duration::from_millis(250);
 /// How many times a cell waits for its sibling to go quiet before it is
 /// recorded as refused.
 const SIBLING_TRIES: u32 = 30;

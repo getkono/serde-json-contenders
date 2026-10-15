@@ -74,5 +74,8 @@ pub fn reexec(task: &str, args: &[String]) -> Result<()> {
             "--",
             task,
         ])
-        .args(args))
+        .args(args))?;
+    // Inside, the stamp is the state passed in at the start, so only the host
+    // can see a commit or an edit made while the container ran.
+    provenance::stamp_checked().map(drop)
 }

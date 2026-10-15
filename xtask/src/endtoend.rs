@@ -164,8 +164,9 @@ fn start(exe: &std::path::Path, backend: &str, port: u16) -> Result<Server> {
 /// One oha run. A run in which any response was not the route's status, or any
 /// request failed, records an error: a server that answers every request
 /// with a 400 is fast, and nothing about it is a result. An open-loop run
-/// that could not offer its rate records one too: its latency is that of an
-/// overloaded server, not of the rate.
+/// the server could not keep up with is marked `saturated`: its latency is
+/// that of an overloaded server, not of the rate, so it is no p99 figure,
+/// but a backend too slow for the rate is a result, not a failed run.
 fn oha(route: &(&str, &str, &str, Option<&str>), port: u16, seconds: u64, rate: Option<f64>) -> Result<Value> {
     let program = which("oha")?;
     let mut cmd = taskset(&load_cores(), &program);
@@ -203,18 +204,12 @@ fn oha(route: &(&str, &str, &str, Option<&str>), port: u16, seconds: u64, rate: 
         .as_object()
         .map_or(0, |e| e.keys().filter(|k| *k != "aborted due to deadline").count());
     let rps = v["summary"]["requestsPerSec"].as_f64();
-    let mut error = None;
-    if !only_expected || v["summary"]["successRate"].as_f64() != Some(1.0) || errors > 0 {
-        error = Some(format!(
-            "responses other than {expected} or failed requests: status {codes}, {errors} error kinds"
-        ));
-    } else if let (Some(offered), Some(achieved)) = (rate, rps)
-        && achieved < offered * 0.99
-    {
-        error = Some(format!("offered {offered:.0} rps, achieved {achieved:.0}"));
-    }
+    let error = (!only_expected || v["summary"]["successRate"].as_f64() != Some(1.0) || errors > 0)
+        .then(|| format!("responses other than {expected} or failed requests: status {codes}, {errors} error kinds"));
+    let saturated = matches!((rate, rps), (Some(offered), Some(achieved)) if achieved < offered * 0.99);
     Ok(json!({
         "error": error,
+        "saturated": saturated,
         "rps": v["summary"]["requestsPerSec"],
         "success_rate": v["summary"]["successRate"],
         "p50_ms": v["latencyPercentiles"]["p50"].as_f64().map(|s| s * 1e3),
@@ -222,6 +217,28 @@ fn oha(route: &(&str, &str, &str, Option<&str>), port: u16, seconds: u64, rate: 
         "p999_ms": v["latencyPercentiles"]["p99.9"].as_f64().map(|s| s * 1e3),
         "status_codes": codes,
     }))
+}
+
+/// The medians and spreads of a backend's reps. One saturated open-loop rep
+/// and the backend has no p99 at the rate.
+fn summarize(reps: &[Value]) -> Value {
+    let saturated = reps.iter().any(|r| r["open"]["saturated"] == true);
+    let sorted = |f: &dyn Fn(&Value) -> Option<f64>| {
+        let mut v: Vec<f64> = reps.iter().filter_map(f).collect();
+        v.sort_by(f64::total_cmp);
+        v
+    };
+    let rps = sorted(&|r| r["closed"]["rps"].as_f64());
+    let p99 = if saturated {
+        Vec::new()
+    } else {
+        sorted(&|r| r["open"]["p99_ms"].as_f64())
+    };
+    let spread = |v: &[f64]| v.last().zip(v.first()).map(|(a, b)| a - b);
+    json!({
+        "rps": rps.get(rps.len() / 2), "rps_spread": spread(&rps),
+        "p99_ms": p99.get(p99.len() / 2), "p99_spread": spread(&p99), "saturated": saturated,
+    })
 }
 
 fn which(name: &str) -> Result<std::path::PathBuf> {
@@ -348,16 +365,16 @@ pub fn time(args: &[String]) -> Result<()> {
                     .iter()
                     .find_map(|r| r["closed"]["error"].as_str().or(r["open"]["error"].as_str()))
                     .map(str::to_owned);
-                let mut rps: Vec<f64> = reps.iter().filter_map(|r| r["closed"]["rps"].as_f64()).collect();
-                let mut p99: Vec<f64> = reps.iter().filter_map(|r| r["open"]["p99_ms"].as_f64()).collect();
-                rps.sort_by(f64::total_cmp);
-                p99.sort_by(f64::total_cmp);
-                rows.push(json!({
+                let mut row = summarize(&reps);
+                let extra = json!({
                     "variant": variant.name, "set": set, "backend": backend, "route": route.0, "trust": trust, "seconds": seconds,
-                    "rps": rps.get(rps.len() / 2), "rps_spread": rps.last().zip(rps.first()).map(|(a, b)| a - b),
-                    "open_loop_rate": rate, "p99_ms": p99.get(p99.len() / 2), "p99_spread": p99.last().zip(p99.first()).map(|(a, b)| a - b),
-                    "calibration_rps": calibration, "error": failed, "oha": oha_version, "load_cores": load_cores(), "reps": reps,
-                }));
+                    "open_loop_rate": rate, "calibration_rps": calibration, "error": failed, "oha": oha_version,
+                    "load_cores": load_cores(), "reps": reps,
+                });
+                if let (Value::Object(row), Value::Object(extra)) = (&mut row, extra) {
+                    row.extend(extra);
+                }
+                rows.push(row);
             }
         }
     }

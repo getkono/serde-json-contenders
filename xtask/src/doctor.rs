@@ -75,11 +75,10 @@ pub fn require() -> Result<()> {
 
 /// `xtask doctor`: build every set at every variant on this host, ask each
 /// `cell` what it compiled and what it will run, and check both.
-pub fn doctor(args: &[String]) -> Result<()> {
-    let only_native = args.iter().any(|a| a == "--native");
+pub fn doctor(_args: &[String]) -> Result<()> {
     let mut report = Vec::new();
     let mut failures = Vec::new();
-    for variant in variants().into_iter().filter(|v| !only_native || v.name == "native") {
+    for variant in variants() {
         let expected = rustc_features(variant.rustflags)?;
         for set in SETS {
             let release = build(Place::Host, "cell", set, &variant)?;
@@ -140,7 +139,7 @@ pub fn doctor(args: &[String]) -> Result<()> {
         .join("doctor.json");
     write_json(
         &path,
-        &json!({ "schema": 1, "kind": "doctor", "provenance": crate::provenance::stamp(), "failures": failures, "builds": report }),
+        &json!({ "schema": 1, "kind": "doctor", "provenance": crate::provenance::stamp_checked()?, "failures": failures, "builds": report }),
     )?;
     if failures.is_empty() {
         eprintln!(

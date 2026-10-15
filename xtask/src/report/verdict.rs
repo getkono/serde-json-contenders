@@ -664,8 +664,9 @@ fn rule3(data: &Data, e: &Entry) -> Outcome {
 pub struct Gain {
     /// Throughput change; positive is more requests per second.
     pub rps: f64,
-    /// p99 latency change; negative is faster.
-    pub p99: f64,
+    /// p99 latency change; negative is faster. `None` when either side could
+    /// not keep up with the open-loop rate (saturated).
+    pub p99: Option<f64>,
     /// serde_json's A/A copy against serde_json, as absolute fractions; `None`
     /// when the control is missing.
     pub aa_rps: Option<f64>,
@@ -680,13 +681,19 @@ pub fn e2e_gain(rows: &[Value], backend: &str, route: &str) -> Option<Gain> {
     };
     let (me, sj) = (find(backend)?, find("serde_json")?);
     let aa = find("serde_json#aa");
-    let (sj_rps, sj_p99) = (sj["rps"].as_f64()?, sj["p99_ms"].as_f64()?);
+    let sj_rps = sj["rps"].as_f64()?;
+    let sj_p99 = sj["p99_ms"].as_f64();
     Some(Gain {
         rps: me["rps"].as_f64()? / sj_rps - 1.0,
-        p99: me["p99_ms"].as_f64()? / sj_p99 - 1.0,
+        p99: me["p99_ms"].as_f64().zip(sj_p99).map(|(m, s)| m / s - 1.0),
         aa_rps: aa.and_then(|a| Some((a["rps"].as_f64()? / sj_rps - 1.0).abs())),
-        aa_p99: aa.and_then(|a| Some((a["p99_ms"].as_f64()? / sj_p99 - 1.0).abs())),
+        aa_p99: aa.and_then(|a| Some((a["p99_ms"].as_f64()? / sj_p99? - 1.0).abs())),
     })
+}
+
+/// A p99 change as text; a saturated run has none.
+pub fn p99_text(p99: Option<f64>) -> String {
+    p99.map_or("saturated".into(), |p| format!("{:+.0} %", p * 100.0))
 }
 
 /// The throughput gain the counted per-request cost predicts, CPU-bound.
@@ -720,12 +727,13 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
         };
         seen = true;
         let predicted = e2e_predicted(data, e.backend, route);
-        let (Some(aa_rps), Some(aa_p99), Some(predicted)) = (g.aa_rps, g.aa_p99, predicted) else {
+        let (Some(aa_rps), Some(predicted)) = (g.aa_rps, predicted) else {
             unweighable.push((*route).to_owned());
             continue;
         };
         let pass_rps = g.rps >= E2E_GAIN && g.rps > aa_rps;
-        let pass_p99 = -g.p99 >= E2E_GAIN && -g.p99 > aa_p99;
+        // A saturated run has no p99 to weigh; it can still win on throughput.
+        let pass_p99 = matches!((g.p99, g.aa_p99), (Some(p), Some(b)) if -p >= E2E_GAIN && -p > b);
         if !(pass_rps || pass_p99) {
             continue;
         }
@@ -736,18 +744,14 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
         // only where the count itself predicts a material gain.
         if g.rps > predicted + EPSILON.max(aa_rps) || (pass_p99 && !pass_rps && predicted <= EPSILON) {
             inconsistent.push(format!(
-                "{route}: {:+.0} % rps and p99 {:+.0} % measured, {:+.0} % rps predicted",
+                "{route}: {:+.0} % rps and p99 {} measured, {:+.0} % rps predicted",
                 g.rps * 100.0,
-                g.p99 * 100.0,
+                p99_text(g.p99),
                 predicted * 100.0
             ));
             continue;
         }
-        best.get_or_insert(format!(
-            "{route} {:+.0} % rps, p99 {:+.0} %",
-            g.rps * 100.0,
-            g.p99 * 100.0
-        ));
+        best.get_or_insert(format!("{route} {:+.0} % rps, p99 {}", g.rps * 100.0, p99_text(g.p99)));
     }
     let trust = weakest(rows.iter());
     match (seen, best) {

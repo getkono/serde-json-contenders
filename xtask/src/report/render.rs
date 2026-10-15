@@ -966,7 +966,7 @@ fn end_to_end(out: &mut String, data: &Data) {
         section(out, "e2e-timed", "End to end: timed");
         let _ = writeln!(
             out,
-            "Trust class `{}`. Closed-loop throughput at 64 connections (positive is more requests), and p99 latency open-loop at 70 % of serde_json's throughput (negative is faster); median of reps, relative to serde_json.\n",
+            "Trust class `{}`. Closed-loop throughput at 64 connections (positive is more requests), and p99 latency open-loop at 70 % of serde_json's throughput (negative is faster); median of reps, relative to serde_json. *saturated*: the backend (or serde_json) achieved under 99 % of that rate in some rep, so it has no p99 at the rate.\n",
             verdict::weakest(host.e2e_time.iter())
         );
         out.push_str(&header(&[
@@ -989,7 +989,7 @@ fn end_to_end(out: &mut String, data: &Data) {
                     (*route).to_owned(),
                     format!("`{}`", e.backend),
                     format!("{:+.1} %", g.rps * 100.0),
-                    format!("{:+.1} %", g.p99 * 100.0),
+                    g.p99.map_or("saturated".into(), |p| format!("{:+.1} %", p * 100.0)),
                     format!("{}, {}", band(g.aa_rps), band(g.aa_p99)),
                     predicted,
                 ]));

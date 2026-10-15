@@ -55,7 +55,7 @@ pub fn conformance(args: &[String]) -> Result<()> {
                     .join(format!("{name}.json"));
                 write_json(
                     &path,
-                    &json!({ "schema": 1, "provenance": crate::provenance::stamp(), "report": report }),
+                    &json!({ "schema": 1, "provenance": crate::provenance::stamp_checked()?, "report": report }),
                 )?;
             }
         }

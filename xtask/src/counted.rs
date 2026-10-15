@@ -270,7 +270,7 @@ pub fn count(args: &[String]) -> Result<()> {
             crate::util::write_json(
                 &root().join("results/callgrind/recount.json"),
                 &json!({
-                    "schema": 1, "kind": "recount", "provenance": crate::provenance::stamp(),
+                    "schema": 1, "kind": "recount", "provenance": crate::provenance::stamp_checked()?,
                     "compared": compared, "committed": counted, "tolerance": tolerance,
                 }),
             )?;

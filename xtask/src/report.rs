@@ -280,14 +280,21 @@ fn whole(cell: &str, quoted: &str) -> bool {
     let bare = quoted
         .chars()
         .all(|c| c.is_ascii_digit() || matches!(c, '.' | ',' | '+' | '-' | '−' | ' '));
+    // A unit is a word of its own after the number ("2.10 M", "16 %"), not
+    // any word ("4 of 4").
     let unit = |rest: &str| {
+        const UNITS: &[&str] = &[
+            "%", "×", "k", "K", "M", "G", "B", "KiB", "MiB", "GiB", "kB", "MB", "s", "ms", "µs", "ns",
+        ];
         if !bare {
             return false;
         }
-        let rest = rest.trim_start_matches(' ');
-        rest.chars()
+        let next = rest.trim_start_matches(' ');
+        let word = next
+            .split(|c: char| c.is_whitespace() || matches!(c, ',' | ';' | ')' | '('))
             .next()
-            .is_some_and(|c| c.is_alphanumeric() || matches!(c, '%' | '×' | 'µ'))
+            .unwrap_or("");
+        rest.starts_with(['%', '×']) || UNITS.contains(&word)
     };
     cell.match_indices(quoted).any(|(i, _)| {
         let rest = &cell[i + quoted.len()..];
@@ -295,16 +302,20 @@ fn whole(cell: &str, quoted: &str) -> bool {
     })
 }
 
-/// Whether a word of Findings is a figure. In code (one span is one word),
-/// a name (`nested-129`, `Zen 4`) is not, but a number is. In prose, any
-/// word holding a digit that does not begin as a name does (with a letter)
-/// or as a footnote marker (`^1`) is.
+/// Whether a word of Findings is a figure. In code, a name (`nested-129`)
+/// is not, but a number (`16`, `~0.8`) is. In prose, any word holding a
+/// digit that does not begin as a name does (with a letter), as a footnote
+/// marker (`^1`) or as an issue (`#123`) is.
 fn is_figure(token: &str, code: bool) -> bool {
     let first = token.chars().next();
     if code {
-        first.is_some_and(char::is_numeric)
+        token
+            .trim_start_matches(['~', '≈', '±', '+', '-', '−'])
+            .chars()
+            .next()
+            .is_some_and(char::is_numeric)
     } else {
-        token.chars().any(char::is_numeric) && !first.is_some_and(|c| c.is_alphabetic() || c == '^')
+        token.chars().any(char::is_numeric) && !first.is_some_and(|c| c.is_alphabetic() || matches!(c, '^' | '#'))
     }
 }
 
@@ -353,7 +364,7 @@ fn bare_figures(readme: &str) -> Vec<String> {
     let mut line_start = true;
     let mut word_line_start = true;
     for c in text.chars() {
-        let split = c == '`' || (!code && (c.is_whitespace() || matches!(c, '—' | '–' | '/')));
+        let split = c == '`' || c.is_whitespace() || (!code && matches!(c, '—' | '–' | '/'));
         if split {
             if !word.is_empty() {
                 words.push((std::mem::take(&mut word), code, word_line_start));
@@ -375,20 +386,37 @@ fn bare_figures(readme: &str) -> Vec<String> {
     if !word.is_empty() {
         words.push((word, code, word_line_start));
     }
-    let mut rules = false;
-    for (word, code, first) in words {
-        let trimmed = word.trim_matches(|c: char| {
+    if code {
+        failures.push("Findings has an unmatched backtick, which hides the text after it".to_owned());
+    }
+    let trim = |w: &str| -> String {
+        w.trim_matches(|c: char| {
             matches!(
                 c,
                 ',' | ';' | ':' | '.' | '(' | ')' | '"' | '*' | '_' | '[' | ']' | '!' | '?' | '\''
             )
-        });
+        })
+        .to_owned()
+    };
+    let mut rules = false;
+    let mut previous = String::new();
+    for (i, (word, code, first)) in words.iter().enumerate() {
+        let (word, code, first) = (word.as_str(), *code, *first);
+        let trimmed = trim(word);
+        let trimmed = trimmed.as_str();
+        // "rule 1, 4 % faster": a number with a unit after it is a figure,
+        // whatever came before it.
+        let unit_follows = words
+            .get(i + 1)
+            .is_some_and(|(next, next_code, _)| !next_code && next.starts_with(['%', '×', 'x']) && next.len() <= 3);
         let possessive = trimmed.strip_suffix("'s").or_else(|| trimmed.strip_suffix("’s"));
         let token = possessive.unwrap_or(trimmed);
         let lower = token.to_lowercase();
         let list_item = first && !code && word.ends_with('.') && token.chars().all(|c| c.is_ascii_digit());
-        let rule = !code && rules && matches!(token, "1" | "2" | "3" | "4");
-        if is_figure(token, code) && !rule && !list_item {
+        let rule = !code && rules && !unit_follows && matches!(token, "1" | "2" | "3" | "4");
+        // A standard's number ("RFC 8259") names it.
+        let standard = !code && previous == "rfc";
+        if is_figure(token, code) && !rule && !list_item && !standard {
             failures.push(format!(
                 "Findings quotes {token} without a link to the report row it comes from"
             ));
@@ -401,6 +429,7 @@ fn bare_figures(readme: &str) -> Vec<String> {
                     && (rule || matches!(lower.as_str(), "and" | "or" | "to"))
                     && possessive.is_none()
                     && !word.ends_with([':', '.', ';'])));
+        previous = if code { String::new() } else { lower };
     }
     failures
 }
@@ -503,6 +532,12 @@ mod tests {
             "rule 1 and 16 %",
             "<a href=\"x\">0.84×</a>",
             "１６ %",
+            "`json-small: 0.84×`",
+            "`~16 %`",
+            "passes rule 1, 4 % faster",
+            "rule 1 and 3 % of requests",
+            "\n```\nsonic-rs 0.84x 16 %\n```\n",
+            "an `unmatched backtick 16 %",
         ] {
             let text = format!("## Findings\n\n[sic] it is {bad} faster.\n");
             assert!(!bare_figures(&text).is_empty(), "{bad} passed");
@@ -520,7 +555,11 @@ mod tests {
             "✅ json-small decode CPU 0.80× at native (cycles)",
             "0.80×"
         ));
-        let ok = "## Findings\n\nUnder rules 1, 2 and 4 it holds.\n\n1. First, rule 1's test and rules 1–4 and rules 1 to 4.\n2. On `Zen 4`, see [sonic-rs#123](https://github.com/x) and [^1].\n";
+        assert!(super::whole("fails 4 of 4 conformance runs", "4"));
+        assert!(super::whole("serde_json's 4,584 for twitter-like", "4,584"));
+        let refs = "## Findings\n\nSee [#123](https://github.com/x/y/issues/123) and RFC 8259.\n";
+        assert!(super::bare_figures(refs).is_empty(), "{:?}", super::bare_figures(refs));
+        let ok = "## Findings\n\nUnder rules 1, 2 and 4 it holds.\n\n1. First, rule 1's test and rules 1–4 and rules 1 to 4.\n2. On `Zen`, see [sonic-rs#123](https://github.com/x) and [^1].\n";
         assert!(super::bare_figures(ok).is_empty(), "{:?}", super::bare_figures(ok));
     }
 

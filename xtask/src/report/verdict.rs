@@ -873,7 +873,9 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
         // predicted gain show as a throughput loss beyond the noise: the
         // count and the timing then disagree on direction.
         let slack = EPSILON.max(aa_rps);
-        if g.rps > predicted + slack || (predicted > EPSILON && g.rps < -slack) {
+        // A predicted loss bounds nothing above zero: loopback adds cost the
+        // in-memory count does not see, so a timed loss is often smaller.
+        if g.rps > predicted.max(0.0) + slack || (predicted > EPSILON && g.rps < -slack) {
             inconsistent.push(format!(
                 "{route}: {:+.0} % rps and p99 {} measured, {:+.0} % rps predicted",
                 g.rps * 100.0,
@@ -1309,6 +1311,52 @@ pub(super) mod tests {
             simd.exists.1.starts_with("skip-unknown decode CPU 0.50×"),
             "{:?}",
             simd.exists
+        );
+    }
+
+    /// Rule 4 on one route: serde_json, its A/A copy and simd-json timed
+    /// (`rps` relative to serde_json's 1000), and counted per request.
+    fn e2e(rps: f64, est: f64) -> Outcome {
+        let mut data = Data::default();
+        for (b, r, c) in [
+            ("serde_json", 1000.0, 1000.0),
+            ("serde_json#aa", 1005.0, 1000.0),
+            ("simd-json", rps, est),
+        ] {
+            data.host
+                .e2e_time
+                .push(json!({ "variant": "native", "backend": b, "route": "json-large-post",
+                "rps": r, "p99_ms": 1.0, "trust": "canonical" }));
+            data.e2e_count
+                .push(json!({ "variant": "v3", "backend": b, "route": "json-large-post", "est_cycles": c }));
+        }
+        super::rule4(&data, simd())
+    }
+
+    #[test]
+    fn rule4_weighs_a_gain_against_the_count() {
+        // Predicted +25 %: a timed +20 % passes, +40 % is a measurement error.
+        assert!(
+            matches!(e2e(1200.0, 800.0), Outcome::Pass(_)),
+            "{:?}",
+            e2e(1200.0, 800.0)
+        );
+        assert!(
+            matches!(e2e(1400.0, 800.0), Outcome::Pending(_)),
+            "{:?}",
+            e2e(1400.0, 800.0)
+        );
+        // Predicted +25 %, timed −30 %: the two disagree on direction.
+        assert!(
+            matches!(e2e(700.0, 800.0), Outcome::Pending(_)),
+            "{:?}",
+            e2e(700.0, 800.0)
+        );
+        // Predicted −8 %, timed 0 %: a smaller loss than predicted is a loss.
+        assert!(
+            matches!(e2e(1000.0, 1087.0), Outcome::Fail(_)),
+            "{:?}",
+            e2e(1000.0, 1087.0)
         );
     }
 

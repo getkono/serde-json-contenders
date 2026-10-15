@@ -182,7 +182,9 @@ fn conformance(data: &Data) -> Conformance {
                     }));
                 }
                 let mut figures = Vec::new();
-                leaves("", &s["data"], &mut figures);
+                if !s["data"].is_null() {
+                    leaves("", &s["data"], &mut figures);
+                }
                 for (figure, value) in figures {
                     measures.push(serde_json::json!({
                         "variant": variant, "set": set, "backend": backend, "section": section,

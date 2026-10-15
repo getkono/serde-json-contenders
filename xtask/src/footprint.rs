@@ -50,12 +50,77 @@ const HARNESS: &[&str] = &[
 ];
 
 /// Counts of `unsafe` items in one crate's source.
-#[derive(Debug, Default, Clone, Copy)]
+///
+/// Parsed code is counted from the syntax tree. A macro's body (a
+/// `macro_rules!` definition, or the arguments of any invocation) is only
+/// tokens to the parser, so there every `unsafe` keyword token is counted
+/// and classed by the token after it: a `{` group is a block, `fn` or
+/// `extern` a function, `impl` an impl and `trait` a trait; a `(` group is an
+/// unsafe attribute (`#[unsafe(no_mangle)]`), which is not counted outside
+/// macros either; anything else (a metavariable such as `unsafe $body`) is
+/// counted as a block, the only other thing `unsafe` can introduce. A
+/// `macro_rules!` body is counted once however many times it expands.
+/// `in_macros` is how many of the four counts came from macro tokens.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 struct Unsafe {
     blocks: u64,
     fns: u64,
     impls: u64,
     traits: u64,
+    in_macros: u64,
+}
+
+impl Unsafe {
+    fn add(&mut self, other: Self) {
+        self.blocks += other.blocks;
+        self.fns += other.fns;
+        self.impls += other.impls;
+        self.traits += other.traits;
+        self.in_macros += other.in_macros;
+    }
+
+    /// Count the `unsafe` keyword tokens in a macro body, at any depth.
+    fn tokens(&mut self, input: syn::parse::ParseStream<'_>) -> syn::Result<()> {
+        use syn::{Token, token};
+        while !input.is_empty() {
+            if input.peek(Token![unsafe]) {
+                input.parse::<Token![unsafe]>()?;
+                if input.peek(token::Paren) {
+                    continue;
+                }
+                self.in_macros += 1;
+                if input.peek(Token![fn]) || input.peek(Token![extern]) {
+                    self.fns += 1;
+                } else if input.peek(Token![impl]) {
+                    self.impls += 1;
+                } else if input.peek(Token![trait]) {
+                    self.traits += 1;
+                } else {
+                    self.blocks += 1;
+                }
+            } else if input.peek(token::Brace) {
+                let inner;
+                syn::braced!(inner in input);
+                self.tokens(&inner)?;
+            } else if input.peek(token::Paren) {
+                let inner;
+                syn::parenthesized!(inner in input);
+                self.tokens(&inner)?;
+            } else if input.peek(token::Bracket) {
+                let inner;
+                syn::bracketed!(inner in input);
+                self.tokens(&inner)?;
+            } else {
+                input.step(|cursor| {
+                    cursor
+                        .token_tree()
+                        .map(|(_, rest)| ((), rest))
+                        .ok_or_else(|| cursor.error("unexpected end of macro body"))
+                })?;
+            }
+        }
+        Ok(())
+    }
 }
 
 impl<'ast> Visit<'ast> for Unsafe {
@@ -75,6 +140,23 @@ impl<'ast> Visit<'ast> for Unsafe {
         }
         syn::visit::visit_impl_item_fn(self, node);
     }
+    fn visit_trait_item_fn(&mut self, node: &'ast syn::TraitItemFn) {
+        if node.sig.unsafety.is_some() {
+            self.fns += 1;
+        }
+        syn::visit::visit_trait_item_fn(self, node);
+    }
+    fn visit_macro(&mut self, node: &'ast syn::Macro) {
+        // Token streams always parse as tokens; a failure would only mean
+        // a malformed group, and then what was counted before it stands.
+        let mut found = Self::default();
+        let _ = syn::parse::Parser::parse2(
+            |input: syn::parse::ParseStream<'_>| found.tokens(input),
+            node.tokens.clone(),
+        );
+        self.add(found);
+        syn::visit::visit_macro(self, node);
+    }
     fn visit_item_impl(&mut self, node: &'ast syn::ItemImpl) {
         if node.unsafety.is_some() {
             self.impls += 1;
@@ -89,25 +171,43 @@ impl<'ast> Visit<'ast> for Unsafe {
     }
 }
 
+/// Top-level package directories whose code never reaches a dependent's
+/// build: build output and the package's own tests, benchmarks and examples.
+const NOT_SHIPPED: &[&str] = &["target", "tests", "benches", "examples"];
+
+/// The `unsafe` in every `.rs` file of the package at `dir`, except under
+/// its top-level [`NOT_SHIPPED`] directories: `src/`, a build script, and
+/// any other directory a target or `#[path]` may compile from. With the
+/// number of files read, and of files that did not parse.
 fn count_unsafe(dir: &std::path::Path) -> (Unsafe, u64, u64) {
     let mut total = Unsafe::default();
     let (mut files, mut unparsed) = (0, 0);
-    for entry in walkdir::WalkDir::new(dir.join("src"))
+    for entry in walkdir::WalkDir::new(dir)
         .into_iter()
+        .filter_entry(|e| {
+            !(e.depth() == 1 && e.file_type().is_dir() && NOT_SHIPPED.iter().any(|n| e.file_name() == *n))
+        })
         .filter_map(Result::ok)
     {
-        if entry.path().extension().is_some_and(|e| e == "rs") {
+        if entry.file_type().is_file() && entry.path().extension().is_some_and(|e| e == "rs") {
             files += 1;
             match std::fs::read_to_string(entry.path())
                 .ok()
-                .and_then(|t| syn::parse_file(&t).ok())
+                .and_then(|t| count_source(&t))
             {
-                Some(file) => total.visit_file(&file),
+                Some(count) => total.add(count),
                 None => unparsed += 1,
             }
         }
     }
     (total, files, unparsed)
+}
+
+/// The `unsafe` in one file's text, if it parses.
+fn count_source(text: &str) -> Option<Unsafe> {
+    let mut count = Unsafe::default();
+    count.visit_file(&syn::parse_file(text).ok()?);
+    Some(count)
 }
 
 /// Crates that exist only to build proc macros.
@@ -242,14 +342,12 @@ pub fn footprint(args: &[String]) -> Result<()> {
             let build_only = source.is_some_and(|s| s.build_only);
             anyhow::ensure!(source.is_some() && files > 0, "no sources found for {name} {version}");
             if !build_only {
-                total.blocks += count.blocks;
-                total.fns += count.fns;
-                total.impls += count.impls;
-                total.traits += count.traits;
+                total.add(count);
             }
             crates.push(json!({
                 "name": name, "version": version, "build_only": build_only,
                 "unsafe_blocks": count.blocks, "unsafe_fns": count.fns, "unsafe_impls": count.impls, "unsafe_traits": count.traits,
+                "unsafe_in_macros": count.in_macros,
                 "files": files, "unparsed_files": unparsed,
                 "advisories": advisories(&db, name, version)?,
             }));
@@ -258,6 +356,7 @@ pub fn footprint(args: &[String]) -> Result<()> {
             "set": set.name, "crate": set.krate, "crates_added": added.len(),
             "runtime_crates_added": crates.iter().filter(|c| c["build_only"] == false).count(),
             "unsafe_blocks": total.blocks, "unsafe_fns": total.fns, "unsafe_impls": total.impls, "unsafe_traits": total.traits,
+            "unsafe_in_macros": total.in_macros,
             "crates": crates,
         }));
     }
@@ -268,4 +367,92 @@ pub fn footprint(args: &[String]) -> Result<()> {
         &["set"],
         json!({ "advisory_db": ADVISORY_DB_COMMIT }),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Unsafe, count_source, count_unsafe};
+
+    fn count(text: &str) -> Unsafe {
+        count_source(text).unwrap_or_else(|| panic!("does not parse: {text}"))
+    }
+
+    #[test]
+    fn items_and_blocks_are_counted_from_the_tree() {
+        let found = count(
+            "unsafe fn f() { unsafe { g() } }
+             struct S;
+             impl S { unsafe fn m(&self) {} }
+             unsafe trait T { unsafe fn declared(); unsafe fn defaulted() {} fn safe(); }
+             unsafe impl T for S { unsafe fn declared() {} }",
+        );
+        assert_eq!(
+            found,
+            Unsafe {
+                blocks: 1,
+                fns: 5,
+                impls: 1,
+                traits: 1,
+                in_macros: 0
+            }
+        );
+    }
+
+    #[test]
+    fn unsafe_inside_macros_is_counted_from_tokens() {
+        let found = count(
+            r#"macro_rules! m {
+                 ($body:block) => { unsafe $body };
+                 ($t:ty) => { unsafe impl Send for $t {} pub unsafe fn f() { unsafe { g() } } unsafe extern "C" fn h() {} };
+               }
+               fn f() { assert!(unsafe { g() }); let v = vec![unsafe { g() }]; }
+               #[unsafe(no_mangle)] extern "C" fn n() {}
+               m! { #[unsafe(no_mangle)] fn k() {} }"#,
+        );
+        assert_eq!(
+            found,
+            Unsafe {
+                blocks: 4,
+                fns: 2,
+                impls: 1,
+                traits: 0,
+                in_macros: 7
+            }
+        );
+    }
+
+    #[test]
+    fn the_word_in_strings_comments_and_raw_identifiers_is_not_unsafe() {
+        let found = count(
+            r#"// unsafe { }
+               fn f() { let r#unsafe = "unsafe { }"; println!("unsafe {}", r#unsafe); }"#,
+        );
+        assert_eq!(found, Unsafe::default());
+    }
+
+    #[test]
+    fn the_whole_package_is_read_but_tests_benches_examples_and_target() -> std::io::Result<()> {
+        let dir = std::env::temp_dir().join(format!("xtask-footprint-{}", std::process::id()));
+        let write = |path: &str, text: &str| -> std::io::Result<()> {
+            let path = dir.join(path);
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::write(path, text)
+        };
+        let one = "fn f() { unsafe {} }";
+        write("src/lib.rs", one)?;
+        write("src/tests/inner.rs", one)?;
+        write("build.rs", one)?;
+        write("arch/x86.rs", one)?;
+        write("broken.rs", "fn (")?;
+        write("tests/t.rs", one)?;
+        write("benches/b.rs", one)?;
+        write("examples/e.rs", one)?;
+        write("target/debug/build/out.rs", one)?;
+        let (found, files, unparsed) = count_unsafe(&dir);
+        std::fs::remove_dir_all(&dir)?;
+        assert_eq!((found.blocks, files, unparsed), (4, 5, 1));
+        Ok(())
+    }
 }

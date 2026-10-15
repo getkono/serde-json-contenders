@@ -161,7 +161,7 @@ fn start(exe: &std::path::Path, backend: &str, port: u16) -> Result<Server> {
     Ok(Server(child))
 }
 
-/// One oha run. A run in which any response was not the route's 200, or any
+/// One oha run. A run in which any response was not the route's status, or any
 /// request failed, records an error: a server that answers every request
 /// with a 400 is fast, and nothing about it is a result. An open-loop run
 /// that could not offer its rate records one too: its latency is that of an
@@ -192,15 +192,21 @@ fn oha(route: &(&str, &str, &str, Option<&str>), port: u16, seconds: u64, rate: 
     anyhow::ensure!(ok, "oha failed: {stderr}");
     let v: Value = serde_json::from_str(&stdout)?;
     let codes = v["statusCodeDistribution"].clone();
-    let only_200 = codes
+    // `POST /json/large` decodes and answers 204; the others answer 200.
+    let expected = if route.0 == "json-large-post" { "204" } else { "200" };
+    let only_expected = codes
         .as_object()
-        .is_some_and(|c| !c.is_empty() && c.keys().all(|k| k == "200"));
-    let errors = v["errorDistribution"].as_object().map_or(0, serde_json::Map::len);
+        .is_some_and(|c| !c.is_empty() && c.keys().all(|k| k == expected));
+    // A `-z` run ends by cutting off the requests in flight, which oha counts
+    // as "aborted due to deadline"; every other error kind is a failure.
+    let errors = v["errorDistribution"]
+        .as_object()
+        .map_or(0, |e| e.keys().filter(|k| *k != "aborted due to deadline").count());
     let rps = v["summary"]["requestsPerSec"].as_f64();
     let mut error = None;
-    if !only_200 || v["summary"]["successRate"].as_f64() != Some(1.0) || errors > 0 {
+    if !only_expected || v["summary"]["successRate"].as_f64() != Some(1.0) || errors > 0 {
         error = Some(format!(
-            "responses other than 200 or failed requests: status {codes}, {errors} error kinds"
+            "responses other than {expected} or failed requests: status {codes}, {errors} error kinds"
         ));
     } else if let (Some(offered), Some(achieved)) = (rate, rps)
         && achieved < offered * 0.99

@@ -15,9 +15,7 @@ use crate::util::{capture, root};
 pub fn text_size(path: &std::path::Path) -> Result<u64> {
     let data = std::fs::read(path).with_context(|| format!("reading {}", path.display()))?;
     let file = object::File::parse(&*data)?;
-    let section = file
-        .section_by_name(".text")
-        .context("no text section")?;
+    let section = file.section_by_name(".text").context("no text section")?;
     Ok(section.size())
 }
 

@@ -64,10 +64,7 @@ pub fn report(args: &[String]) -> Result<()> {
             .collect();
         differ.extend(extra_files(&dir, &files)?);
         if !differ.is_empty() {
-            bail!(
-                "report is stale (run `cargo xtask report`): {}",
-                differ.join(", ")
-            );
+            bail!("report is stale (run `cargo xtask report`): {}", differ.join(", "));
         }
         if !claims.is_empty() {
             bail!("README claims the report does not bear out:\n{}", claims.join("\n"));
@@ -106,11 +103,7 @@ fn extra_files(dir: &Path, files: &[(String, String)]) -> Result<Vec<String>> {
         if !entry.file_type().is_file() {
             continue;
         }
-        let rel = entry
-            .path()
-            .strip_prefix(dir)?
-            .to_string_lossy()
-            .replace('\\', "/");
+        let rel = entry.path().strip_prefix(dir)?.to_string_lossy().replace('\\', "/");
         if !files.iter().any(|(name, _)| *name == rel) {
             extra.push(format!("report/{rel} (not generated)"));
         }
@@ -172,7 +165,8 @@ mod tests {
 
     #[test]
     fn a_claim_the_row_holds_passes() {
-        let readme = "sonic-rs takes [0.84×](report/README.md#kynos-decode \"json-small native (cycles)\") of the cycles.";
+        let readme =
+            "sonic-rs takes [0.84×](report/README.md#kynos-decode \"json-small native (cycles)\") of the cycles.";
         assert!(check_claims(readme, REPORT).is_empty());
     }
 

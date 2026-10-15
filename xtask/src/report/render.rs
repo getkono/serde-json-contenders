@@ -186,13 +186,17 @@ fn limitations(data: &Data) -> Vec<String> {
             .map(|l| l.split_whitespace().take(3).collect::<Vec<_>>().join(" "))
     };
     for (name, classes, prov) in [
-        ("Hardware cycles", class(&mut host.hw.rows.values()), &host.hw.provenance),
-        ("Timed sampling", class(&mut host.time.rows.values()), &host.time.provenance),
         (
-            "End-to-end timing",
-            class(&mut host.e2e_time.iter()),
-            &Value::Null,
+            "Hardware cycles",
+            class(&mut host.hw.rows.values()),
+            &host.hw.provenance,
         ),
+        (
+            "Timed sampling",
+            class(&mut host.time.rows.values()),
+            &host.time.provenance,
+        ),
+        ("End-to-end timing", class(&mut host.e2e_time.iter()), &Value::Null),
     ] {
         if !classes.is_empty() && classes.iter().all(|c| c == "solo") {
             notes.push(format!(
@@ -325,7 +329,11 @@ fn cpu_block(data: &Data, title: &str, workloads: &[&str], op: &str, points: &[P
     let points: Vec<Point> = points
         .iter()
         .copied()
-        .filter(|p| workloads.iter().any(|w| cpu_row(data, *p, "serde_json", w, op).is_some()))
+        .filter(|p| {
+            workloads
+                .iter()
+                .any(|w| cpu_row(data, *p, "serde_json", w, op).is_some())
+        })
         .collect();
     if points.is_empty() {
         return out;
@@ -357,12 +365,7 @@ fn cpu_block(data: &Data, title: &str, workloads: &[&str], op: &str, points: &[P
                 "exact".to_owned()
             };
             let mut cells = vec![(*w).to_owned(), p.label(), base_cell, aa];
-            cells.extend(
-                entries
-                    .iter()
-                    .skip(1)
-                    .map(|e| cpu_cell(data, *p, e, w, op, &mut notes)),
-            );
+            cells.extend(entries.iter().skip(1).map(|e| cpu_cell(data, *p, e, w, op, &mut notes)));
             out.push_str(&row(&cells));
         }
     }
@@ -382,12 +385,7 @@ fn encoders() -> Vec<&'static Entry> {
 /// The points every CPU table shows: the deciding hardware cycles, then the
 /// deterministic counts that corroborate them, each beside its instructions.
 fn points() -> [Point; 4] {
-    [
-        X86_NATIVE,
-        X86_NATIVE.instructions(),
-        X86_V3,
-        X86_V3.instructions(),
-    ]
+    [X86_NATIVE, X86_NATIVE.instructions(), X86_V3, X86_V3.instructions()]
 }
 
 fn kynos_cpu(out: &mut String, data: &Data) {
@@ -438,10 +436,18 @@ fn families(out: &mut String, data: &Data) {
         .filter(|w| !KYNOS.contains(w) && !w.starts_with("sweep-"))
         .collect();
     let points = [X86_NATIVE, X86_V3];
-    section(out, "families-decode", "One variable at a time, and real-world shapes: decode");
+    section(
+        out,
+        "families-decode",
+        "One variable at a time, and real-world shapes: decode",
+    );
     out.push_str("Where serde_json rejects a workload (`nested-129`: its depth limit is 128), a backend that accepts it is shown absolute.\n\n");
     out.push_str(&cpu_block(data, "", &fams, "decode", &points, &all_entries()));
-    section(out, "families-encode", "One variable at a time, and real-world shapes: encode");
+    section(
+        out,
+        "families-encode",
+        "One variable at a time, and real-world shapes: encode",
+    );
     out.push_str(&cpu_block(data, "", &fams, "encode", &points, &encoders()));
 }
 
@@ -524,8 +530,7 @@ fn arrival(out: &mut String, data: &Data) {
 /// `to_writer` into a reused buffer beside `to_vec` into a fresh one.
 fn encode_into(out: &mut String, data: &Data) {
     let get = |backend: &str, workload: &str, op: &str| {
-        data.callgrind
-            .get(&Key::new("v3", backend, workload, op), "est_cycles")
+        data.callgrind.get(&Key::new("v3", backend, workload, op), "est_cycles")
     };
     if get("serde_json", KYNOS[0], "encode-into").is_none() {
         return;
@@ -948,13 +953,7 @@ fn provenance(out: &mut String, data: &Data, stale: &[String]) {
             None => "not run".to_owned(),
         }
     );
-    out.push_str(&header(&[
-        "Source",
-        "Commit",
-        "Fingerprint",
-        "Recorded",
-        "Conditions",
-    ]));
+    out.push_str(&header(&["Source", "Commit", "Fingerprint", "Recorded", "Conditions"]));
     for s in collapse(&data.sources) {
         let p = &s.provenance;
         if let Some(reason) = &s.skipped {
@@ -972,9 +971,11 @@ fn provenance(out: &mut String, data: &Data, stale: &[String]) {
             p["kernel"].as_str().unwrap_or("?"),
             p["governor"].as_str().unwrap_or("?"),
             p["boost"].as_str().unwrap_or("?"),
-            p["loadavg"]
-                .as_str()
-                .map_or("?".to_owned(), |l| l.split_whitespace().take(3).collect::<Vec<_>>().join(" ")),
+            p["loadavg"].as_str().map_or("?".to_owned(), |l| l
+                .split_whitespace()
+                .take(3)
+                .collect::<Vec<_>>()
+                .join(" ")),
         );
         if let Some(v) = p["valgrind"].as_str().filter(|_| p["container_image"].is_string()) {
             let _ = write!(conditions, "; {v} in the container");
@@ -1013,10 +1014,7 @@ fn collapse(sources: &[Source]) -> Vec<Source> {
                     .all(|k| same(&last.provenance, k))
         });
         if !joins {
-            out.push(Source {
-                name: dir,
-                ..s.clone()
-            });
+            out.push(Source { name: dir, ..s.clone() });
         }
     }
     out

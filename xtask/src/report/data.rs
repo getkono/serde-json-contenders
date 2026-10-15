@@ -107,7 +107,12 @@ impl Loader {
     fn doc(&mut self, name: &str) -> Result<Option<Value>> {
         let path = self.results.join(name);
         if !path.exists() {
-            match self.skipped.get(name).and_then(|s| s.get("reason")).and_then(toml::Value::as_str) {
+            match self
+                .skipped
+                .get(name)
+                .and_then(|s| s.get("reason"))
+                .and_then(toml::Value::as_str)
+            {
                 Some(reason) => self.sources.push(Source {
                     name: name.to_owned(),
                     provenance: Value::Null,

@@ -133,8 +133,7 @@ pub fn merge_write(
     let mut all: Vec<serde_json::Value> = kept.into_iter().filter(|r| !fresh.contains(&key(r))).collect();
     all.extend(rows.iter().cloned());
     all.sort_by_key(key);
-    let mut doc =
-        serde_json::json!({ "schema": 1, "kind": kind, "provenance": stamp, "rows": all });
+    let mut doc = serde_json::json!({ "schema": 1, "kind": kind, "provenance": stamp, "rows": all });
     if let (serde_json::Value::Object(doc), serde_json::Value::Object(extra)) = (&mut doc, extra) {
         doc.extend(extra);
     }

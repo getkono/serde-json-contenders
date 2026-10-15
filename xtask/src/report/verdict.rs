@@ -668,7 +668,10 @@ fn exists(data: &Data, e: &Entry, pool: &[&Entry]) -> (bool, String) {
             };
             best = Some((
                 r,
-                format!("{w} {axis} {r:.2}× serde_json at {}{count}", X86_NATIVE.win_label(&axis)),
+                format!(
+                    "{w} {axis} {r:.2}× serde_json at {}{count}",
+                    X86_NATIVE.win_label(&axis)
+                ),
             ));
         }
     }

@@ -154,7 +154,14 @@ fn figure(
     );
     let file = format!("{workload}-{op}-{}.svg", trade.name());
     let base = pts.iter().find(|p| p.name == "serde_json").map(|p| (p.x, p.y));
-    let svg = draw(&title, &trade.label(op).replace('`', ""), &pts, &front, &weighed_front, base);
+    let svg = draw(
+        &title,
+        &trade.label(op).replace('`', ""),
+        &pts,
+        &front,
+        &weighed_front,
+        base,
+    );
     Some(Figure {
         group,
         group_title: if group == "kynos" {
@@ -302,7 +309,11 @@ fn place(placed: &[(f64, f64, f64)], x: f64, y: f64, width: f64) -> (f64, f64) {
 
 /// The title, grid, axes and serde_json's crosshair.
 fn frame(s: &mut String, title: &str, ylabel: &str, sx: &Scale, sy: &Scale, base: Option<(f64, f64)>) {
-    let _ = writeln!(s, "<text class=\"ink title\" x=\"{LEFT}\" y=\"24\">{}</text>", esc(title));
+    let _ = writeln!(
+        s,
+        "<text class=\"ink title\" x=\"{LEFT}\" y=\"24\">{}</text>",
+        esc(title)
+    );
     for t in sx.ticks() {
         let x = sx.at(t);
         let _ = writeln!(
@@ -399,10 +410,7 @@ fn draw(title: &str, ylabel: &str, pts: &[Pt], front: &[usize], weighed: &[&str]
     order.sort_by(|a, b| sy.at(pts[*a].y).total_cmp(&sy.at(pts[*b].y)));
     // Every point is an obstacle too: a box around the marker, in the same
     // (left, baseline, width) form as a label.
-    let mut placed: Vec<(f64, f64, f64)> = pts
-        .iter()
-        .map(|p| (sx.at(p.x) - 7.0, sy.at(p.y) + 4.0, 14.0))
-        .collect();
+    let mut placed: Vec<(f64, f64, f64)> = pts.iter().map(|p| (sx.at(p.x) - 7.0, sy.at(p.y) + 4.0, 14.0)).collect();
     for i in order {
         let p = &pts[i];
         let (x, y) = (sx.at(p.x), sy.at(p.y));
@@ -426,14 +434,22 @@ fn draw(title: &str, ylabel: &str, pts: &[Pt], front: &[usize], weighed: &[&str]
         let (lx, ly) = place(&placed, x, y, p.name.len() as f64 * 6.6);
         placed.push((lx, ly, p.name.len() as f64 * 6.6));
         if (ly - (y + 4.0)).abs() > 1.0 || lx < x {
-            let (from, to) = if lx < x { (x - 6.0, lx + p.name.len() as f64 * 6.6 + 2.0) } else { (x + 6.0, lx - 2.0) };
+            let (from, to) = if lx < x {
+                (x - 6.0, lx + p.name.len() as f64 * 6.6 + 2.0)
+            } else {
+                (x + 6.0, lx - 2.0)
+            };
             let _ = writeln!(
                 s,
                 "<line class=\"ref\" x1=\"{from:.1}\" y1=\"{y:.1}\" x2=\"{to:.1}\" y2=\"{:.1}\"/>",
                 ly - 4.0
             );
         }
-        let _ = writeln!(s, "<text class=\"ink\" x=\"{lx:.1}\" y=\"{ly:.1}\">{}</text>", esc(p.name));
+        let _ = writeln!(
+            s,
+            "<text class=\"ink\" x=\"{lx:.1}\" y=\"{ly:.1}\">{}</text>",
+            esc(p.name)
+        );
     }
     s.push_str("</svg>\n");
     s

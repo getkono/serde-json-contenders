@@ -145,7 +145,11 @@ pub fn stamp() -> Value {
             std::env::var(GIT_COMMIT_VAR).ok().as_deref(),
             std::env::var(GIT_DIRTY_VAR).ok().as_deref(),
         );
-        (commit, dirty, std::env::var(FINGERPRINT_VAR).ok().filter(|f| !f.is_empty()))
+        (
+            commit,
+            dirty,
+            std::env::var(FINGERPRINT_VAR).ok().filter(|f| !f.is_empty()),
+        )
     } else {
         let (commit, dirty) = git_state();
         (commit, dirty, fingerprint())

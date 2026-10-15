@@ -15,10 +15,10 @@ text{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:12px}
 </style>
 <rect class="bg" width="720" height="440" rx="6"/>
 <text class="ink title" x="84" y="24">json-small encode: cycles at native against .text added, full fixture (bytes)</text>
-<line class="grid" x1="98.8" y1="48" x2="98.8" y2="384.0"/><text class="ink2" x="98.8" y="402.0" text-anchor="middle">5</text>
-<line class="grid" x1="225.9" y1="48" x2="225.9" y2="384.0"/><text class="ink2" x="225.9" y="402.0" text-anchor="middle">1k</text>
-<line class="grid" x1="353.0" y1="48" x2="353.0" y2="384.0"/><text class="ink2" x="353.0" y="402.0" text-anchor="middle">1.500k</text>
-<line class="grid" x1="480.0" y1="48" x2="480.0" y2="384.0"/><text class="ink2" x="480.0" y="402.0" text-anchor="middle">2k</text>
+<line class="grid" x1="134.6" y1="48" x2="134.6" y2="384.0"/><text class="ink2" x="134.6" y="402.0" text-anchor="middle">575</text>
+<line class="grid" x1="243.6" y1="48" x2="243.6" y2="384.0"/><text class="ink2" x="243.6" y="402.0" text-anchor="middle">6</text>
+<line class="grid" x1="352.6" y1="48" x2="352.6" y2="384.0"/><text class="ink2" x="352.6" y="402.0" text-anchor="middle">625</text>
+<line class="grid" x1="461.6" y1="48" x2="461.6" y2="384.0"/><text class="ink2" x="461.6" y="402.0" text-anchor="middle">65</text>
 <line class="grid" x1="84" y1="358.3" x2="550.0" y2="358.3"/><text class="ink2" x="76.0" y="362.3" text-anchor="end">50k</text>
 <line class="grid" x1="84" y1="273.6" x2="550.0" y2="273.6"/><text class="ink2" x="76.0" y="277.6" text-anchor="end">100k</text>
 <line class="grid" x1="84" y1="188.8" x2="550.0" y2="188.8"/><text class="ink2" x="76.0" y="192.8" text-anchor="end">150k</text>
@@ -26,31 +26,10 @@ text{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:12px}
 <line class="axis" x1="84" y1="384.0" x2="550.0" y2="384.0"/><line class="axis" x1="84" y1="48" x2="84" y2="384.0"/>
 <text class="ink2" x="317.0" y="426.0" text-anchor="middle">hardware cycles per operation, native</text>
 <text class="ink2" transform="translate(18 216.0) rotate(-90)" text-anchor="middle">.text added, full fixture (bytes)</text>
-<line class="ref" x1="173.4" y1="48" x2="173.4" y2="384.0"/><line class="ref" x1="84" y1="360.8" x2="550.0" y2="360.8"/>
-<circle class="off hollow" cx="145.3" cy="71.2" r="5"><title>sonic-rs: 683 cycles, 219.358k (fails conformance)</title></circle>
-<text class="ink" x="157.3" y="75.2">sonic-rs</text>
-<circle class="off hollow" cx="517.9" cy="264.0" r="5"><title>struson: 2.149k cycles, 105.633k (fails conformance)</title></circle>
-<text class="ink" x="529.9" y="268.0">struson</text>
-<circle class="off hollow" cx="302.7" cy="314.3" r="5"><title>flexon-rt: 1.302k cycles, 75.984k (fails conformance)</title></circle>
-<text class="ink" x="314.7" y="318.3">flexon-rt</text>
-<circle class="off hollow" cx="276.3" cy="314.3" r="5"><title>flexon-rt-mut: 1.198k cycles, 75.984k (fails conformance)</title></circle>
-<line class="ref" x1="282.3" y1="314.3" x2="286.3" y2="301.3"/>
-<text class="ink" x="288.3" y="305.3">flexon-rt-mut</text>
-<circle class="off hollow" cx="303.6" cy="316.1" r="5"><title>flexon-ct: 1.306k cycles, 74.928k (fails conformance)</title></circle>
-<line class="ref" x1="309.6" y1="316.1" x2="313.6" y2="329.1"/>
-<text class="ink" x="315.6" y="333.1">flexon-ct</text>
-<circle class="off hollow" cx="178.2" cy="316.1" r="5"><title>flexon-ct-mut: 812 cycles, 74.928k (fails conformance)</title></circle>
-<line class="ref" x1="184.2" y1="316.1" x2="188.2" y2="329.1"/>
-<text class="ink" x="190.2" y="333.1">flexon-ct-mut</text>
-<circle class="off" cx="116.1" cy="323.2" r="5"><title>serde_json+float_roundtrip: 568 cycles, 70.702k</title></circle>
-<line class="ref" x1="122.1" y1="323.2" x2="126.1" y2="284.2"/>
-<text class="ink" x="128.1" y="288.2">serde_json+float_roundtrip</text>
-<circle class="off hollow" cx="135.7" cy="345.1" r="5"><title>simd-json: 645 cycles, 57.824k (fails conformance)</title></circle>
-<text class="ink" x="147.7" y="349.1">simd-json</text>
-<circle class="off hollow" cx="130.9" cy="345.1" r="5"><title>simd-json-buffers: 626 cycles, 57.824k (fails conformance)</title></circle>
-<line class="ref" x1="136.9" y1="345.1" x2="140.9" y2="267.1"/>
-<text class="ink" x="142.9" y="271.1">simd-json-buffers</text>
-<circle class="on" cx="173.4" cy="360.8" r="5"><title>serde_json: 793 cycles, 48.526k</title></circle>
-<circle class="ring" cx="173.4" cy="360.8" r="9"/>
-<text class="ink" x="185.4" y="364.8">serde_json</text>
+<line class="ref" x1="141.3" y1="48" x2="141.3" y2="384.0"/><line class="ref" x1="84" y1="360.8" x2="550.0" y2="360.8"/>
+<circle class="off hollow" cx="492.7" cy="71.2" r="5"><title>sonic-rs: 657 cycles, 219.358k (fails conformance)</title></circle>
+<text class="ink" x="504.7" y="75.2">sonic-rs</text>
+<circle class="on" cx="141.3" cy="360.8" r="5"><title>serde_json: 577 cycles, 48.526k</title></circle>
+<circle class="ring" cx="141.3" cy="360.8" r="9"/>
+<text class="ink" x="153.3" y="364.8">serde_json</text>
 </svg>

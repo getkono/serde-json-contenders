@@ -32,12 +32,12 @@
       "crate": "serde_json",
       "deserves_to_exist": true,
       "exists_evidence": "Correctly rounded float parsing, which the default parser is not (see conformance, numbers).",
-      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "reason": "no route ≥10 % better in throughput or p99 beyond the A/A band",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
-          "outcome": "fail"
+          "detail": "hardware cycles not yet recorded",
+          "outcome": "pending"
         },
         {
           "detail": "reference",
@@ -57,7 +57,7 @@
       "backend": "sonic-rs",
       "crate": "sonic-rs",
       "deserves_to_exist": true,
-      "exists_evidence": "unicode encode heap 0.60× serde_json at native. Lazy path lookups without a full parse (`get`, `get_many`, `LazyValue`); errors carry a byte offset as well as line and column.",
+      "exists_evidence": "Lazy path lookups without a full parse (`get`, `get_many`, `LazyValue`); errors carry a byte offset as well as line and column.",
       "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
       "recommended": "fail",
       "rules": [
@@ -83,13 +83,13 @@
       "backend": "simd-json",
       "crate": "simd-json",
       "deserves_to_exist": true,
-      "exists_evidence": "sweep-4kib encode heap 0.54× serde_json at native. Borrowing decode of escaped strings, unescaped in place: 1,175 allocations against serde_json's 4,584 for twitter-like into borrowed types from a unique buffer. A tape API (`to_tape`) traverses without building values.",
-      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "exists_evidence": "Borrowing decode of escaped strings, unescaped in place: 1,175 allocations against serde_json's 4,584 for twitter-like into borrowed types from a unique buffer. A tape API (`to_tape`) traverses without building values.",
+      "reason": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
-          "outcome": "fail"
+          "detail": "hardware cycles not yet recorded",
+          "outcome": "pending"
         },
         {
           "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
@@ -109,13 +109,13 @@
       "backend": "simd-json-buffers",
       "crate": "simd-json",
       "deserves_to_exist": true,
-      "exists_evidence": "sweep-4kib encode heap 0.54× serde_json at native. Reusing `Buffers` across calls roughly halves plain `from_slice`'s allocated bytes: 2.93 MB against 5.54 MB for twitter-like into borrowed types from a unique buffer.",
-      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "exists_evidence": "Reusing `Buffers` across calls roughly halves plain `from_slice`'s allocated bytes: 2.93 MB against 5.54 MB for twitter-like into borrowed types from a unique buffer.",
+      "reason": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
-          "outcome": "fail"
+          "detail": "hardware cycles not yet recorded",
+          "outcome": "pending"
         },
         {
           "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
@@ -135,13 +135,13 @@
       "backend": "flexon-rt",
       "crate": "flexon",
       "deserves_to_exist": true,
-      "exists_evidence": "sweep-64b encode heap 0.50× serde_json at native. `from_mut_slice` borrows escaped strings in place; JSON-pointer access. Its latest release (0.4.9) does not compile on stable Rust.",
-      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "exists_evidence": "`from_mut_slice` borrows escaped strings in place; JSON-pointer access. Its latest release (0.4.9) does not compile on stable Rust.",
+      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
-          "outcome": "fail"
+          "detail": "hardware cycles not yet recorded",
+          "outcome": "pending"
         },
         {
           "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
@@ -161,13 +161,13 @@
       "backend": "flexon-rt-mut",
       "crate": "flexon",
       "deserves_to_exist": true,
-      "exists_evidence": "sweep-64b encode heap 0.50× serde_json at native. In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-rt`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer.",
-      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "exists_evidence": "In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-rt`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer.",
+      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
-          "outcome": "fail"
+          "detail": "hardware cycles not yet recorded",
+          "outcome": "pending"
         },
         {
           "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
@@ -187,13 +187,13 @@
       "backend": "flexon-ct",
       "crate": "flexon",
       "deserves_to_exist": true,
-      "exists_evidence": "sweep-64b encode heap 0.50× serde_json at native. The compile-time SIMD configuration of flexon; same API as `flexon-rt`.",
-      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "exists_evidence": "The compile-time SIMD configuration of flexon; same API as `flexon-rt`.",
+      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
-          "outcome": "fail"
+          "detail": "hardware cycles not yet recorded",
+          "outcome": "pending"
         },
         {
           "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
@@ -213,13 +213,13 @@
       "backend": "flexon-ct-mut",
       "crate": "flexon",
       "deserves_to_exist": true,
-      "exists_evidence": "sweep-64b encode heap 0.50× serde_json at native. In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-ct`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer.",
-      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "exists_evidence": "In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-ct`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer.",
+      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
-          "outcome": "fail"
+          "detail": "hardware cycles not yet recorded",
+          "outcome": "pending"
         },
         {
           "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
@@ -240,12 +240,12 @@
       "crate": "jiter",
       "deserves_to_exist": true,
       "exists_evidence": "Partial mode parses truncated documents (built for streamed model output); decode only.",
-      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "reason": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
-          "outcome": "fail"
+          "detail": "hardware cycles not yet recorded",
+          "outcome": "pending"
         },
         {
           "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence",
@@ -270,8 +270,8 @@
       "recommended": "fail",
       "rules": [
         {
-          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
-          "outcome": "fail"
+          "detail": "hardware cycles not yet recorded",
+          "outcome": "pending"
         },
         {
           "detail": "status shape/valid fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
@@ -291,13 +291,13 @@
       "backend": "struson",
       "crate": "struson",
       "deserves_to_exist": true,
-      "exists_evidence": "sweep-64b encode heap 0.70× serde_json at native. No `unsafe`: 0 unsafe blocks, functions or impls across its 5 runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors.",
+      "exists_evidence": "No `unsafe`: 0 unsafe blocks, functions or impls across its 5 runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors.",
       "reason": "reference point: no borrowed slice decode plus `to_vec`-style encoder",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
-          "outcome": "fail"
+          "detail": "hardware cycles not yet recorded",
+          "outcome": "pending"
         },
         {
           "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence",

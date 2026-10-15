@@ -121,7 +121,10 @@ mod tests {
         let mut key = Key::new("native", "simd-json", "twitter-like", "decode");
         key.form = "borrowed".into();
         key.arrival = "unique".into();
-        data.host.alloc.rows.insert(key, json!({ "allocations": 1175.0, "bytes": 2_930_000.0 }));
+        data.host
+            .alloc
+            .rows
+            .insert(key, json!({ "allocations": 1175.0, "bytes": 2_930_000.0 }));
         data
     }
 

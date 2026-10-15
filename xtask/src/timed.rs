@@ -68,18 +68,15 @@ const QUIET_LOAD: f64 = 1.0;
 /// Refuse `canonical` on a host that is not quiet: a busy machine, or a
 /// governor that moves the clock under the measurement.
 pub fn check_trust(trust: &str) -> Result<()> {
-    anyhow::ensure!(
-        matches!(trust, "solo" | "canonical"),
-        "--trust is solo or canonical"
-    );
+    anyhow::ensure!(matches!(trust, "solo" | "canonical"), "--trust is solo or canonical");
     if trust == "canonical" {
         let load: f64 = std::fs::read_to_string("/proc/loadavg")?
             .split_whitespace()
             .next()
             .and_then(|l| l.parse().ok())
             .unwrap_or(f64::INFINITY);
-        let governor = std::fs::read_to_string("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor")
-            .unwrap_or_default();
+        let governor =
+            std::fs::read_to_string("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor").unwrap_or_default();
         anyhow::ensure!(
             load <= QUIET_LOAD && governor.trim() == "performance",
             "--trust canonical needs a quiet host: load {load} (at most {QUIET_LOAD}), governor {} (performance)",
@@ -180,7 +177,10 @@ fn rounds(args: &[String], filter: &Filter, mode: &str, shapes: &[Shape], field:
                     row["instructions"] = json!(ins.get(ins.len() / 2));
                 }
                 row["discarded"] = json!(results.iter().filter_map(|r| r["discarded"].as_u64()).sum::<u64>());
-            } else if results.iter().all(|r| matches!(r["verdict"].as_str(), Some("rejected" | "unsupported"))) {
+            } else if results
+                .iter()
+                .all(|r| matches!(r["verdict"].as_str(), Some("rejected" | "unsupported")))
+            {
                 // Not measured, by the backend's own answer: recorded as such.
             } else {
                 row["error"] = json!("a round failed or was refused; see rounds");

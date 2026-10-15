@@ -10,7 +10,7 @@ use payloads::Workload;
 use serde_json::{Value, json};
 
 use crate::modes;
-use crate::verify::{Verdict, compare};
+use crate::verify::{Verdict, compare, compare_json};
 
 /// Which operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -299,15 +299,11 @@ impl<B: Backend, W: Workload> Job for Encode<B, W> {
         } else {
             B::encode(&self.value)
         };
+        // Not re-parsed with serde_json: its 128-level recursion limit would
+        // call every encoder's `nested-129` output, serde_json's own
+        // included, not JSON.
         match encoded {
-            Ok(bytes) => match serde_json::from_slice::<Value>(&bytes) {
-                Ok(parsed) => {
-                    let reference = serde_json::from_slice::<Value>(&payloads::encode_canonical(&self.value))
-                        .unwrap_or_else(|e| unreachable!("baseline re-parses its own output: {e}"));
-                    compare(&parsed, &reference)
-                }
-                Err(e) => Verdict::Wrong(format!("output is not JSON: {e}")),
-            },
+            Ok(bytes) => compare_json(&bytes, &payloads::encode_canonical(&self.value)),
             Err(failure) => Verdict::Rejected(failure.to_string()),
         }
     }

@@ -87,7 +87,7 @@ Cycles decide because instructions are not equally expensive: a vector instructi
 
 Each per-operation measurement follows the same protocol:
 
-1. The operation runs once and its result is checked. A wrong result is reported and never measured.
+1. The operation runs once and its result is checked. A wrong result is reported, never measured, and fails rule 2.
 2. A warm-up call pays one-time costs: CPU detection, lazy statics, first-touch page faults.
 3. The operation is repeated inside a function that is the only thing counted. That is `max(1, min(1000, 4 MiB ÷ size))` iterations, and the result is dropped inside the counted region, as a server drops it. A `unique` arrival gets a fresh copy of the input each iteration. A `shared` arrival clones one `Bytes` handle each iteration, so the input stays in cache, as a frame a server has just read does.
 
@@ -175,7 +175,7 @@ There is no Intel machine, so no Intel hardware-cycle or wall-clock number exist
 
 ### Decision rule
 
-*Dominance* is ε-dominance with ε = 5 %. One entry dominates another when it is no more than 5 % worse on every axis and more than 5 % better on at least one. On a CPU axis, read in hardware cycles, the margin is ε or the A/A band at that cell, whichever is wider: a difference serde_json shows against itself is noise. The axes are:
+*Dominance* is ε-dominance with ε = 5 %. One entry dominates another when it is no more than 5 % worse on every axis and more than 5 % better on at least one. On a CPU axis, read in hardware cycles, the margin is ε or the A/A band at that cell, whichever is wider: a difference serde_json shows against itself is noise. The band is the widest gap between serde_json and its A/A copy, in the medians or in any one round. The axes are:
 
 - decode cycles
 - encode cycles
@@ -188,10 +188,10 @@ Decode-only entries are compared on the decode axes alone, and an encoder is onl
 
 A backend is **recommended for Kynos** only if all four hold:
 
-1. **Frontier.** On at least one Kynos shape, it is non-dominated among eligible entries at x86-64 `native` and more than the margin better than serde_json on decode or encode cycles or heap. Every cycles advantage, in a win or in dominance, must agree with the counts: one entry's cycles advantage over another counts only if, at `v3`, its callgrind estimated cycles for the same cell are no more than 5 % above the other's. Without an A/A control for a Kynos cell the rule is pending, and it is provisional unless the cycles are `canonical`.
-2. **Conformance.** No gating disagreement at any variant, no fuzz divergence, and no undefined behaviour under Miri.
+1. **Frontier.** On at least one Kynos shape, it is non-dominated among eligible entries at x86-64 `native` and more than the margin better than serde_json on decode or encode cycles or heap. Every cycles advantage, in a win or in dominance, must agree with the counts: one entry's cycles advantage over another counts only if, at `v3`, its callgrind estimated cycles for the same cell are lower than the other's, and a cycles disadvantage is excused as noise only if its count is more than 5 % lower. An entry without both counts on a cycles axis cannot dominate on it. Without an A/A control or a `v3` count for a Kynos cell the rule is pending, and it is provisional unless the cycles are `canonical`.
+2. **Conformance.** No gating disagreement at any variant, no wrong result on any measured cell, no fuzz divergence, and no undefined behaviour under Miri.
 3. **Soundness.** No advisory affecting the pinned version, no open soundness issue, and no memory error reported by the sanitizer while fuzzing.
-4. **End to end.** At least 10 % better throughput or p99 on `echo-post` or `json-large`, outside the A/A band, and consistent with the counted codec share: no more throughput than the count predicts, and a p99 gain only where the count predicts a gain of more than 5 % (a p99 under load is not proportional to a request's cost, so it has no tighter bound). The A/A control and the prediction must both exist, or the rule is pending.
+4. **End to end.** At least 10 % better throughput or p99 on `echo-post` or `json-large`, outside the A/A band, and consistent with the counted codec share: no more throughput than the count predicts, give or take ε or the A/A band, whichever is wider (more is a measurement error, and leaves the rule pending until a rerun), and a p99 gain only where the count predicts a gain of more than 5 % (a p99 under load is not proportional to a request's cost, so it has no tighter bound). The A/A control and the prediction must both exist, or the rule is pending.
 
 Separately from Kynos, a library **deserves to exist** if either of these holds. Neither eligibility nor conformance is required here: a library can be worth having for what it does without being a drop-in replacement, and its frontier is drawn among every entry that passes conformance.
 

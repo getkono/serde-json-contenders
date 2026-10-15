@@ -119,42 +119,89 @@ fn extra_files(dir: &Path, files: &[(String, String)]) -> Result<Vec<String>> {
     Ok(extra)
 }
 
-/// Every README link into the report that quotes a figure, written
-/// `[0.84×](report/README.md#anchor "row words | column")`, checked against
-/// the generated report. Under `anchor`, exactly one table row must hold
-/// every row word in its cells, and the cell under the named column must be
-/// the quoted text, or hold it as a whole figure (not as part of a longer
-/// number). Without a column, some cell of that row must. A link whose text
-/// holds a digit and that names no row is itself a failure: every quoted
-/// figure says where it comes from. Returns what fails.
-fn check_claims(readme: &str, report: &str) -> Vec<String> {
-    let mut failures = Vec::new();
-    let mut rest = readme;
-    while let Some(start) = rest.find("](report/README.md#") {
-        let text_start = rest[..start].rfind('[').map_or(start, |i| i + 1);
-        let quoted = &rest[text_start..start];
-        let after = &rest[start + "](report/README.md#".len()..];
-        let (anchor, title, consumed) = match after.find([' ', ')']) {
-            Some(i) if after[i..].starts_with(" \"") => {
-                let t = &after[i + 2..];
-                let Some(close) = t.find("\")") else {
-                    failures.push(format!("[{quoted}]: unterminated link title"));
-                    break;
-                };
-                (&after[..i], &t[..close], i + 2 + close + 2)
-            }
-            Some(i) => (&after[..i], "", i + 1),
-            None => break,
+/// One Markdown link: `[text](target "title")`.
+#[derive(Debug, Clone, Copy)]
+struct Link<'a> {
+    text: &'a str,
+    target: &'a str,
+    title: Option<&'a str>,
+    /// Byte range of the whole link in the scanned text.
+    start: usize,
+    end: usize,
+}
+
+/// Every link in `s`, in order. A `[` that does not open a link ("[sic]")
+/// is text, and hides nothing after it.
+fn links(s: &str) -> Vec<Link<'_>> {
+    let mut out = Vec::new();
+    let mut from = 0;
+    while let Some(open) = s[from..].find('[').map(|i| from + i) {
+        from = open + 1;
+        let Some(close) = s[open + 1..].find([']', '[']).map(|i| open + 1 + i) else {
+            break;
         };
-        rest = &after[consumed..];
-        if title.is_empty() {
-            if quoted.chars().any(|c| c.is_ascii_digit()) {
-                failures.push(format!("[{quoted}](#{anchor}): a quoted figure must name its row"));
-            }
+        if !s[close..].starts_with("](") {
             continue;
         }
+        let after = close + 2;
+        let Some(stop) = s[after..].find([' ', ')']).map(|i| after + i) else {
+            continue;
+        };
+        let target = &s[after..stop];
+        let (title, end) = if s[stop..].starts_with(" \"") {
+            match s[stop + 2..].find("\")") {
+                Some(t) => (Some(&s[stop + 2..stop + 2 + t]), stop + 2 + t + 2),
+                None => continue,
+            }
+        } else if s[stop..].starts_with(')') {
+            (None, stop + 1)
+        } else {
+            continue;
+        };
+        out.push(Link {
+            text: &s[open + 1..close],
+            target,
+            title,
+            start: open,
+            end,
+        });
+        from = end;
+    }
+    out
+}
+
+/// Every README link into the report, checked against the generated report.
+/// The anchor must exist. A link whose text holds a digit quotes a figure,
+/// and must be written `[0.84×](report/README.md#anchor "row words |
+/// column")`: under `anchor`, exactly one table row must hold every row word
+/// in its cells, and the cell under the named column must be the quoted
+/// text, or hold it as a whole figure (not as part of a longer number).
+/// Returns what fails.
+fn check_claims(readme: &str, report: &str) -> Vec<String> {
+    let mut failures = Vec::new();
+    for link in links(readme) {
+        let Some(rest) = link.target.strip_prefix("report/README.md") else {
+            continue;
+        };
+        let quoted = link.text;
+        let figure = quoted.chars().any(|c| c.is_ascii_digit());
+        let Some(anchor) = rest.strip_prefix('#') else {
+            if figure {
+                failures.push(format!("[{quoted}]: a quoted figure must link to its section's anchor"));
+            }
+            continue;
+        };
         let Some(section) = anchored(report, anchor) else {
             failures.push(format!("[{quoted}] links to #{anchor}, which the report does not have"));
+            continue;
+        };
+        if !figure {
+            continue;
+        }
+        let Some(title) = link.title.filter(|t| t.contains(" | ")) else {
+            failures.push(format!(
+                "[{quoted}](#{anchor}): a quoted figure must name its row and column (\"row words | column\")"
+            ));
             continue;
         };
         if let Err(e) = holds(section, title, quoted) {
@@ -232,8 +279,11 @@ fn whole(cell: &str, quoted: &str) -> bool {
 
 /// Figures written in the README's Findings without a link to the report row
 /// they come from. A number there is a claim, and every claim names its
-/// evidence. Inline code (`nested-129`) and a rule's number ("rule 4") are
-/// names, not figures.
+/// evidence: any word that begins with a digit (or `~`, `≈`, `±` or a sign
+/// before one) is a figure, and so is the text of a link that holds a digit
+/// and does not point into the report. Inline code (`nested-129`), names
+/// that begin with a letter (`v3`), and rule numbers ("rules 1 and 4") are
+/// not figures.
 fn bare_figures(readme: &str) -> Vec<String> {
     let Some(start) = readme
         .find("\n## Findings")
@@ -244,40 +294,58 @@ fn bare_figures(readme: &str) -> Vec<String> {
     };
     let body = &readme[start..];
     let end = body[3..].find("\n## ").map_or(body.len(), |i| i + 3);
-    let mut text = String::new();
-    let mut rest = &body[..end];
-    // Drop link texts with their targets, and inline code.
-    while let Some(i) = rest.find(['[', '`']) {
-        text.push_str(&rest[..i]);
-        let close = if rest[i..].starts_with('`') {
-            rest[i + 1..].find('`').map(|j| i + 1 + j + 1)
-        } else {
-            rest[i..]
-                .find("](")
-                .and_then(|j| rest[i + j..].find(')').map(|k| i + j + k + 1))
-        };
-        let Some(close) = close else {
-            rest = &rest[i + 1..];
-            continue;
-        };
-        text.push(' ');
-        rest = &rest[close..];
-    }
-    text.push_str(rest);
+    let body = &body[..end];
     let mut failures = Vec::new();
-    let mut previous = "";
-    for word in text.split_whitespace() {
-        let token = word.trim_matches(|c: char| matches!(c, ',' | ';' | ':' | '.' | '(' | ')' | '"' | '*'));
-        let figure = token.chars().any(|c| c.is_ascii_digit())
-            && token
-                .chars()
-                .all(|c| c.is_ascii_digit() || matches!(c, '.' | ',' | '%' | '×' | '+' | '-' | '−'));
-        if figure && !matches!(previous.to_lowercase().as_str(), "rule" | "rules") {
+    // Links become a space; inline code too.
+    let mut text = String::new();
+    let mut at = 0;
+    for link in links(body) {
+        if link.text.chars().any(|c| c.is_ascii_digit()) && !link.target.starts_with("report/README.md#") {
+            failures.push(format!(
+                "Findings quotes [{}] from {}, not from a report row",
+                link.text, link.target
+            ));
+        }
+        text.push_str(&body[at..link.start]);
+        text.push(' ');
+        at = link.end;
+    }
+    text.push_str(&body[at..]);
+    let mut prose = String::new();
+    let mut code = false;
+    for c in text.chars() {
+        if c == '`' {
+            code = !code;
+            prose.push(' ');
+        } else if !code {
+            prose.push(c);
+        }
+    }
+    let mut rule_list = false;
+    let mut previous = String::new();
+    for word in prose.split_whitespace() {
+        let token = word.trim_matches(|c: char| {
+            matches!(
+                c,
+                ',' | ';' | ':' | '.' | '(' | ')' | '"' | '*' | '[' | ']' | '!' | '?' | '\''
+            )
+        });
+        let lower = token.to_lowercase();
+        let body = token.trim_start_matches(['~', '≈', '±', '+', '-', '−', '<', '>', '≤', '≥']);
+        let figure = body.chars().next().is_some_and(|c| c.is_ascii_digit());
+        // "rule 1", "rules 1, 2 and 4": a number after "rule", or after a
+        // rule number with at most an "and" or "or" between.
+        rule_list = if figure {
+            rule_list || matches!(previous.as_str(), "rule" | "rules")
+        } else {
+            rule_list && matches!(lower.as_str(), "and" | "or")
+        };
+        if figure && !rule_list {
             failures.push(format!(
                 "Findings quotes {token} without a link to the report row it comes from"
             ));
         }
-        previous = token;
+        previous = lower;
     }
     failures
 }
@@ -357,6 +425,27 @@ mod tests {
         assert!(bare_figures(ok).is_empty(), "{:?}", bare_figures(ok));
         let bad = "## Findings\n\nsonic-rs takes 0.84× of the cycles, 16 % less.\n\n## Licence\n";
         assert_eq!(bare_figures(bad).len(), 2, "{:?}", bare_figures(bad));
+    }
+
+    #[test]
+    fn findings_figures_in_any_form_need_a_link() {
+        use super::bare_figures;
+        let ok = "## Findings\n\nUnder rules 1 and 4, at `v3` and `x86-64`, [sic] sonic-rs takes [0.84×](report/README.md#x \"y | z\").\n";
+        assert!(bare_figures(ok).is_empty(), "{:?}", bare_figures(ok));
+        for bad in ["0.84x", "~16", "1.2k", "10–20", "≈0.8×", "1/3", "rule 1 at 16 %"] {
+            let text = format!("## Findings\n\n[sic] it is {bad} faster.\n");
+            assert!(!bare_figures(&text).is_empty(), "{bad} passed");
+        }
+        let elsewhere = "## Findings\n\nIt is [0.84×](https://example.com) faster.\n";
+        assert_eq!(bare_figures(elsewhere).len(), 1);
+    }
+
+    #[test]
+    fn a_figure_must_name_its_column_and_every_anchor_must_exist() {
+        let no_column = "[10.84×](report/README.md#kynos-decode \"json-small native (cycles)\")";
+        assert_eq!(check_claims(no_column, REPORT).len(), 1);
+        assert_eq!(check_claims("[0.84×](report/README.md)", REPORT).len(), 1);
+        assert_eq!(check_claims("see [this](report/README.md#nowhere)", REPORT).len(), 1);
     }
 
     #[test]

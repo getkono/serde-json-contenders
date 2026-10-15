@@ -56,17 +56,20 @@ pub struct Table {
 }
 
 impl Table {
-    fn of(doc: &Value) -> Self {
-        let rows = doc["rows"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .map(|r| (Key::of(r), r.clone()))
-            .collect();
-        Self {
+    /// The rows of `doc`, keyed. Two rows with one key would leave one of
+    /// them unread, so that is an error.
+    fn of(doc: &Value) -> Result<Self> {
+        let mut rows = BTreeMap::new();
+        for r in doc["rows"].as_array().into_iter().flatten() {
+            let key = Key::of(r);
+            if rows.insert(key.clone(), r.clone()).is_some() {
+                bail!("two rows for {key:?}");
+            }
+        }
+        Ok(Self {
             rows,
             provenance: doc["provenance"].clone(),
-        }
+        })
     }
 
     pub fn get(&self, key: &Key, field: &str) -> Option<f64> {
@@ -132,7 +135,10 @@ impl Loader {
     }
 
     fn table(&mut self, name: &str) -> Result<Table> {
-        Ok(self.doc(name)?.map(|d| Table::of(&d)).unwrap_or_default())
+        match self.doc(name)? {
+            Some(d) => Table::of(&d).with_context(|| format!("results/{name}")),
+            None => Ok(Table::default()),
+        }
     }
 
     fn rows(&mut self, name: &str) -> Result<Vec<Value>> {
@@ -141,6 +147,21 @@ impl Loader {
             .and_then(|d| d["rows"].as_array().cloned())
             .unwrap_or_default())
     }
+}
+
+/// Every file under `dir`, as paths relative to it.
+fn files_under(dir: &std::path::Path, prefix: &str) -> Result<Vec<String>> {
+    let mut out = Vec::new();
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        let name = format!("{prefix}{}", entry.file_name().to_string_lossy());
+        if entry.file_type()?.is_dir() {
+            out.extend(files_under(&entry.path(), &format!("{name}/"))?);
+        } else {
+            out.push(name);
+        }
+    }
+    Ok(out)
 }
 
 /// The host's results.
@@ -236,6 +257,24 @@ impl Data {
                 load.missing.join(", ")
             );
         }
+        // Every file under results/ is read: one no table reads would be
+        // neither checked for staleness nor published.
+        let read: std::collections::BTreeSet<String> = load
+            .sources
+            .iter()
+            .map(|s| s.name.clone())
+            .chain(["skipped.toml", "soundness.toml", "notes.toml"].map(str::to_owned))
+            .collect();
+        let unread: Vec<String> = files_under(&results, "")?
+            .into_iter()
+            .filter(|f| !f.starts_with("raw/") && !read.contains(f))
+            .collect();
+        if !unread.is_empty() {
+            bail!(
+                "results/ holds files the report does not read (delete them, or teach the report): {}",
+                unread.join(", ")
+            );
+        }
         data.sources = load.sources;
         Ok(data)
     }
@@ -320,8 +359,8 @@ type PerOperation<'a> = (
 
 /// What a complete run of `mise run all` would have written and did not:
 /// every row of the matrix in each per-operation table (a row recording the
-/// backend's own rejection is present; a row recording an error or a wrong
-/// result is a failure of the run), every set in the cost tables, every
+/// backend's own rejection is present, and so is a wrong result, which rule
+/// 2 reads; a row recording an error is a failure of the run), every set in the cost tables, every
 /// server and route end to end, every fuzz target and configuration, Miri
 /// for every set, a full zero-tolerance recount, and a doctor run without
 /// failures.
@@ -451,7 +490,9 @@ fn per_operation(
                             };
                             let what = match table.row(&key) {
                                 None => "missing",
-                                Some(r) if r["error"].is_string() || r["verdict"] == "wrong" => "failed",
+                                // A wrong result is a result (rule 2 reads it);
+                                // an error is a cell that did not run.
+                                Some(r) if r["error"].is_string() => "failed",
                                 Some(_) => continue,
                             };
                             if what == "missing" {
@@ -468,7 +509,7 @@ fn per_operation(
     }
     (missing + failed > 0).then(|| {
         format!(
-            "{name}: {missing} rows missing, {failed} failed or wrong (first {})",
+            "{name}: {missing} rows missing, {failed} failed (first {})",
             first.unwrap_or_default()
         )
     })

@@ -78,6 +78,25 @@ pub fn exports(data: &Data) -> Vec<Export> {
             "what each build compiled and runs (`doctor.json`)",
             host.doctor["builds"].as_array().map_or(&[][..], Vec::as_slice),
         ),
+        export(
+            "doctor-failures.csv",
+            "each build that does not run the path it claims (`doctor.json`)",
+            &host.doctor["failures"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|f| serde_json::json!({ "failure": f }))
+                .collect::<Vec<_>>(),
+        ),
+        export(
+            "recount.csv",
+            "the zero-tolerance recount of the callgrind counts (`callgrind/recount.json`)",
+            &[serde_json::json!({
+                "compared": data.recount["compared"],
+                "committed": data.recount["committed"],
+                "tolerance": data.recount["tolerance"],
+            })],
+        ),
     ];
     let (summary, differences) = conformance(data);
     out.push(export(

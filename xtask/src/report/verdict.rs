@@ -221,20 +221,43 @@ pub fn cpu(data: &Data, p: Point, backend: &str, workload: &str, op: &str) -> Op
 }
 
 /// How far serde_json's A/A copy lands from serde_json at this cell, as a
-/// fraction: the noise a timed difference must clear. Zero for counts, which
-/// have none; `None` for a timed cell whose control is missing, which cannot
-/// be told from noise at all.
+/// fraction: the noise a timed difference must clear. That is the widest of
+/// the gap between the medians and the gap in each round (the two run in the
+/// same round, so a round's pair is one sample of the noise). Zero for
+/// counts, which have none; `None` for a timed cell whose control is
+/// missing, which cannot be told from noise at all.
 pub fn aa_band(data: &Data, p: Point, workload: &str, op: &str) -> Option<f64> {
     if !p.timed() {
         return Some(0.0);
     }
-    match (
+    let (Some(a), Some(b)) = (
         cpu(data, p, "serde_json", workload, op),
         cpu(data, p, "serde_json#aa", workload, op),
-    ) {
-        (Some(a), Some(b)) if a > 0.0 => Some((b / a - 1.0).abs()),
-        _ => None,
+    ) else {
+        return None;
+    };
+    if a <= 0.0 {
+        return None;
     }
+    let field = if p.source == "hw-instructions" {
+        "instructions"
+    } else {
+        "cycles"
+    };
+    let rounds = |backend: &str| -> Vec<Option<f64>> {
+        data.host
+            .hw
+            .row(&Key::new(p.variant, backend, workload, op))
+            .and_then(|r| r["rounds"].as_array())
+            .map(|rs| rs.iter().map(|r| r[field].as_f64()).collect())
+            .unwrap_or_default()
+    };
+    let per_round = rounds("serde_json")
+        .into_iter()
+        .zip(rounds("serde_json#aa"))
+        .filter_map(|(x, y)| Some((y? / x.filter(|x| *x > 0.0)? - 1.0).abs()))
+        .fold(0.0, f64::max);
+    Some((b / a - 1.0).abs().max(per_round))
 }
 
 /// Heap bytes per operation (allocation counts do not depend on the variant
@@ -339,33 +362,51 @@ fn axes(data: &Data, p: Point, e: &Entry, workload: &str, encode: bool) -> Vec<A
 }
 
 /// Whether the deterministic counts agree that `x` costs no more than `y`
-/// (within ε). An axis without counts has nothing to contradict.
+/// (within ε): what excuses `x` being timed slower as noise. An axis
+/// without counts has nothing to contradict.
 fn count_agrees(x: &Axis, y: &Axis) -> bool {
     match (x.count, y.count) {
-        (Count::Untimed, _) | (_, Count::Untimed) => true,
         (Count::At(a), Count::At(b)) => a <= b * (1.0 + EPSILON),
+        _ => true,
+    }
+}
+
+/// Whether the deterministic counts point the same way as a timed win of
+/// `x` over `y`: `x`'s count is lower. A count no lower leaves a timed win
+/// unexplained by the code, so it is not taken as one.
+fn count_lower(x: &Axis, y: &Axis) -> bool {
+    match (x.count, y.count) {
+        (Count::Untimed, _) | (_, Count::Untimed) => true,
+        (Count::At(a), Count::At(b)) => a < b,
         _ => false,
     }
+}
+
+/// Whether a timed axis lacks its count on either side.
+fn count_missing(x: &Axis, y: &Axis) -> bool {
+    matches!(x.count, Count::Missing) || matches!(y.count, Count::Missing)
 }
 
 /// Whether `a` dominates `b`: no more than the axis's tolerance worse on any
 /// axis, and more than it better on at least one. On a cycles axis the two
 /// entries' own counts at v3 must agree with each advantage: `a` being
-/// faster counts only if its count is no higher than `b`'s, and `a` being
-/// slower holds it back only if `b`'s count is no higher than `a`'s. Noise
+/// faster counts only if its count is lower than `b`'s, and `a` being
+/// slower holds it back unless its count is more than ε below `b`'s. Noise
 /// can make a timed figure look like a win; it cannot move a count. An axis
-/// `b` was measured on and `a` was not (a rejected input, a failed cell) is
-/// one `a` cannot be shown no worse on, so `a` does not dominate.
+/// `b` was measured on and `a` was not (a rejected input, a failed cell), or
+/// a timed axis without both counts, is one `a` cannot be shown no worse
+/// on, so `a` does not dominate.
 pub fn dominates(a: &[Axis], b: &[Axis]) -> bool {
     let mut better = false;
     for (x, y) in a.iter().zip(b) {
         match (x.value, y.value) {
             (None, Some(_)) => return false,
+            (Some(_), Some(_)) if count_missing(x, y) => return false,
             (Some(av), Some(bv)) => {
                 if av > bv * (1.0 + x.tol) && count_agrees(y, x) {
                     return false;
                 }
-                if av < bv * (1.0 - x.tol) && count_agrees(x, y) {
+                if av < bv * (1.0 - x.tol) && count_lower(x, y) {
                     better = true;
                 }
             }
@@ -413,7 +454,7 @@ pub fn frontier_win(data: &Data, p: Point, e: &Entry, workload: &str, pool: &[&E
             let (Some(mv), Some(tv)) = (m.value, t.value) else {
                 return None;
             };
-            (tv > 0.0 && mv < tv * (1.0 - m.tol) && count_agrees(&m, &t)).then(|| ((*name).to_owned(), mv / tv))
+            (tv > 0.0 && mv < tv * (1.0 - m.tol) && count_lower(&m, &t)).then(|| ((*name).to_owned(), mv / tv))
         })
         .min_by(|a, b| a.1.total_cmp(&b.1))
 }
@@ -448,6 +489,20 @@ fn rule1(data: &Data, e: &Entry, pool: &[&Entry]) -> Outcome {
         return Outcome::Pending(format!(
             "no A/A control for {}, so cycles there cannot be weighed",
             uncontrolled.join(", ")
+        ));
+    }
+    let uncounted: Vec<String> = KYNOS
+        .iter()
+        .flat_map(|w| ops.iter().map(move |op| (*w, *op)))
+        .filter(|(w, op)| {
+            cpu(data, X86_V3, e.backend, w, op).is_none() || cpu(data, X86_V3, "serde_json", w, op).is_none()
+        })
+        .map(|(w, op)| format!("{w} {op}"))
+        .collect();
+    if !uncounted.is_empty() {
+        return Outcome::Pending(format!(
+            "no v3 count for {}, so cycles there cannot be corroborated",
+            uncounted.join(", ")
         ));
     }
     let best = KYNOS
@@ -506,6 +561,20 @@ fn miri_failure(r: &Value) -> Option<String> {
     ))
 }
 
+/// Each measured cell of `backend` whose result the cell's own check found
+/// wrong: a conformance failure on the benchmark's own inputs.
+fn wrong_results(data: &Data, backend: &str) -> Vec<String> {
+    let mut wrong: Vec<String> = [&data.callgrind, &data.host.alloc, &data.host.hw, &data.host.time]
+        .iter()
+        .flat_map(|t| t.rows.iter())
+        .filter(|(k, r)| k.backend == backend && r["verdict"] == "wrong")
+        .map(|(k, _)| format!("wrong result on {} {} {} {}", k.workload, k.op, k.form, k.arrival))
+        .collect();
+    wrong.sort();
+    wrong.dedup();
+    wrong
+}
+
 fn rule2(data: &Data, e: &Entry) -> Outcome {
     let mut runs = 0;
     // The same first failure recurs at every variant and build of a backend,
@@ -538,6 +607,7 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
         .into_iter()
         .map(|(case, n)| format!("{case} fails {n} of {runs} conformance runs"))
         .collect();
+    failures.extend(wrong_results(data, e.backend));
     let set = e.set;
     // Each backend is fuzzed on its own; its rows are its evidence alone.
     let fuzz: Vec<&Value> = data
@@ -762,8 +832,10 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
             "no A/A control or counted prediction for {}",
             unweighable.join(", ")
         )),
-        (true, None) if !inconsistent.is_empty() => Outcome::Fail(format!(
-            "gains inconsistent with counted codec share: {}",
+        // More than the count allows is a measurement error, not a result:
+        // the rule cannot be decided until a rerun measures it.
+        (true, None) if !inconsistent.is_empty() => Outcome::Pending(format!(
+            "gains inconsistent with counted codec share, so a measurement error; rerun: {}",
             inconsistent.join("; ")
         )),
         (true, None) => Outcome::Fail("no route ≥10 % better in throughput or p99 beyond the A/A band".into()),
@@ -773,7 +845,9 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
 /// Whether `e` deserves to exist. Its frontier is drawn among `pool`: every
 /// entry, eligible or not, that has not failed conformance. A win is read at
 /// `native` hardware cycles (or heap) over every workload, gated as rule 1's
-/// is, and a CPU win is stated with its v3 count beside it.
+/// is (A/A band, counts pointing the same way, and a timed win marked
+/// provisional unless taken on a quiet host), and a CPU win is stated with
+/// its v3 count beside it.
 fn exists(data: &Data, e: &Entry, pool: &[&Entry]) -> (bool, String) {
     if e.backend == "serde_json" {
         return (true, "the baseline".into());
@@ -792,10 +866,14 @@ fn exists(data: &Data, e: &Entry, pool: &[&Entry]) -> (bool, String) {
                 (true, Some(m), Some(t)) if t > 0.0 => format!(" ({:.2}× at {})", m / t, X86_V3.label()),
                 _ => String::new(),
             };
+            let trust = match hw_trust(data) {
+                "canonical" => String::new(),
+                trust => format!(", provisional ({trust})"),
+            };
             best = Some((
                 r,
                 format!(
-                    "{w} {axis} {r:.2}× serde_json at {}{count}",
+                    "{w} {axis} {r:.2}× serde_json at {}{count}{trust}",
                     X86_NATIVE.win_label(&axis)
                 ),
             ));
@@ -974,6 +1052,69 @@ pub(super) mod tests {
         );
         let verdicts = super::judge(&data);
         let simd = verdicts.iter().find(|v| v.entry.backend == "simd-json").unwrap();
+        assert!(matches!(simd.rules[0], Outcome::Fail(_)), "{:?}", simd.rules[0]);
+    }
+
+    /// A cycles win whose count is a little higher (4 %, inside ε) is not
+    /// borne out either: the count must point the same way.
+    #[test]
+    fn a_cycles_win_the_count_does_not_point_to_is_not_a_win() {
+        let data = measured(
+            &[
+                ("serde_json", 100.0, 100.0),
+                ("serde_json#aa", 101.0, 100.0),
+                ("simd-json", 90.0, 104.0),
+            ],
+            "canonical",
+        );
+        let verdicts = super::judge(&data);
+        let simd = verdicts.iter().find(|v| v.entry.backend == simd().backend).unwrap();
+        assert!(matches!(simd.rules[0], Outcome::Fail(_)), "{:?}", simd.rules[0]);
+    }
+
+    /// Without counts at v3 the cycles cannot be corroborated: rule 1 waits,
+    /// and nobody dominates on them.
+    #[test]
+    fn without_counts_rule1_is_pending() {
+        let mut data = measured(
+            &[
+                ("serde_json", 100.0, 100.0),
+                ("serde_json#aa", 101.0, 100.0),
+                ("simd-json", 80.0, 90.0),
+            ],
+            "canonical",
+        );
+        data.callgrind.rows.clear();
+        let verdicts = super::judge(&data);
+        let simd = verdicts.iter().find(|v| v.entry.backend == simd().backend).unwrap();
+        assert!(matches!(simd.rules[0], Outcome::Pending(_)), "{:?}", simd.rules[0]);
+    }
+
+    /// The A/A band is the widest gap in any round, not only the medians'.
+    #[test]
+    fn the_aa_band_covers_every_round() {
+        let mut data = measured(
+            &[
+                ("serde_json", 100.0, 100.0),
+                ("serde_json#aa", 100.0, 100.0),
+                ("simd-json", 85.0, 90.0),
+            ],
+            "canonical",
+        );
+        for w in crate::matrix::KYNOS {
+            for op in ["decode", "encode"] {
+                for (b, rounds) in [
+                    ("serde_json", [100.0, 100.0, 100.0]),
+                    ("serde_json#aa", [100.0, 120.0, 100.0]),
+                ] {
+                    let row = data.host.hw.rows.get_mut(&Key::new("native", b, w, op)).unwrap();
+                    row["rounds"] = json!(rounds.map(|c| json!({ "cycles": c })));
+                }
+            }
+        }
+        assert!((super::aa_band(&data, super::X86_NATIVE, "json-small", "decode").unwrap() - 0.2).abs() < 1e-9);
+        let verdicts = super::judge(&data);
+        let simd = verdicts.iter().find(|v| v.entry.backend == simd().backend).unwrap();
         assert!(matches!(simd.rules[0], Outcome::Fail(_)), "{:?}", simd.rules[0]);
     }
 

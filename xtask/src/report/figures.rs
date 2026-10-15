@@ -7,7 +7,7 @@
 //! scatter's colors can keep apart. Blue marks the two-axis frontier among
 //! every measured entry, drawn with the same dominance the verdict uses; an
 //! orange ring marks an entry on rule 1's own frontier at that workload (all
-//! six axes, among the eligible entries that pass conformance); gray is
+//! six axes (four for a decode-only entry), among the eligible entries that pass conformance); gray is
 //! everything else.
 
 use std::fmt::Write as _;
@@ -17,7 +17,7 @@ use super::verdict::{self, Axis, ENTRIES, Entry, X86_NATIVE, heap};
 use crate::matrix::KYNOS;
 
 /// The legend, as Markdown under the figures' heading.
-pub const LEGEND: &str = "Each point is an entry point, labelled. The x-axis is hardware cycles at `native` (what rule 1 reads); the y-axis is the trade-off named in the title. Lower and further left is better on both. **Blue**, joined by a step line: the frontier of the two axes shown, among every measured entry: no other entry is better on one without being worse on the other, by more than ε = 5 % or, on cycles, the A/A band, and a cycles advantage callgrind's count contradicts does not count. **Orange ring**: on rule 1's frontier at this workload, which weighs all six axes among the eligible entries that pass conformance. **Hollow**: the entry fails conformance. The gray crosshair is serde_json. Axes are logarithmic where the figures span more than 10×. Each SVG carries the figures as hover titles.";
+pub const LEGEND: &str = "Each point is an entry point, labelled. The x-axis is hardware cycles at `native` (what rule 1 reads); the y-axis is the trade-off named in the title. Lower and further left is better on both. **Blue**, joined by a step line: the frontier of the two axes shown, among every measured entry: no other entry is better on one without being worse on the other, by more than ε = 5 % or, on cycles, the A/A band, and a cycles advantage callgrind's count contradicts does not count. **Orange ring**: on rule 1's frontier at this workload, which weighs all six axes (the four decode-side ones for a decode-only entry) among the eligible entries that pass conformance. **Hollow**: the entry fails conformance. The gray crosshair is serde_json. Axes are logarithmic where the figures span 10× or more. Each SVG carries the figures as hover titles.";
 
 /// One generated figure.
 #[derive(Debug, Clone)]

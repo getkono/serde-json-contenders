@@ -26,7 +26,7 @@ arm64 is excluded on purpose. Hardware cycles decide the rule (see [Axes](#axes)
 
 Every version is pinned exactly. flexon's latest release, 0.4.9, does not compile with Rust 1.97.1, the compiler every build here uses (E0499, a double mutable borrow in `value/lazy`; checked with `cargo check` on 2026-10-15), so 0.4.8, the newest release that builds, is measured instead.
 
-hifijson and struson are measured and tested like the rest, and so appear in the "deserves to exist" column. Neither can be recommended as a server codec, because neither borrows strings from the body: hifijson's serde layer copies every string, and struson reads from a stream.
+Each adapter uses its library's default settings: struson, for one, keeps its default refusal of number exponents beyond ±99, which serde_json does not have, so it refuses some of `floats`. hifijson and struson are measured and tested like the rest, and so appear in the "deserves to exist" column. Neither can be recommended as a server codec, because neither borrows strings from the body: hifijson's serde layer copies every string, and struson reads from a stream.
 
 ### Not measured, and why
 

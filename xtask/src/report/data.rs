@@ -1,9 +1,13 @@
 //! Loading `results/` into lookups.
+//!
+//! Loading is loud: a result file that is missing or does not parse is an
+//! error, unless `results/skipped.toml` declares it skipped and says why, and
+//! the report states that reason. An empty table never stands in for a
+//! measurement nobody took.
 
 use std::collections::BTreeMap;
-use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{Context, Result, bail};
 use serde_json::Value;
 
 use crate::util::{read_json, root};
@@ -52,10 +56,7 @@ pub struct Table {
 }
 
 impl Table {
-    fn load(path: &Path) -> Self {
-        let Ok(doc) = read_json(path) else {
-            return Self::default();
-        };
+    fn of(doc: &Value) -> Self {
         let rows = doc["rows"]
             .as_array()
             .into_iter()
@@ -81,20 +82,63 @@ impl Table {
     }
 }
 
-/// Plain row lists (size, compile time, e2e...).
-fn rows(path: &Path) -> (Vec<Value>, Value) {
-    read_json(path).map_or_else(
-        |_| (Vec::new(), Value::Null),
-        |doc| {
-            (
-                doc["rows"].as_array().cloned().unwrap_or_default(),
-                doc["provenance"].clone(),
-            )
-        },
-    )
+/// One result file the report read, or was told to do without.
+#[derive(Debug, Clone, Default)]
+pub struct Source {
+    /// Path relative to `results/`.
+    pub name: String,
+    /// The file's provenance stamp; null when skipped.
+    pub provenance: Value,
+    /// Why the file is absent, from `results/skipped.toml`.
+    pub skipped: Option<String>,
 }
 
-/// One host's results.
+/// Reads result files, recording each as a [`Source`].
+struct Loader {
+    results: std::path::PathBuf,
+    skipped: toml::Table,
+    sources: Vec<Source>,
+    missing: Vec<String>,
+}
+
+impl Loader {
+    /// The document at `name` (relative to `results/`), or `None` when it is
+    /// declared skipped or missing (recorded either way).
+    fn doc(&mut self, name: &str) -> Result<Option<Value>> {
+        let path = self.results.join(name);
+        if !path.exists() {
+            match self.skipped.get(name).and_then(|s| s.get("reason")).and_then(toml::Value::as_str) {
+                Some(reason) => self.sources.push(Source {
+                    name: name.to_owned(),
+                    provenance: Value::Null,
+                    skipped: Some(reason.to_owned()),
+                }),
+                None => self.missing.push(name.to_owned()),
+            }
+            return Ok(None);
+        }
+        let doc = read_json(&path).with_context(|| format!("results/{name} does not parse"))?;
+        self.sources.push(Source {
+            name: name.to_owned(),
+            provenance: doc["provenance"].clone(),
+            skipped: None,
+        });
+        Ok(Some(doc))
+    }
+
+    fn table(&mut self, name: &str) -> Result<Table> {
+        Ok(self.doc(name)?.map(|d| Table::of(&d)).unwrap_or_default())
+    }
+
+    fn rows(&mut self, name: &str) -> Result<Vec<Value>> {
+        Ok(self
+            .doc(name)?
+            .and_then(|d| d["rows"].as_array().cloned())
+            .unwrap_or_default())
+    }
+}
+
+/// The host's results.
 #[derive(Debug, Default)]
 pub struct Host {
     pub slug: String,
@@ -109,130 +153,214 @@ pub struct Host {
     pub doctor: Value,
     /// conformance reports: (variant, set) -> report.
     pub conformance: BTreeMap<(String, String), Value>,
+    /// The host's CPU, from its allocation counts' stamp.
     pub provenance: Value,
-}
-
-impl Host {
-    fn load(dir: &Path) -> Self {
-        let slug = dir
-            .file_name()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_default();
-        let (size, _) = rows(&dir.join("size.json"));
-        let (compile, _) = rows(&dir.join("compile-time.json"));
-        let (msrv, _) = rows(&dir.join("msrv.json"));
-        let (e2e_time, _) = rows(&dir.join("e2e-time.json"));
-        let e2e_trust = e2e_time.first().and_then(|r| r["trust"].as_str()).map(str::to_owned);
-        let mut conformance = BTreeMap::new();
-        if let Ok(variants) = std::fs::read_dir(dir.join("conformance")) {
-            for variant in variants.filter_map(Result::ok) {
-                for file in std::fs::read_dir(variant.path())
-                    .into_iter()
-                    .flatten()
-                    .filter_map(Result::ok)
-                {
-                    if let Ok(doc) = read_json(&file.path()) {
-                        let set = file
-                            .path()
-                            .file_stem()
-                            .map(|s| s.to_string_lossy().into_owned())
-                            .unwrap_or_default();
-                        conformance.insert(
-                            (variant.file_name().to_string_lossy().into_owned(), set),
-                            doc["report"].clone(),
-                        );
-                    }
-                }
-            }
-        }
-        let alloc = Table::load(&dir.join("alloc.json"));
-        let provenance = alloc.provenance.clone();
-        Self {
-            slug,
-            hw: Table::load(&dir.join("hw.json")),
-            time: Table::load(&dir.join("time.json")),
-            alloc,
-            size,
-            compile,
-            msrv,
-            e2e_time,
-            e2e_trust,
-            doctor: read_json(&dir.join("doctor.json")).unwrap_or(Value::Null),
-            conformance,
-            provenance,
-        }
-    }
-
-    pub fn arch(&self) -> &str {
-        self.slug.split('-').next().unwrap_or_default()
-    }
-
-    pub fn os(&self) -> &str {
-        self.slug.split('-').nth(1).unwrap_or_default()
-    }
 }
 
 /// Everything under `results/`.
 #[derive(Debug, Default)]
 pub struct Data {
-    /// callgrind by architecture.
-    pub callgrind: BTreeMap<String, Table>,
-    pub e2e_count: BTreeMap<String, Vec<Value>>,
-    pub hosts: Vec<Host>,
+    /// callgrind counts per operation.
+    pub callgrind: Table,
+    /// callgrind counts per HTTP request.
+    pub e2e_count: Vec<Value>,
+    pub host: Host,
     pub footprint: Vec<Value>,
     pub advisory_db: String,
     pub fuzz: Vec<Value>,
     pub miri: Vec<Value>,
     pub soundness: toml::Table,
     pub notes: toml::Table,
+    /// Every result file read or declared skipped, in load order.
+    pub sources: Vec<Source>,
 }
 
 impl Data {
+    /// Load `results/`: the one host directory (this benchmark measures one
+    /// x86-64 Linux host), the callgrind counts, and the host-independent
+    /// files.
     pub fn load() -> Result<Self> {
         let results = root().join("results");
-        let mut data = Self::default();
-        for arch in ["x86_64", "aarch64"] {
-            let table = Table::load(&results.join("callgrind").join(format!("{arch}.json")));
-            if !table.is_empty() {
-                data.callgrind.insert(arch.into(), table);
+        let toml = |name: &str| -> Result<toml::Table> {
+            let path = results.join(name);
+            if !path.exists() {
+                return Ok(toml::Table::new());
             }
-            let (e2e, _) = rows(&results.join("callgrind").join(format!("e2e-{arch}.json")));
-            if !e2e.is_empty() {
-                data.e2e_count.insert(arch.into(), e2e);
-            }
-        }
-        let mut hosts: Vec<Host> = std::fs::read_dir(&results)?
+            std::fs::read_to_string(&path)?
+                .parse()
+                .with_context(|| format!("results/{name} does not parse"))
+        };
+        let mut load = Loader {
+            results: results.clone(),
+            skipped: toml("skipped.toml")?,
+            sources: Vec::new(),
+            missing: Vec::new(),
+        };
+        let mut data = Self {
+            callgrind: load.table("callgrind/x86_64.json")?,
+            e2e_count: load.rows("callgrind/e2e-x86_64.json")?,
+            ..Self::default()
+        };
+        let hosts: Vec<String> = std::fs::read_dir(&results)?
             .filter_map(Result::ok)
             .filter(|e| e.path().is_dir() && e.file_name() != "callgrind")
-            .map(|e| Host::load(&e.path()))
+            .map(|e| e.file_name().to_string_lossy().into_owned())
             .collect();
-        hosts.sort_by(|a, b| a.slug.cmp(&b.slug));
-        data.hosts = hosts;
-        let footprint = read_json(&results.join("footprint.json")).unwrap_or(Value::Null);
+        let [slug] = hosts.as_slice() else {
+            bail!("results/ must hold exactly one host directory, found {hosts:?}");
+        };
+        if !slug.starts_with("x86_64-linux-") {
+            bail!("results/{slug}: this benchmark measures x86-64 Linux only");
+        }
+        data.host = load_host(&mut load, slug)?;
+        let footprint = load.doc("footprint.json")?.unwrap_or(Value::Null);
         data.footprint = footprint["rows"].as_array().cloned().unwrap_or_default();
         footprint["advisory_db"]
             .as_str()
             .unwrap_or_default()
             .clone_into(&mut data.advisory_db);
-        data.fuzz = rows(&results.join("fuzz.json")).0;
-        data.miri = rows(&results.join("miri.json")).0;
-        let toml = |name: &str| {
-            std::fs::read_to_string(results.join(name))
-                .ok()
-                .and_then(|t| t.parse::<toml::Table>().ok())
-                .unwrap_or_default()
-        };
-        data.soundness = toml("soundness.toml");
-        data.notes = toml("notes.toml");
+        data.fuzz = load.rows("fuzz.json")?;
+        data.miri = load.rows("miri.json")?;
+        data.soundness = toml("soundness.toml")?;
+        data.notes = toml("notes.toml")?;
+        if !load.missing.is_empty() {
+            bail!(
+                "missing result files (measure them, or declare each skipped with a reason in results/skipped.toml): {}",
+                load.missing.join(", ")
+            );
+        }
+        data.sources = load.sources;
         Ok(data)
     }
 
-    /// The x86-64 Linux host whose host-specific results (allocations,
-    /// hardware counters, size, compile time) the tables quote.
+    /// The host whose results the tables quote.
     pub fn primary(&self) -> Option<&Host> {
-        self.hosts
-            .iter()
-            .find(|h| h.arch() == "x86_64" && h.os() == "linux")
-            .or_else(|| self.hosts.first())
+        (!self.host.slug.is_empty()).then_some(&self.host)
     }
+}
+
+fn load_host(load: &mut Loader, slug: &str) -> Result<Host> {
+    let at = |file: &str| format!("{slug}/{file}");
+    let e2e_time = load.rows(&at("e2e-time.json"))?;
+    let e2e_trust = e2e_time.first().and_then(|r| r["trust"].as_str()).map(str::to_owned);
+    let mut conformance = BTreeMap::new();
+    for variant in crate::matrix::variants() {
+        for set in crate::matrix::SETS {
+            let mut names = vec![set.name.to_owned()];
+            if variant.name == "portable" {
+                names.push(format!("{}+arbitrary-precision", set.name));
+            }
+            for name in names {
+                if let Some(doc) = load.doc(&at(&format!("conformance/{}/{name}.json", variant.name)))? {
+                    conformance.insert((variant.name.to_owned(), name), doc["report"].clone());
+                }
+            }
+        }
+    }
+    let alloc = load.table(&at("alloc.json"))?;
+    let provenance = alloc.provenance.clone();
+    Ok(Host {
+        slug: slug.to_owned(),
+        hw: load.table(&at("hw.json"))?,
+        time: load.table(&at("time.json"))?,
+        alloc,
+        size: load.rows(&at("size.json"))?,
+        compile: load.rows(&at("compile-time.json"))?,
+        msrv: load.rows(&at("msrv.json"))?,
+        e2e_time,
+        e2e_trust,
+        doctor: load.doc(&at("doctor.json"))?.unwrap_or(Value::Null),
+        conformance,
+        provenance,
+    })
+}
+
+/// Why each source cannot be trusted for the code at HEAD: measured on other
+/// code (another fingerprint), or from a dirty checkout. Empty when every
+/// source was measured on exactly the committed code.
+#[must_use]
+pub fn stale(sources: &[Source], fingerprint: Option<&str>) -> Vec<String> {
+    sources
+        .iter()
+        .filter(|s| s.skipped.is_none())
+        .filter_map(|s| {
+            let p = &s.provenance;
+            let theirs = p["fingerprint"].as_str();
+            if p["git_dirty"] != false {
+                Some(format!("{}: measured from a dirty checkout", s.name))
+            } else if theirs.is_none() || theirs != fingerprint {
+                Some(format!(
+                    "{}: measured on code {} (HEAD is {})",
+                    s.name,
+                    theirs.unwrap_or("without a fingerprint"),
+                    fingerprint.unwrap_or("unknown")
+                ))
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+/// Rows a complete run of the matrix would have written to the per-operation
+/// tables and did not: every set's backends at every workload and shape, at
+/// every variant the table covers. A row that records a rejection or an
+/// error is present; only an absent row is incomplete.
+#[must_use]
+pub fn incomplete(data: &Data) -> Vec<String> {
+    use crate::matrix::{SETS, SHAPES, label};
+    let mut gaps = Vec::new();
+    let mut check = |name: &str, table: &Table, variants: &[&str], aa: bool| {
+        let mut missing = 0usize;
+        let mut first = None;
+        for variant in variants {
+            for set in SETS {
+                for backend in set.backends {
+                    let mut labels = vec![label(set, backend)];
+                    if aa && set.name == "baseline" {
+                        labels.push(format!("{backend}#aa"));
+                    }
+                    for b in labels {
+                        for w in payloads::ALL {
+                            for s in SHAPES {
+                                let key = Key {
+                                    variant: (*variant).to_owned(),
+                                    backend: b.clone(),
+                                    workload: (*w).to_owned(),
+                                    op: s.op.to_owned(),
+                                    form: s.form.to_owned(),
+                                    arrival: s.arrival.to_owned(),
+                                };
+                                if table.row(&key).is_none() {
+                                    missing += 1;
+                                    first.get_or_insert(format!("{variant} {b} {w} {} {} {}", s.op, s.form, s.arrival));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if missing > 0 {
+            gaps.push(format!(
+                "{name}: {missing} rows missing (first: {})",
+                first.unwrap_or_default()
+            ));
+        }
+    };
+    let counted: Vec<&str> = crate::matrix::variants()
+        .iter()
+        .filter(|v| v.valgrind)
+        .map(|v| v.name)
+        .collect();
+    if !data.callgrind.provenance.is_null() {
+        check("callgrind/x86_64.json", &data.callgrind, &counted, false);
+    }
+    if !data.host.alloc.provenance.is_null() {
+        check("alloc.json", &data.host.alloc, &["portable", "v3", "native"], false);
+    }
+    if !data.host.hw.provenance.is_null() {
+        check("hw.json", &data.host.hw, &["native"], true);
+    }
+    gaps
 }

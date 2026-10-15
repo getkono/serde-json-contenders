@@ -47,6 +47,12 @@ pub fn reexec(task: &str, args: &[String]) -> Result<()> {
     if let Some(commit) = commit {
         git.extend(["-e".to_owned(), format!("{}={commit}", provenance::GIT_COMMIT_VAR)]);
     }
+    if let Some(fingerprint) = provenance::fingerprint() {
+        git.extend([
+            "-e".to_owned(),
+            format!("{}={fingerprint}", provenance::FINGERPRINT_VAR),
+        ]);
+    }
     run(Command::new(engine())
         .args(["run", "--rm", "--security-opt", "label=disable", "--ulimit", "core=0"])
         .args(&git)

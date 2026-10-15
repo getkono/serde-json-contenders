@@ -2,14 +2,16 @@
 //!
 //! Dominance is ε-dominance with ε = 5 %: `a` dominates `b` when `a` is no
 //! more than 5 % worse than `b` on every axis and more than 5 % better on at
-//! least one. Deterministic counts have no noise, so without a materiality
-//! threshold a 0.1 % difference would decide a frontier; with one, compile
-//! times (which are timed) cannot flip it either.
+//! least one. Without a materiality threshold a 0.1 % difference would decide
+//! a frontier; with one, compile times (which are timed) cannot flip it
+//! either. Hardware cycles, which decide, must also clear the A/A band (the
+//! distance between two copies of serde_json at that cell), and a CPU win
+//! must be borne out by callgrind's deterministic count at v3.
 
 use serde_json::{Value, json};
 
 use super::data::{Data, Key};
-use crate::matrix::{ARM_NATIVE_COUNTED, KYNOS};
+use crate::matrix::KYNOS;
 
 /// Materiality: differences within this fraction are not differences.
 pub const EPSILON: f64 = 0.05;
@@ -143,19 +145,18 @@ impl Outcome {
 /// Where a CPU figure comes from.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Point {
-    pub arch: &'static str,
     pub variant: &'static str,
-    /// `callgrind` (estimated cycles) or `hw` (hardware cycles); the rule
-    /// reads only these. `callgrind-ir` (instructions callgrind counted) and
-    /// `hw-instructions` (`instructions:u`) are reported beside them.
+    /// `hw` (hardware cycles) decides; `callgrind` (estimated cycles)
+    /// corroborates and reproduces. `hw-instructions` (`instructions:u`) and
+    /// `callgrind-ir` (instructions callgrind counted) are reported beside
+    /// them.
     pub source: &'static str,
 }
 
 impl Point {
     pub fn label(&self) -> String {
         format!(
-            "{} {} ({})",
-            self.arch,
+            "{} ({})",
             self.variant,
             match self.source {
                 "hw" => "cycles",
@@ -171,7 +172,7 @@ impl Point {
     /// a heap win names the build alone.
     pub fn win_label(&self, axis: &str) -> String {
         if axis.ends_with("heap") {
-            format!("{} {}", self.arch, self.variant)
+            self.variant.to_owned()
         } else {
             self.label()
         }
@@ -189,53 +190,50 @@ impl Point {
             ..self
         }
     }
+
+    /// Whether this point's figures are timed, and so carry an A/A band.
+    pub fn timed(self) -> bool {
+        self.source.starts_with("hw")
+    }
 }
 
-/// The points rule 1 reads, in order.
-pub const X86_V3: Point = Point {
-    arch: "x86_64",
-    variant: "v3",
-    source: "callgrind",
-};
+/// The point the rule reads: hardware cycles of the `native` build.
 pub const X86_NATIVE: Point = Point {
-    arch: "x86_64",
     variant: "native",
     source: "hw",
 };
-pub const X86_PORTABLE: Point = Point {
-    arch: "x86_64",
-    variant: "portable",
+/// The deterministic corroboration: callgrind's estimated cycles at
+/// x86-64-v3 (valgrind cannot run the AVX-512 `native` build).
+pub const X86_V3: Point = Point {
+    variant: "v3",
     source: "callgrind",
 };
-/// aarch64 `native` as rule 1 reads it: counted at
-/// [`ARM_NATIVE_COUNTED`], because valgrind cannot run the `sve` and `rcpc` code
-/// a `native` build emits on Neoverse N2.
-pub const ARM_NATIVE: Point = Point {
-    arch: "aarch64",
-    variant: ARM_NATIVE_COUNTED.name,
-    source: "callgrind",
-};
-pub const ARM_PORTABLE: Point = Point {
-    arch: "aarch64",
-    variant: "portable",
-    source: "callgrind",
-};
-pub const POINTS: &[Point] = &[X86_PORTABLE, X86_V3, X86_NATIVE, ARM_PORTABLE, ARM_NATIVE];
 
 /// CPU per operation at a point.
 pub fn cpu(data: &Data, p: Point, backend: &str, workload: &str, op: &str) -> Option<f64> {
     let key = Key::new(p.variant, backend, workload, op);
-    let hw = |field: &str| {
-        data.hosts
-            .iter()
-            .filter(|h| h.arch() == p.arch)
-            .find_map(|h| h.hw.get(&key, field))
-    };
     match p.source {
-        "hw" => hw("cycles"),
-        "hw-instructions" => hw("instructions"),
-        "callgrind-ir" => data.callgrind.get(p.arch)?.get(&key, "ir"),
-        _ => data.callgrind.get(p.arch)?.get(&key, "est_cycles"),
+        "hw" => data.host.hw.get(&key, "cycles"),
+        "hw-instructions" => data.host.hw.get(&key, "instructions"),
+        "callgrind-ir" => data.callgrind.get(&key, "ir"),
+        _ => data.callgrind.get(&key, "est_cycles"),
+    }
+}
+
+/// How far serde_json's A/A copy lands from serde_json at this cell, as a
+/// fraction: the noise a timed difference must clear. Zero for counts, which
+/// have none.
+pub fn aa_band(data: &Data, p: Point, workload: &str, op: &str) -> f64 {
+    if !p.timed() {
+        return 0.0;
+    }
+    match (
+        cpu(data, p, "serde_json", workload, op),
+        cpu(data, p, "serde_json#aa", workload, op),
+    ) {
+        (Some(a), Some(b)) if a > 0.0 => (b / a - 1.0).abs(),
+        // A timed figure with no control cannot be told from noise.
+        _ => f64::INFINITY,
     }
 }
 
@@ -265,34 +263,67 @@ pub fn compile(data: &Data, set: &str) -> Option<f64> {
     set_row(&data.primary()?.compile, set, None)?["release_s"].as_f64()
 }
 
-/// The axis vector at a point for one Kynos (or any) workload.
-fn axes(data: &Data, p: Point, e: &Entry, workload: &str, encode: bool) -> Vec<Option<f64>> {
+/// One axis: the figure, if measured, and the fraction within which two
+/// figures on it are not different (ε, or the A/A band where wider).
+pub type Axis = (Option<f64>, f64);
+
+/// The CPU axis tolerance at a point: ε, or the A/A band where wider.
+pub fn cpu_tolerance(data: &Data, p: Point, workload: &str, op: &str) -> f64 {
+    EPSILON.max(aa_band(data, p, workload, op))
+}
+
+/// The axis vector at a point for one workload.
+fn axes(data: &Data, p: Point, e: &Entry, workload: &str, encode: bool) -> Vec<Axis> {
     let mut v = vec![
-        cpu(data, p, e.backend, workload, "decode"),
-        heap(data, p.variant, e.backend, workload, "decode"),
+        (
+            cpu(data, p, e.backend, workload, "decode"),
+            cpu_tolerance(data, p, workload, "decode"),
+        ),
+        (heap(data, p.variant, e.backend, workload, "decode"), EPSILON),
     ];
     if encode {
-        v.push(cpu(data, p, e.backend, workload, "encode"));
-        v.push(heap(data, p.variant, e.backend, workload, "encode"));
+        v.push((
+            cpu(data, p, e.backend, workload, "encode"),
+            cpu_tolerance(data, p, workload, "encode"),
+        ));
+        v.push((heap(data, p.variant, e.backend, workload, "encode"), EPSILON));
     }
-    v.push(text(data, e.set, p.variant, encode));
-    v.push(compile(data, e.set));
+    v.push((text(data, e.set, p.variant, encode), EPSILON));
+    v.push((compile(data, e.set), EPSILON));
     v
 }
 
-/// Whether `a` ε-dominates `b`, over axes both have.
-fn dominates(a: &[Option<f64>], b: &[Option<f64>]) -> bool {
+/// Whether `a` dominates `b`, over axes both have: no more than the axis's
+/// tolerance worse on any, and more than it better on at least one.
+pub fn dominates(a: &[Axis], b: &[Axis]) -> bool {
     let mut better = false;
-    for (a, b) in a.iter().zip(b) {
+    for ((a, tol), (b, _)) in a.iter().zip(b) {
         let (Some(a), Some(b)) = (a, b) else { continue };
-        if *a > b * (1.0 + EPSILON) {
+        if *a > b * (1.0 + tol) {
             return false;
         }
-        if *a < b * (1.0 - EPSILON) {
+        if *a < b * (1.0 - tol) {
             better = true;
         }
     }
     better
+}
+
+/// Whether a CPU win at a timed point is borne out by the deterministic
+/// count: at v3, `backend` costs no more than ε over serde_json on the same
+/// cell. Noise can make a timed figure look like a win; it cannot move a
+/// count.
+pub fn corroborated(data: &Data, p: Point, backend: &str, workload: &str, op: &str) -> bool {
+    if !p.timed() {
+        return true;
+    }
+    match (
+        cpu(data, X86_V3, backend, workload, op),
+        cpu(data, X86_V3, "serde_json", workload, op),
+    ) {
+        (Some(m), Some(t)) => m <= t * (1.0 + EPSILON),
+        _ => false,
+    }
 }
 
 /// Whether `e` is on the frontier at `p` for `workload` among `pool`, and
@@ -303,7 +334,7 @@ pub fn frontier_win(data: &Data, p: Point, e: &Entry, workload: &str, pool: &[&E
     let encode = e.encodes;
     let mine = axes(data, p, e, workload, encode);
     // A decode figure is required to say anything at all.
-    mine[0]?;
+    mine[0].0?;
     for other in pool {
         if other.backend != e.backend
             && (!encode || other.encodes)
@@ -313,20 +344,27 @@ pub fn frontier_win(data: &Data, p: Point, e: &Entry, workload: &str, pool: &[&E
         }
     }
     let base = ENTRIES[0];
-    let names = if encode {
-        &["decode CPU", "decode heap", "encode CPU", "encode heap"][..]
+    let names: &[(&str, Option<&str>)] = if encode {
+        &[
+            ("decode CPU", Some("decode")),
+            ("decode heap", None),
+            ("encode CPU", Some("encode")),
+            ("encode heap", None),
+        ]
     } else {
-        &["decode CPU", "decode heap"][..]
+        &[("decode CPU", Some("decode")), ("decode heap", None)]
     };
     let theirs = axes(data, p, &base, workload, encode);
     names
         .iter()
         .enumerate()
-        .filter_map(|(i, name)| {
-            let (Some(m), Some(t)) = (mine[i], theirs[i]) else {
+        .filter_map(|(i, (name, cpu_op))| {
+            let ((Some(m), tol), (Some(t), _)) = (mine[i], theirs[i]) else {
                 return None;
             };
-            (t > 0.0 && m < t * (1.0 - EPSILON)).then(|| ((*name).to_owned(), m / t))
+            let material = t > 0.0 && m < t * (1.0 - tol);
+            let real = cpu_op.is_none_or(|op| corroborated(data, p, e.backend, workload, op));
+            (material && real).then(|| ((*name).to_owned(), m / t))
         })
         .min_by(|a, b| a.1.total_cmp(&b.1))
 }
@@ -344,38 +382,41 @@ fn rule1(data: &Data, e: &Entry, pool: &[&Entry]) -> Outcome {
     if e.backend == "serde_json" {
         return Outcome::Pass("baseline".into());
     }
-    let measured = KYNOS.iter().any(|w| {
-        [X86_V3, X86_NATIVE]
-            .iter()
-            .any(|p| cpu(data, *p, e.backend, w, "decode").is_some())
-    });
+    let measured = KYNOS
+        .iter()
+        .any(|w| cpu(data, X86_NATIVE, e.backend, w, "decode").is_some());
     if !measured {
-        return Outcome::Pending("x86-64 counts not yet recorded".into());
+        return Outcome::Pending("hardware cycles not yet recorded".into());
     }
-    let mut x86 = None;
-    let mut arm = None;
-    let mut any_arm_data = false;
-    for w in KYNOS {
-        for p in [X86_V3, X86_NATIVE] {
-            if x86.is_none() {
-                x86 = frontier_win(data, p, e, w, pool)
-                    .map(|(axis, r)| format!("{w} {axis} {r:.2}× at {}", p.win_label(&axis)));
+    let best = KYNOS
+        .iter()
+        .filter_map(|w| frontier_win(data, X86_NATIVE, e, w, pool).map(|(axis, r)| (*w, axis, r)))
+        .min_by(|a, b| a.2.total_cmp(&b.2));
+    match best {
+        Some((w, axis, r)) => {
+            let win = format!("{w} {axis} {r:.2}× at {}", X86_NATIVE.win_label(&axis));
+            // Allocation counts are not timed, so their trust class is moot.
+            if axis.ends_with("heap") {
+                return Outcome::Pass(win);
+            }
+            match hw_trust(data) {
+                Some("canonical") => Outcome::Pass(win),
+                trust => Outcome::Pending(format!(
+                    "provisional pass: {win} ({}); awaits a quiet-host rerun",
+                    trust.unwrap_or("?")
+                )),
             }
         }
-        any_arm_data |= cpu(data, ARM_NATIVE, e.backend, w, "decode").is_some();
-        if arm.is_none() {
-            arm = frontier_win(data, ARM_NATIVE, e, w, pool)
-                .map(|(axis, r)| format!("{w} {axis} {r:.2}× at {}", ARM_NATIVE.win_label(&axis)));
-        }
-    }
-    match (x86, arm) {
-        (Some(x), Some(a)) => Outcome::Pass(format!("{x}; {a}")),
-        (Some(x), None) if !any_arm_data => Outcome::Pending(format!("{x}; aarch64 counts not yet recorded")),
-        (Some(x), None) => Outcome::Fail(format!("{x}, but no material frontier win on aarch64")),
-        (None, _) => Outcome::Fail(
-            "not on the frontier with a ≥5 % CPU or heap win on any Kynos shape at x86-64-v3 or native".into(),
+        None => Outcome::Fail(
+            "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape"
+                .into(),
         ),
     }
+}
+
+/// The trust class the hardware counters were taken under.
+pub fn hw_trust(data: &Data) -> Option<&str> {
+    data.host.hw.rows.values().next().and_then(|r| r["trust"].as_str())
 }
 
 fn rule2(data: &Data, e: &Entry) -> Outcome {
@@ -383,8 +424,8 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
     // The same first failure recurs at every variant and build of a backend,
     // so each is stated once with the number of runs it gated.
     let mut gated: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
-    for host in &data.hosts {
-        for report in host.conformance.values() {
+    {
+        for report in data.host.conformance.values() {
             let b = &report["backends"][e.backend];
             if b.is_null() {
                 continue;
@@ -537,16 +578,11 @@ pub fn e2e_gain(rows: &[Value], backend: &str, route: &str) -> Option<(f64, f64,
 }
 
 /// The throughput gain the counted per-request cost predicts, CPU-bound.
-pub fn e2e_predicted(data: &Data, arch: &str, backend: &str, route: &str) -> Option<f64> {
-    let rows = data.e2e_count.get(arch)?;
-    let variant = if arch == "aarch64" {
-        ARM_NATIVE.variant
-    } else {
-        X86_V3.variant
-    };
+pub fn e2e_predicted(data: &Data, backend: &str, route: &str) -> Option<f64> {
     let get = |b: &str| {
-        rows.iter()
-            .find(|r| r["backend"] == b && r["route"] == route && r["variant"] == variant)
+        data.e2e_count
+            .iter()
+            .find(|r| r["backend"] == b && r["route"] == route && r["variant"] == X86_V3.variant)
             .and_then(|r| r["est_cycles"].as_f64())
     };
     Some(get("serde_json")? / get(backend)? - 1.0)
@@ -564,13 +600,14 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
     let mut seen = false;
     let mut best: Option<String> = None;
     let mut inconsistent = Vec::new();
-    for host in &data.hosts {
+    {
+        let host = &data.host;
         for route in routes {
             let Some((rps, p99, aa_rps, aa_p99)) = e2e_gain(&host.e2e_time, e.backend, route) else {
                 continue;
             };
             seen = true;
-            let predicted = e2e_predicted(data, host.arch(), e.backend, route);
+            let predicted = e2e_predicted(data, e.backend, route);
             let pass_rps = rps >= E2E_GAIN && rps > aa_rps;
             let pass_p99 = p99 >= E2E_GAIN && p99 > aa_p99;
             if pass_rps || pass_p99 {
@@ -608,43 +645,55 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
 }
 
 /// Whether `e` deserves to exist. Its frontier is drawn among `pool`: every
-/// entry, eligible or not, that has not failed conformance.
+/// entry, eligible or not, that has not failed conformance. A win is read at
+/// `native` hardware cycles (or heap) over every workload, gated as rule 1's
+/// is, and a CPU win is stated with its v3 count beside it.
 fn exists(data: &Data, e: &Entry, pool: &[&Entry]) -> (bool, String) {
     if e.backend == "serde_json" {
         return (true, "the baseline".into());
     }
     let mut best: Option<(f64, String)> = None;
-    for p in POINTS {
-        for w in payloads::ALL {
-            if let Some((axis, r)) = frontier_win(data, *p, e, w, pool)
-                && best.as_ref().is_none_or(|(b, _)| r < *b)
-            {
-                best = Some((r, format!("{w} {axis} {r:.2}× serde_json at {}", p.win_label(&axis))));
-            }
+    for w in payloads::ALL {
+        if let Some((axis, r)) = frontier_win(data, X86_NATIVE, e, w, pool)
+            && best.as_ref().is_none_or(|(b, _)| r < *b)
+        {
+            let op = axis.split(' ').next().unwrap_or("decode");
+            let count = match (
+                axis.ends_with("CPU"),
+                cpu(data, X86_V3, e.backend, w, op),
+                cpu(data, X86_V3, "serde_json", w, op),
+            ) {
+                (true, Some(m), Some(t)) if t > 0.0 => format!(" ({:.2}× at {})", m / t, X86_V3.label()),
+                _ => String::new(),
+            };
+            best = Some((
+                r,
+                format!("{w} {axis} {r:.2}× serde_json at {}{count}", X86_NATIVE.win_label(&axis)),
+            ));
         }
     }
-    let note = data
-        .notes
-        .get(e.backend)
-        .and_then(|n| n.get("merit"))
-        .and_then(toml::Value::as_str);
+    let note = super::notes::merit(data, e.backend);
     match (best, note) {
         (Some((_, b)), Some(n)) => (true, format!("{b}. {n}")),
         (Some((_, b)), None) => (true, b),
-        (None, Some(n)) => (true, n.to_owned()),
+        (None, Some(n)) => (true, n),
         (None, None) => (false, "no measured reason to choose it over serde_json".into()),
     }
 }
 
-/// Apply the rule to every entry.
-pub fn judge(data: &Data) -> Vec<Verdict> {
-    // A backend that returns wrong answers cannot define the frontier: rule
-    // 1's pool is the eligible entries that have not failed conformance, and
-    // "deserves to exist" draws its own from every entry that has not.
-    let conforming: Vec<&Entry> = ENTRIES
+/// The entries that have not failed conformance. A backend that returns
+/// wrong answers cannot define the frontier: rule 1's pool is the eligible
+/// ones among these, and "deserves to exist" draws its own from all of them.
+pub fn conforming(data: &Data) -> Vec<&'static Entry> {
+    ENTRIES
         .iter()
         .filter(|x| !matches!(rule2(data, x), Outcome::Fail(_)))
-        .collect();
+        .collect()
+}
+
+/// Apply the rule to every entry.
+pub fn judge(data: &Data) -> Vec<Verdict> {
+    let conforming = conforming(data);
     let pool: Vec<&Entry> = conforming.iter().copied().filter(|x| x.eligible).collect();
     ENTRIES
         .iter()
@@ -691,11 +740,15 @@ pub fn to_json(verdicts: &[Verdict]) -> Value {
 pub(super) mod tests {
     use serde_json::json;
 
-    use super::super::data::{Key, Table};
-    use super::{ARM_NATIVE, Data, ENTRIES, Entry, Outcome, cpu, e2e_predicted, rule2, rule3};
+    use super::super::data::Key;
+    use super::{Data, ENTRIES, Entry, Outcome, rule2, rule3};
 
     fn sonic() -> &'static Entry {
         ENTRIES.iter().find(|e| e.set == "sonic-rs").unwrap_or(&ENTRIES[0])
+    }
+
+    fn simd() -> &'static Entry {
+        ENTRIES.iter().find(|e| e.backend == "simd-json").unwrap_or(&ENTRIES[0])
     }
 
     fn with_fuzz(rows: Vec<serde_json::Value>, footprint: bool) -> Data {
@@ -708,6 +761,24 @@ pub(super) mod tests {
             },
             ..Data::default()
         }
+    }
+
+    /// Hardware cycles at native and callgrind counts at v3 for json-small
+    /// decode, per backend: `(backend, cycles, est_cycles)`.
+    pub(in crate::report) fn measured(cells: &[(&str, f64, f64)], trust: &str) -> Data {
+        let mut data = Data::default();
+        data.host.slug = "x86_64-linux-amd-x".into();
+        for (backend, cycles, est) in cells {
+            data.host.hw.rows.insert(
+                Key::new("native", backend, "json-small", "decode"),
+                json!({ "cycles": cycles, "trust": trust }),
+            );
+            data.callgrind.rows.insert(
+                Key::new("v3", backend, "json-small", "decode"),
+                json!({ "est_cycles": est }),
+            );
+        }
+        data
     }
 
     #[test]
@@ -729,33 +800,86 @@ pub(super) mod tests {
     /// exist" as it is of rule 1.
     #[test]
     fn an_entry_that_failed_conformance_dominates_nobody() {
-        let mut table = Table::default();
-        for (backend, est) in [("serde_json", 100.0), ("simd-json", 80.0), ("sonic-rs", 50.0)] {
-            table.rows.insert(
-                Key::new("v3", backend, "json-small", "decode"),
-                json!({ "est_cycles": est }),
-            );
-        }
-        let mut host = crate::report::data::Host::default();
-        host.conformance.insert(
+        let mut data = measured(
+            &[
+                ("serde_json", 100.0, 100.0),
+                ("serde_json#aa", 101.0, 100.0),
+                ("simd-json", 80.0, 90.0),
+                ("sonic-rs", 50.0, 50.0),
+            ],
+            "canonical",
+        );
+        data.host.conformance.insert(
             ("native".into(), "sonic-rs".into()),
             json!({ "backends": { "sonic-rs": { "gate": "fail",
                 "gating_failures": [{ "section": "grammar", "case": "n_x.json" }] } } }),
         );
-        let data = Data {
-            callgrind: [("x86_64".to_owned(), table)].into(),
-            hosts: vec![host],
-            ..Data::default()
-        };
         let verdicts = super::judge(&data);
         let simd = verdicts.iter().find(|v| v.entry.backend == "simd-json").unwrap();
         assert!(simd.exists.0, "{:?}", simd.exists);
-        assert!(
-            simd.exists
-                .1
-                .starts_with("json-small decode CPU 0.80× serde_json at x86_64 v3"),
-            "{:?}",
-            simd.exists
+        assert_eq!(
+            simd.exists.1,
+            "json-small decode CPU 0.80× serde_json at native (cycles) (0.90× at v3 (est. cycles))"
+        );
+        assert_eq!(
+            simd.rules[0],
+            Outcome::Pass("json-small decode CPU 0.80× at native (cycles)".into())
+        );
+    }
+
+    /// Identical code measured 0.65× once (unpinned, on a loaded host). A
+    /// timed win the A/A control cannot tell from noise is no win.
+    #[test]
+    fn a_cycles_win_inside_the_aa_band_is_noise() {
+        let data = measured(
+            &[
+                ("serde_json", 100.0, 100.0),
+                ("serde_json#aa", 140.0, 100.0),
+                ("simd-json", 65.0, 100.0),
+            ],
+            "canonical",
+        );
+        let verdicts = super::judge(&data);
+        let simd = verdicts.iter().find(|v| v.entry.backend == "simd-json").unwrap();
+        assert!(matches!(simd.rules[0], Outcome::Fail(_)), "{:?}", simd.rules[0]);
+    }
+
+    /// A cycles win the deterministic count contradicts (the backend costs
+    /// 30 % more at v3) is not borne out.
+    #[test]
+    fn a_cycles_win_the_count_contradicts_is_not_a_win() {
+        let data = measured(
+            &[
+                ("serde_json", 100.0, 100.0),
+                ("serde_json#aa", 100.0, 100.0),
+                ("simd-json", 70.0, 130.0),
+            ],
+            "canonical",
+        );
+        let verdicts = super::judge(&data);
+        let simd = verdicts.iter().find(|v| v.entry.backend == simd().backend).unwrap();
+        assert!(matches!(simd.rules[0], Outcome::Fail(_)), "{:?}", simd.rules[0]);
+        assert!(!simd.exists.0, "{:?}", simd.exists);
+    }
+
+    #[test]
+    fn a_solo_cycles_win_is_provisional() {
+        let data = measured(
+            &[
+                ("serde_json", 100.0, 100.0),
+                ("serde_json#aa", 100.0, 100.0),
+                ("simd-json", 70.0, 80.0),
+            ],
+            "solo",
+        );
+        let verdicts = super::judge(&data);
+        let simd = verdicts.iter().find(|v| v.entry.backend == "simd-json").unwrap();
+        assert_eq!(
+            simd.rules[0],
+            Outcome::Pending(
+                "provisional pass: json-small decode CPU 0.70× at native (cycles) (solo); awaits a quiet-host rerun"
+                    .into()
+            )
         );
     }
 
@@ -764,27 +888,26 @@ pub(super) mod tests {
     /// names the build without a cycles source.
     #[test]
     fn a_heap_win_claims_no_cycles_source() {
-        let mut table = Table::default();
-        let mut host = crate::report::data::Host::default();
+        let mut data = measured(
+            &[
+                ("serde_json", 100.0, 100.0),
+                ("serde_json#aa", 100.0, 100.0),
+                ("simd-json", 100.0, 100.0),
+            ],
+            "solo",
+        );
         for (backend, bytes) in [("serde_json", 100.0), ("simd-json", 50.0)] {
-            let key = Key::new("v3", backend, "json-small", "decode");
-            table.rows.insert(key.clone(), json!({ "est_cycles": 100.0 }));
-            host.alloc.rows.insert(key, json!({ "bytes": bytes }));
+            data.host.alloc.rows.insert(
+                Key::new("native", backend, "json-small", "decode"),
+                json!({ "bytes": bytes }),
+            );
         }
-        let data = Data {
-            callgrind: [("x86_64".to_owned(), table)].into(),
-            hosts: vec![host],
-            ..Data::default()
-        };
         let verdicts = super::judge(&data);
         let simd = verdicts.iter().find(|v| v.entry.backend == "simd-json").unwrap();
-        assert_eq!(simd.exists.1, "json-small decode heap 0.50× serde_json at x86_64 v3");
-        assert!(
-            simd.rules[0]
-                .detail()
-                .starts_with("json-small decode heap 0.50× at x86_64 v3;"),
-            "{:?}",
-            simd.rules[0]
+        assert_eq!(simd.exists.1, "json-small decode heap 0.50× serde_json at native");
+        assert_eq!(
+            simd.rules[0],
+            Outcome::Pass("json-small decode heap 0.50× at native".into())
         );
     }
 
@@ -799,62 +922,21 @@ pub(super) mod tests {
     }
 
     #[test]
-    fn aarch64_native_is_read_from_the_counted_build() {
-        let mut table = Table::default();
-        for (variant, est) in [("native", 1.0), ("native-counted", 2.0)] {
-            table.rows.insert(
-                Key::new(variant, "serde_json", "json-small", "decode"),
-                json!({ "est_cycles": est }),
-            );
-        }
-        let data = Data {
-            callgrind: [("aarch64".to_owned(), table)].into(),
-            ..Data::default()
-        };
-        assert_eq!(cpu(&data, ARM_NATIVE, "serde_json", "json-small", "decode"), Some(2.0));
-    }
-
-    /// aarch64 end-to-end counts beside each other at `native` and `native-counted`, so that a
-    /// reader of the wrong variant gets a different answer.
-    pub(in crate::report) fn arm_e2e_counts(backend: &str) -> Data {
-        let rows = [("native", 100.0, 50.0), ("native-counted", 300.0, 200.0)]
-            .into_iter()
-            .flat_map(|(variant, base, me)| {
-                [("serde_json", base), (backend, me)].map(|(b, est)| {
-                    json!({ "variant": variant, "backend": b, "route": "json-large-post", "est_cycles": est })
-                })
-            })
-            .collect();
-        Data {
-            e2e_count: [("aarch64".to_owned(), rows)].into(),
-            ..Data::default()
-        }
-    }
-
-    #[test]
-    fn aarch64_end_to_end_prediction_is_read_from_the_counted_build() {
-        let e = sonic();
-        let data = arm_e2e_counts(e.backend);
-        // native-counted: 300 / 200 - 1 = 0.5; native would give 100 / 50 - 1 = 1.0.
-        assert_eq!(e2e_predicted(&data, "aarch64", e.backend, "json-large-post"), Some(0.5));
-    }
-
-    #[test]
     fn a_conformance_failure_is_stated_once_with_its_run_count() {
         let e = sonic();
         let failing = json!({ "backends": { e.backend: { "gate": "fail",
             "gating_failures": [{ "section": "grammar", "case": "n_x.json" }] } } });
         let passing = json!({ "backends": { e.backend: { "gate": "pass" } } });
-        let mut host = crate::report::data::Host::default();
-        for (variant, report) in [("native", &failing), ("portable", &failing), ("v3", &passing)] {
-            host.conformance.insert((variant.into(), e.set.into()), report.clone());
-        }
-        let data = Data {
-            hosts: vec![host],
+        let mut data = Data {
             miri: vec![json!({ "set": e.set, "outcome": "undefined-behavior",
                 "detail": "error: Undefined Behavior: in-bounds pointer arithmetic failed: attempting to offset" })],
             ..Data::default()
         };
+        for (variant, report) in [("native", &failing), ("portable", &failing), ("v3", &passing)] {
+            data.host
+                .conformance
+                .insert((variant.into(), e.set.into()), report.clone());
+        }
         assert_eq!(
             rule2(&data, e),
             Outcome::Fail(
@@ -869,14 +951,11 @@ pub(super) mod tests {
         let e = sonic();
         let failing = json!({ "backends": { e.backend: { "gate": "fail",
             "gating_failures": [{ "section": "status", "case": "shape/x" }] } } });
-        let mut host = crate::report::data::Host::default();
-        host.conformance.insert(("native".into(), e.set.into()), failing);
         let diverged = |target: &str, config: &str| {
             json!({ "set": e.set, "config": config, "target": target,
                 "divergence_found": true, "sanitizer_report": null })
         };
-        let data = Data {
-            hosts: vec![host],
+        let mut data = Data {
             fuzz: vec![
                 diverged("decode_struct", "portable"),
                 diverged("decode_struct", "v3"),
@@ -887,6 +966,7 @@ pub(super) mod tests {
                 "detail": "error: Undefined Behavior: in-bounds pointer arithmetic failed: attempting to offset" })],
             ..Data::default()
         };
+        data.host.conformance.insert(("native".into(), e.set.into()), failing);
         assert_eq!(
             rule2(&data, e),
             Outcome::Fail(

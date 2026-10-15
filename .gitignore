@@ -6,3 +6,4 @@
 callgrind.out.*
 /fuzz/artifacts
 /fuzz/coverage
+/.claude/worktrees/

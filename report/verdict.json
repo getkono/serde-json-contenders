@@ -1,0 +1,319 @@
+{
+  "e2e_gain": 0.1,
+  "entries": [
+    {
+      "backend": "serde_json",
+      "crate": "serde_json",
+      "deserves_to_exist": true,
+      "exists_evidence": "the baseline",
+      "reason": "all four rules hold",
+      "recommended": "pass",
+      "rules": [
+        {
+          "detail": "baseline",
+          "outcome": "pass"
+        },
+        {
+          "detail": "reference",
+          "outcome": "pass"
+        },
+        {
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
+        },
+        {
+          "detail": "baseline",
+          "outcome": "pass"
+        }
+      ]
+    },
+    {
+      "backend": "serde_json+float_roundtrip",
+      "crate": "serde_json",
+      "deserves_to_exist": true,
+      "exists_evidence": "Correctly rounded float parsing, which the default parser is not (see conformance, numbers).",
+      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "recommended": "fail",
+      "rules": [
+        {
+          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+          "outcome": "fail"
+        },
+        {
+          "detail": "reference",
+          "outcome": "pass"
+        },
+        {
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
+        },
+        {
+          "detail": "no route ≥10 % better in throughput or p99 beyond the A/A band",
+          "outcome": "fail"
+        }
+      ]
+    },
+    {
+      "backend": "sonic-rs",
+      "crate": "sonic-rs",
+      "deserves_to_exist": true,
+      "exists_evidence": "unicode encode heap 0.60× serde_json at native. Lazy path lookups without a full parse (`get`, `get_many`, `LazyValue`); errors carry a byte offset as well as line and column.",
+      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "recommended": "fail",
+      "rules": [
+        {
+          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+          "outcome": "fail"
+        },
+        {
+          "detail": "grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs; fuzz decode_struct (portable); fuzz decode_struct (v3)",
+          "outcome": "fail"
+        },
+        {
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
+        },
+        {
+          "detail": "no route ≥10 % better in throughput or p99 beyond the A/A band",
+          "outcome": "fail"
+        }
+      ]
+    },
+    {
+      "backend": "simd-json",
+      "crate": "simd-json",
+      "deserves_to_exist": true,
+      "exists_evidence": "sweep-4kib encode heap 0.54× serde_json at native. Borrowing decode of escaped strings, unescaped in place: 1,175 allocations against serde_json's 4,584 for twitter-like into borrowed types from a unique buffer. A tape API (`to_tape`) traverses without building values.",
+      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "recommended": "fail",
+      "rules": [
+        {
+          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+          "outcome": "fail"
+        },
+        {
+          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
+          "outcome": "fail"
+        },
+        {
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
+        },
+        {
+          "detail": "provisional pass: echo-post +13 % rps, +66 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun",
+          "outcome": "pending"
+        }
+      ]
+    },
+    {
+      "backend": "simd-json-buffers",
+      "crate": "simd-json",
+      "deserves_to_exist": true,
+      "exists_evidence": "sweep-4kib encode heap 0.54× serde_json at native. Reusing `Buffers` across calls roughly halves plain `from_slice`'s allocated bytes: 2.93 MB against 5.54 MB for twitter-like into borrowed types from a unique buffer.",
+      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "recommended": "fail",
+      "rules": [
+        {
+          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+          "outcome": "fail"
+        },
+        {
+          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
+          "outcome": "fail"
+        },
+        {
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
+        },
+        {
+          "detail": "provisional pass: echo-post -16 % rps, +65 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun",
+          "outcome": "pending"
+        }
+      ]
+    },
+    {
+      "backend": "flexon-rt",
+      "crate": "flexon",
+      "deserves_to_exist": true,
+      "exists_evidence": "sweep-64b encode heap 0.50× serde_json at native. `from_mut_slice` borrows escaped strings in place; JSON-pointer access. Its latest release (0.4.9) does not compile on stable Rust.",
+      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "recommended": "fail",
+      "rules": [
+        {
+          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+          "outcome": "fail"
+        },
+        {
+          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+          "outcome": "fail"
+        },
+        {
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
+        },
+        {
+          "detail": "gains inconsistent with counted codec share: x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor json-large-post: +59 % measured, +30 % predicted",
+          "outcome": "fail"
+        }
+      ]
+    },
+    {
+      "backend": "flexon-rt-mut",
+      "crate": "flexon",
+      "deserves_to_exist": true,
+      "exists_evidence": "sweep-64b encode heap 0.50× serde_json at native. In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-rt`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer.",
+      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "recommended": "fail",
+      "rules": [
+        {
+          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+          "outcome": "fail"
+        },
+        {
+          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+          "outcome": "fail"
+        },
+        {
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
+        },
+        {
+          "detail": "provisional pass: echo-post +8 % rps, +85 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun",
+          "outcome": "pending"
+        }
+      ]
+    },
+    {
+      "backend": "flexon-ct",
+      "crate": "flexon",
+      "deserves_to_exist": true,
+      "exists_evidence": "sweep-64b encode heap 0.50× serde_json at native. The compile-time SIMD configuration of flexon; same API as `flexon-rt`.",
+      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "recommended": "fail",
+      "rules": [
+        {
+          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+          "outcome": "fail"
+        },
+        {
+          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+          "outcome": "fail"
+        },
+        {
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
+        },
+        {
+          "detail": "no route ≥10 % better in throughput or p99 beyond the A/A band",
+          "outcome": "fail"
+        }
+      ]
+    },
+    {
+      "backend": "flexon-ct-mut",
+      "crate": "flexon",
+      "deserves_to_exist": true,
+      "exists_evidence": "sweep-64b encode heap 0.50× serde_json at native. In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-ct`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer.",
+      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "recommended": "fail",
+      "rules": [
+        {
+          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+          "outcome": "fail"
+        },
+        {
+          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+          "outcome": "fail"
+        },
+        {
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
+        },
+        {
+          "detail": "provisional pass: json-large-post +52 % rps, +42 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun",
+          "outcome": "pending"
+        }
+      ]
+    },
+    {
+      "backend": "jiter",
+      "crate": "jiter",
+      "deserves_to_exist": true,
+      "exists_evidence": "Partial mode parses truncated documents (built for streamed model output); decode only.",
+      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "recommended": "fail",
+      "rules": [
+        {
+          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+          "outcome": "fail"
+        },
+        {
+          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence",
+          "outcome": "fail"
+        },
+        {
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
+        },
+        {
+          "detail": "no route ≥10 % better in throughput or p99 beyond the A/A band",
+          "outcome": "fail"
+        }
+      ]
+    },
+    {
+      "backend": "hifijson",
+      "crate": "hifijson",
+      "deserves_to_exist": true,
+      "exists_evidence": "No `unsafe`: 0 unsafe blocks, functions or impls in its 1 runtime crate. Lexes any byte iterator (`IterLexer`), so input need not be in memory; numbers kept as text.",
+      "reason": "reference point: no borrowed slice decode plus `to_vec`-style encoder",
+      "recommended": "fail",
+      "rules": [
+        {
+          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+          "outcome": "fail"
+        },
+        {
+          "detail": "status shape/valid fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
+          "outcome": "fail"
+        },
+        {
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
+        },
+        {
+          "detail": "no route ≥10 % better in throughput or p99 beyond the A/A band",
+          "outcome": "fail"
+        }
+      ]
+    },
+    {
+      "backend": "struson",
+      "crate": "struson",
+      "deserves_to_exist": true,
+      "exists_evidence": "sweep-64b encode heap 0.70× serde_json at native. No `unsafe`: 0 unsafe blocks, functions or impls across its 5 runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors.",
+      "reason": "reference point: no borrowed slice decode plus `to_vec`-style encoder",
+      "recommended": "fail",
+      "rules": [
+        {
+          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+          "outcome": "fail"
+        },
+        {
+          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence",
+          "outcome": "fail"
+        },
+        {
+          "detail": "no advisory at advisory-db e2111519",
+          "outcome": "pass"
+        },
+        {
+          "detail": "no route ≥10 % better in throughput or p99 beyond the A/A band",
+          "outcome": "fail"
+        }
+      ]
+    }
+  ],
+  "epsilon": 0.05,
+  "schema": 1
+}

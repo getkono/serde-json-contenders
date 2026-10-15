@@ -98,7 +98,10 @@ pub fn shuffle<T>(items: &mut [T], seed: u64) {
 
 /// Write `rows` into the result file at `path`, replacing earlier rows whose
 /// `keys` fields match a new row's, and stamp provenance. Partial reruns
-/// therefore update in place instead of dropping what they did not rerun.
+/// therefore update in place instead of dropping what they did not rerun,
+/// but only over rows measured on the same code: the file carries one stamp,
+/// so rows from a file stamped with another fingerprint, or from a dirty
+/// checkout, are dropped rather than passed off under the new stamp.
 pub fn merge_write(
     path: &Path,
     kind: &str,
@@ -108,17 +111,30 @@ pub fn merge_write(
 ) -> Result<()> {
     let key = |r: &serde_json::Value| keys.iter().map(|k| r[*k].to_string()).collect::<Vec<_>>().join("|");
     let fresh: std::collections::HashSet<String> = rows.iter().map(key).collect();
-    let mut all: Vec<serde_json::Value> = read_json(path)
-        .ok()
-        .and_then(|v| v["rows"].as_array().cloned())
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|r| !fresh.contains(&key(r)))
-        .collect();
+    let stamp = crate::provenance::stamp();
+    let old = read_json(path).unwrap_or(serde_json::Value::Null);
+    let same_code = old["provenance"]["git_dirty"] == false
+        && stamp["git_dirty"] == false
+        && old["provenance"]["fingerprint"].is_string()
+        && old["provenance"]["fingerprint"] == stamp["fingerprint"];
+    let kept = if same_code {
+        old["rows"].as_array().cloned().unwrap_or_default()
+    } else {
+        if old["rows"].as_array().is_some_and(|r| !r.is_empty()) {
+            eprintln!(
+                "{}: dropping rows measured on other code ({} -> {})",
+                path.display(),
+                old["provenance"]["fingerprint"],
+                stamp["fingerprint"]
+            );
+        }
+        Vec::new()
+    };
+    let mut all: Vec<serde_json::Value> = kept.into_iter().filter(|r| !fresh.contains(&key(r))).collect();
     all.extend(rows.iter().cloned());
     all.sort_by_key(key);
     let mut doc =
-        serde_json::json!({ "schema": 1, "kind": kind, "provenance": crate::provenance::stamp(), "rows": all });
+        serde_json::json!({ "schema": 1, "kind": kind, "provenance": stamp, "rows": all });
     if let (serde_json::Value::Object(doc), serde_json::Value::Object(extra)) = (&mut doc, extra) {
         doc.extend(extra);
     }

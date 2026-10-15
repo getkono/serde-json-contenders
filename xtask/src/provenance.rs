@@ -1,5 +1,6 @@
 //! What a result was measured on, stamped into every result file.
 
+use std::fmt::Write as _;
 use std::process::Command;
 
 use serde_json::{Value, json};
@@ -52,6 +53,53 @@ pub fn now() -> String {
 pub const GIT_COMMIT_VAR: &str = "SJC_GIT_COMMIT";
 /// The environment variable carrying the host's dirty flag into the container.
 pub const GIT_DIRTY_VAR: &str = "SJC_GIT_DIRTY";
+/// The environment variable carrying the measured-code fingerprint into the
+/// container.
+pub const FINGERPRINT_VAR: &str = "SJC_FINGERPRINT";
+
+/// Paths whose content cannot change a measurement: the generated report and
+/// the code that writes it, the README, CI, and the results themselves. Every
+/// other tracked file is measured code.
+pub const UNMEASURED: &[&str] = &[
+    ":!README.md",
+    ":!results",
+    ":!report",
+    ":!xtask/src/report",
+    ":!xtask/src/report.rs",
+    ":!.github",
+];
+
+/// A hash of every measured file at HEAD (`git ls-tree`, so blob ids, not
+/// working-tree content: a dirty checkout is flagged separately). Results
+/// stamped with another fingerprint were measured on other code, and the
+/// report refuses them; a commit that touches only [`UNMEASURED`] paths
+/// keeps every result valid.
+#[must_use]
+pub fn fingerprint() -> Option<String> {
+    use sha2::Digest as _;
+    // `ls-tree` takes no exclude pathspecs, so the unmeasured paths are
+    // filtered here.
+    let (ok, tree, _) = capture(Command::new("git").current_dir(root()).args(["ls-tree", "-r", "HEAD"])).ok()?;
+    let excluded: Vec<&str> = UNMEASURED.iter().map(|p| p.trim_start_matches(":!")).collect();
+    let measured: String = tree
+        .lines()
+        .filter(|l| {
+            let path = l.split_once('\t').map_or("", |(_, p)| p);
+            !excluded
+                .iter()
+                .any(|x| path == *x || path.starts_with(&format!("{x}/")))
+        })
+        .flat_map(|l| [l, "\n"])
+        .collect();
+    ok.then(|| hex(&sha2::Sha256::digest(measured.as_bytes())[..8]))
+}
+
+fn hex(bytes: &[u8]) -> String {
+    bytes.iter().fold(String::new(), |mut s, b| {
+        let _ = write!(s, "{b:02x}");
+        s
+    })
+}
 
 /// The commit the checkout is at, and whether the checkout differs from it,
 /// read with git in the checkout. A commit git cannot read is `None`, and a
@@ -59,16 +107,14 @@ pub const GIT_DIRTY_VAR: &str = "SJC_GIT_DIRTY";
 #[must_use]
 pub fn git_state() -> (Option<String>, bool) {
     let commit = first_line(Command::new("git").current_dir(root()).args(["rev-parse", "HEAD"]));
-    // Results and the README they generate are what a run writes; any other
-    // change means the measured code is not the committed code.
-    let dirty = status_is_dirty(capture(Command::new("git").current_dir(root()).args([
-        "status",
-        "--porcelain",
-        "--",
-        ".",
-        ":!results",
-        ":!README.md",
-    ])));
+    // Results, the report and the README are what a run writes or reads; any
+    // other change means the measured code is not the committed code.
+    let dirty = status_is_dirty(capture(
+        Command::new("git")
+            .current_dir(root())
+            .args(["status", "--porcelain", "--", "."])
+            .args(UNMEASURED),
+    ));
     (commit, dirty)
 }
 
@@ -94,18 +140,21 @@ fn passed_git_state(commit: Option<&str>, dirty: Option<&str>) -> (Option<String
 /// Everything that could change a number.
 #[must_use]
 pub fn stamp() -> Value {
-    let (commit, dirty) = if std::env::var_os("SJC_IN_CONTAINER").is_some() {
-        passed_git_state(
+    let (commit, dirty, fingerprint) = if std::env::var_os("SJC_IN_CONTAINER").is_some() {
+        let (commit, dirty) = passed_git_state(
             std::env::var(GIT_COMMIT_VAR).ok().as_deref(),
             std::env::var(GIT_DIRTY_VAR).ok().as_deref(),
-        )
+        );
+        (commit, dirty, std::env::var(FINGERPRINT_VAR).ok().filter(|f| !f.is_empty()))
     } else {
-        git_state()
+        let (commit, dirty) = git_state();
+        (commit, dirty, fingerprint())
     };
     json!({
         "timestamp": now(),
         "git_commit": commit,
         "git_dirty": dirty,
+        "fingerprint": fingerprint,
         "host": host_slug(),
         "cpu": cpu_model(),
         "arch": std::env::consts::ARCH,

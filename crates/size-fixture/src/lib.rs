@@ -6,6 +6,8 @@
 //! `floor` does the same I/O with no JSON at all. A backend's cost is its
 //! fixture's `.text` minus the floor's.
 
+pub mod body;
+
 use codecs::Backend;
 
 /// Declares [`Selected`]: the first backend in this list whose feature is on,
@@ -56,7 +58,7 @@ pub fn is_echo(input: &[u8]) -> bool {
 /// Decode (and, when `encode`, re-encode) through [`Selected`].
 #[must_use]
 pub fn round_trip(input: bytes::Bytes, encode: bool) -> Vec<u8> {
-    use payloads::kynos::{Catalog, Echo};
+    use crate::body::{Catalog, Echo};
     let out = if is_echo(&input) {
         Selected::decode::<Echo>(input).map(|v| {
             if encode {

@@ -6,7 +6,10 @@
 //! parser is known to be inexact on rare inputs, and exact under
 //! `float_roundtrip`); anything else gates. That covers random `f64` and
 //! `f32` bit patterns as text, and exponents written with leading zeros
-//! (`1e007`), which RFC 8259 allows and serde_json reads. An encoder gates
+//! (`1e007`), which RFC 8259 allows and serde_json reads. On the fixed edge
+//! values every other disagreement gates too: accepting what serde_json
+//! refuses (`1e400` as infinity), refusing what it accepts (`u64::MAX`), and
+//! answering the other status (`-0` into `u64`). An encoder gates
 //! only if its output does not parse back to the exact bits it was given;
 //! the other round trips are counted.
 
@@ -96,16 +99,17 @@ fn run_fixed<B: Backend>(section: &mut Section) {
             section.differ(&case, r.describe(), b.describe());
             match (&r, &b) {
                 (_, Outcome::Panic(message)) => section.fail(&case, format!("panicked: {message}")),
-                (Outcome::Accept(_), Outcome::Accept(accepted))
-                    if !(correctly_rounded(path, &text, accepted)
-                        || path == "value" && faithful(text.as_bytes(), &b)) =>
-                {
-                    section.fail(
-                        &case,
-                        "both accept, values differ, and the backend's is not correctly rounded",
-                    );
+                (Outcome::Accept(_), Outcome::Accept(accepted)) => {
+                    if !(correctly_rounded(path, &text, accepted) || path == "value" && faithful(text.as_bytes(), &b)) {
+                        section.fail(
+                            &case,
+                            "both accept, values differ, and the backend's is not correctly rounded",
+                        );
+                    }
                 }
-                _ => {}
+                (Outcome::Accept(_), _) => section.fail(&case, "serde_json accepts, the backend refuses"),
+                (_, Outcome::Accept(_)) => section.fail(&case, "the backend accepts what serde_json refuses"),
+                _ => section.fail(&case, "both refuse, with a different status"),
             }
         }
     }

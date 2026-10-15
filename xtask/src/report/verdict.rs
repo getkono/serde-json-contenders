@@ -476,14 +476,24 @@ pub struct Verdict {
 /// An entry without a count can neither dominate nor be dominated, so one
 /// missing anywhere in the pool leaves the frontier undecided.
 fn unweighable(data: &Data, e: &Entry, workload: &str, pool: &[&Entry]) -> Vec<String> {
-    let ops: &[&str] = if e.encodes { &["decode", "encode"] } else { &["decode"] };
+    let ops: &[&str] = if e.encodes && !crate::matrix::DECODE_ONLY.contains(&workload) {
+        &["decode", "encode"]
+    } else {
+        &["decode"]
+    };
     let mut gaps = Vec::new();
     for op in ops {
+        // Where serde_json has no figure (it rejects the input), nothing is
+        // weighed against it, so nothing there waits on a control.
+        if cpu(data, X86_NATIVE, "serde_json", workload, op).is_none() {
+            continue;
+        }
         if aa_band(data, X86_NATIVE, workload, op).is_none() {
             gaps.push(format!("no A/A control for {workload} {op}"));
             continue;
         }
-        let others = pool.iter().filter(|x| *op == "decode" || x.encodes).map(|x| x.backend);
+        // Only those `e` is weighed against: an encoder against encoders.
+        let others = pool.iter().filter(|x| !e.encodes || x.encodes).map(|x| x.backend);
         for b in [e.backend, "serde_json"].into_iter().chain(others) {
             if cpu(data, X86_NATIVE, b, workload, op).is_some() && cpu(data, X86_V3, b, workload, op).is_none() {
                 gaps.push(format!("no v3 count for {b} {workload} {op}"));
@@ -858,24 +868,12 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
             unweighable.push((*route).to_owned());
             continue;
         };
-        let pass_rps = g.rps >= E2E_GAIN && g.rps > aa_rps;
-        // A saturated run has no p99 to weigh; it can still win on throughput.
-        let pass_p99 = matches!((g.p99, g.aa_p99), (Some(p), Some(b)) if -p >= E2E_GAIN && -p > b);
-        if !(pass_rps || pass_p99) {
-            continue;
-        }
         // The count bounds what the codec can give: more throughput than it
-        // predicts is a measurement error, not a result. A p99 under load is
-        // not proportional to the cost of a request (a cheaper request also
-        // shortens every queue behind it), so it has no such bound; it counts
-        // only where the count itself predicts a material gain.
-        // Nor can a material predicted gain show as a throughput loss beyond
-        // the noise: the count and the timing then disagree on direction.
+        // predicts is a measurement error, not a result. Nor can a material
+        // predicted gain show as a throughput loss beyond the noise: the
+        // count and the timing then disagree on direction.
         let slack = EPSILON.max(aa_rps);
-        if g.rps > predicted + slack
-            || (predicted > EPSILON && g.rps < -slack)
-            || (pass_p99 && !pass_rps && predicted <= EPSILON)
-        {
+        if g.rps > predicted + slack || (predicted > EPSILON && g.rps < -slack) {
             inconsistent.push(format!(
                 "{route}: {:+.0} % rps and p99 {} measured, {:+.0} % rps predicted",
                 g.rps * 100.0,
@@ -884,10 +882,28 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
             ));
             continue;
         }
+        let pass_rps = g.rps >= E2E_GAIN && g.rps > aa_rps;
+        // A saturated run has no p99 to weigh; it can still win on
+        // throughput. A p99 under load is not proportional to the cost of a
+        // request (a cheaper request also shortens every queue behind it), so
+        // it has no bound like throughput's; it counts only where the count
+        // itself predicts a material gain.
+        let pass_p99 =
+            predicted > EPSILON && matches!((g.p99, g.aa_p99), (Some(p), Some(b)) if -p >= E2E_GAIN && -p > b);
+        if !(pass_rps || pass_p99) {
+            continue;
+        }
         best.get_or_insert(format!("{route} {:+.0} % rps, p99 {}", g.rps * 100.0, p99_text(g.p99)));
     }
     let trust = weakest(rows.iter());
     match (seen, best) {
+        (false, _)
+            if rows
+                .iter()
+                .any(|r| r["backend"] == e.backend && r["verdict"] == "wrong") =>
+        {
+            Outcome::Fail("answers wrongly end to end, so nothing of it is timed".into())
+        }
         (false, _) => Outcome::Pending("end-to-end timing not yet recorded".into()),
         (true, Some(b)) if trust == "canonical" => Outcome::Pass(b),
         (true, Some(b)) => Outcome::Pending(format!("provisional pass: {b} ({trust}); awaits a quiet-host rerun")),
@@ -1258,6 +1274,42 @@ pub(super) mod tests {
             },
         ];
         assert!(!super::dominates(&a, &b));
+    }
+
+    /// A decode-only workload has no encode cell; an encoder's win there is
+    /// weighed on decode alone, not skipped for want of an encode control.
+    #[test]
+    fn an_encoder_wins_on_a_decode_only_workload() {
+        let mut data = measured(
+            &[
+                ("serde_json", 100.0, 100.0),
+                ("serde_json#aa", 101.0, 100.0),
+                ("simd-json", 100.0, 100.0),
+            ],
+            "canonical",
+        );
+        for (b, cycles, est) in [
+            ("serde_json", 100.0, 100.0),
+            ("serde_json#aa", 101.0, 100.0),
+            ("simd-json", 50.0, 60.0),
+        ] {
+            data.host.hw.rows.insert(
+                Key::new("native", b, "skip-unknown", "decode"),
+                json!({ "cycles": cycles, "trust": "canonical" }),
+            );
+            data.callgrind.rows.insert(
+                Key::new("v3", b, "skip-unknown", "decode"),
+                json!({ "est_cycles": est }),
+            );
+        }
+        let verdicts = super::judge(&data);
+        let simd = verdicts.iter().find(|v| v.entry.backend == simd().backend).unwrap();
+        assert!(simd.exists.0 && !simd.exists.2, "{:?}", simd.exists);
+        assert!(
+            simd.exists.1.starts_with("skip-unknown decode CPU 0.50×"),
+            "{:?}",
+            simd.exists
+        );
     }
 
     /// The A/A band is the widest gap in any round, not only the medians'.

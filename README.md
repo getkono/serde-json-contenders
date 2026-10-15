@@ -68,7 +68,7 @@ A gain that only shows up in a native build is accepted: applications are assume
 - simd-json reports the path it selected, which must be its best for the CPU.
 - sonic-rs and flexon select theirs with a compile-time `cfg` or a CPUID check; `doctor` evaluates the same condition inside the built binary.
 
-Every measuring task (`count`, `alloc`, `hw`, `time`, `e2e-count`, `e2e-time`) refuses to start unless `doctor` passed on this host for the same code (a `count --check` recount, which writes no counts, excepted), and the report refuses a doctor result with failures.
+Every measuring task (`count`, `alloc`, `hw`, `time`, `e2e-count`, `e2e-time`) refuses to start unless `doctor` passed on this host for the same code (a `count --check` recount, which writes no counts, excepted, and a dirty checkout, whose results the report refuses anyway), and the report refuses a doctor result with failures.
 
 ### Axes
 
@@ -83,7 +83,7 @@ Every measuring task (`count`, `alloc`, `hw`, `time`, `e2e-count`, `e2e-time`) r
 | 7 | `unsafe` and soundness | `unsafe` blocks, functions (trait method declarations included), impls and traits, parsed with `syn` from every Rust file of every crate the backend adds to the build (its build script included; its tests, benches and examples not), plus every `unsafe` token inside a macro body or invocation, counted separately as well; RustSec advisories at a pinned advisory-db commit; open soundness issues, reviewed by hand (`results/soundness.toml`) | host |
 | 8 | Conformance | the differential suite below | gate, not trade-off |
 
-Cycles decide because instructions are not equally expensive: a vector instruction, a mispredicted branch and a cache miss each cost a different number of cycles, and an instruction count weighs them all the same. Cycles are noisy, so they decide only through a protocol that measures their noise. callgrind's counts have no noise at all, so a cycles win that the count contradicts is not accepted.
+Cycles decide because instructions are not equally expensive: a vector instruction, a mispredicted branch and a cache miss each cost a different number of cycles, and an instruction count weighs them all the same. Cycles are noisy, so they decide only through a protocol that measures their noise. callgrind's counts have no noise at all, so a cycles win is accepted only where the count is lower too.
 
 Each per-operation measurement follows the same protocol:
 
@@ -188,14 +188,14 @@ Decode-only entries are compared on the decode axes alone, and an encoder is onl
 
 A backend is **recommended for Kynos** only if all four hold:
 
-1. **Frontier.** On at least one Kynos shape, it is non-dominated among eligible entries at x86-64 `native` and more than the margin better than serde_json on decode or encode cycles or heap. Every cycles advantage, in a win or in dominance, must agree with the counts: one entry's cycles advantage over another counts only if, at `v3`, its callgrind estimated cycles for the same cell are lower than the other's; a cycles disadvantage beyond the margin always counts. Without an A/A control at a Kynos cell, or a `v3` count for any entry timed there (the entry, serde_json, or any it is weighed against), the rule is pending. A pass is provisional unless the cycles are `canonical`, and a failure that only the A/A band of `solo` timing causes (a win beyond ε alone) is pending a quiet-host rerun.
+1. **Frontier.** On at least one Kynos workload, it is non-dominated among eligible entries at x86-64 `native` and more than the margin better than serde_json on decode or encode cycles or heap. The rule reads what a server does: owned decode of one shared frame, and `to_vec` encode; the other arrivals, borrowed forms and `to_writer` are reported, not decided on. Every cycles advantage, in a win or in dominance, must agree with the counts: one entry's cycles advantage over another counts only if, at `v3`, its callgrind estimated cycles for the same cell are lower than the other's; a cycles disadvantage beyond the margin always counts. Without an A/A control at a Kynos cell, or a `v3` count for any entry timed there (the entry, serde_json, or any it is weighed against: an encoder is weighed against encoders), the rule is pending. A pass is provisional unless the cycles are `canonical`, and a failure that only the A/A band of `solo` timing causes (a win beyond ε alone) is pending a quiet-host rerun.
 2. **Conformance.** No gating disagreement at any variant, no wrong result on any measured cell or end-to-end route, no fuzz divergence, and no undefined behaviour under Miri.
 3. **Soundness.** No advisory affecting the pinned version, no open soundness issue, and no memory error reported by the sanitizer while fuzzing.
-4. **End to end.** At least 10 % better throughput or p99 on `echo-post` or `json-large`, outside the A/A band, and consistent with the counted codec share: no more throughput than the count predicts, give or take ε or the A/A band, whichever is wider, and no throughput loss beyond that where the count predicts a gain of more than 5 % (either is a measurement error, and leaves the rule pending until a rerun), and a p99 gain only where the count predicts a gain of more than 5 % (a p99 under load is not proportional to a request's cost, so it has no tighter bound). The A/A band is the widest gap between serde_json and its copy, in the medians or in any one rep. The A/A control and the prediction must both exist, or the rule is pending.
+4. **End to end.** At least 10 % better throughput or p99 on `echo-post` or `json-large`, outside the A/A band, and consistent with the counted codec share: no more throughput than the count predicts, give or take ε or the A/A band, whichever is wider, and no throughput loss beyond that where the count predicts a gain of more than 5 % (either is a measurement error: that route does not count, and if no other route passes, the rule is pending until a rerun), and a p99 gain only where the count predicts a gain of more than 5 % (a p99 under load is not proportional to a request's cost, so it has no tighter bound). The A/A band is the widest gap between serde_json and its copy, in the medians or in any one rep. The A/A control and the prediction must both exist, or the rule is pending.
 
 Separately from Kynos, a library **deserves to exist** if either of these holds. Neither eligibility nor conformance is required here: a library can be worth having for what it does without being a drop-in replacement, and its frontier is drawn among every entry that has not failed conformance (a pending one included).
 
-- It is on the frontier, with a win under the same margins, for *any* workload at `native`.
+- It is on the frontier, with a win under the same margins, for *any* workload at `native` (a workload serde_json rejects has nothing to win against).
 - It offers a capability serde_json lacks. The capability is stated with its evidence; any figure in it is computed from the results (`results/notes.toml` names the query, the report fills in the number).
 
 ### Verification
@@ -209,9 +209,9 @@ The results stand only after these checks:
    - An `n_` file accepted, a wrong shape answered 400, and floats one bit off each fail conformance in their own section. Floats written in a different format appear in `encode_diff` as a difference that does not gate (`crates/conformance/tests/harness.rs`).
    - An adapter that copies its input once more shows exactly one more allocation, of the input's size, and that much more peak. Under callgrind it costs the copy's instructions (`crates/cell/src/sensitivity.rs`). The callgrind half needs valgrind, so it runs in the container rather than in `mise run test`: `mise run sensitivity`, which `mise run all` runs before measuring.
    - An adapter that does less work than it should, the kind of variant an optimizer could delete, is refused by the result check in every mode and never measured.
-   - A cycles "win" inside the A/A band, or one the count contradicts, is not a win (`xtask/src/report/verdict.rs` tests).
+   - A cycles "win" inside the A/A band, or one whose count is not lower, is not a win (`xtask/src/report/verdict.rs` tests).
 5. **The commentary matches the report.** Every number quoted under [Findings](#findings) links to the report row it comes from, and `cargo xtask report --check` fails if that row does not hold it, or if a figure in Findings has no link.
-6. **Nothing is left out.** Every requirement above maps to a task, a result file and a report table, or to a deviation listed here. Every row of every result file is exported to `report/data/`, and so is every figure and note in the conformance reports.
+6. **Nothing is left out.** Every requirement above maps to a task, a result file and a report table, or to a deviation listed here. Every row of every measured result file is exported to `report/data/`, and so is every figure, note and gating failure in the conformance reports.
 
 Deviations:
 
@@ -229,7 +229,7 @@ cargo xtask report        # regenerate report/ from results/
 cargo xtask report --check
 ```
 
-Individual tasks are listed by `cargo xtask`. Every result file under `results/` records its commit, measured-code fingerprint, host, compiler, governor, load and container image; the report's [provenance table](report/README.md#provenance) lists them.
+Individual tasks are listed by `cargo xtask`. Every measured result file under `results/` (all but the hand-written `notes.toml`, `soundness.toml` and `skipped.toml`) records its commit, measured-code fingerprint, host, compiler, governor, load and container image; the report's [provenance table](report/README.md#provenance) lists them.
 
 ## Findings
 

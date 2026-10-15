@@ -121,7 +121,7 @@ pub fn exports(data: &Data) -> Vec<Export> {
     ));
     out.push(export(
         "conformance-notes.csv",
-        "conformance: every note a section recorded",
+        "conformance: every note a section recorded, and every gating failure listed",
         &notes,
     ));
     out
@@ -149,7 +149,6 @@ fn leaves(path: &str, v: &Value, out: &mut Vec<(String, Value)>) {
                 leaves(&p, child, out);
             }
         }
-        Value::Null => {}
         leaf => out.push((path.to_owned(), leaf.clone())),
     }
 }
@@ -188,6 +187,17 @@ fn conformance(data: &Data) -> Conformance {
                     measures.push(serde_json::json!({
                         "variant": variant, "set": set, "backend": backend, "section": section,
                         "figure": figure, "value": value,
+                    }));
+                }
+                for f in b["gating_failures"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .filter(|f| f["section"] == *section)
+                {
+                    notes.push(serde_json::json!({
+                        "variant": variant, "set": set, "backend": backend, "section": section,
+                        "note": format!("gating failure: {}", f),
                     }));
                 }
                 for note in s["notes"].as_array().into_iter().flatten() {

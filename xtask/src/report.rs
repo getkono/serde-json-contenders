@@ -275,7 +275,15 @@ fn holds(section: &str, title: &str, quoted: &str) -> Result<(), String> {
 /// ("2.10" is not the "2.10 M" in a cell).
 fn whole(cell: &str, quoted: &str) -> bool {
     let joins = |c: Option<char>| c.is_some_and(|c| c.is_ascii_digit() || matches!(c, '.' | ',' | '+' | '-' | '−'));
+    // A quote with a unit of its own ("0.80×", "16 %", "2.1 M") says what it
+    // is; only a bare number could be mistaken for one with another unit.
+    let bare = quoted
+        .chars()
+        .all(|c| c.is_ascii_digit() || matches!(c, '.' | ',' | '+' | '-' | '−' | ' '));
     let unit = |rest: &str| {
+        if !bare {
+            return false;
+        }
         let rest = rest.trim_start_matches(' ');
         rest.chars()
             .next()
@@ -287,13 +295,25 @@ fn whole(cell: &str, quoted: &str) -> bool {
     })
 }
 
+/// Whether a word of Findings is a figure. In code (one span is one word),
+/// a name (`nested-129`, `Zen 4`) is not, but a number is. In prose, any
+/// word holding a digit that does not begin as a name does (with a letter)
+/// or as a footnote marker (`^1`) is.
+fn is_figure(token: &str, code: bool) -> bool {
+    let first = token.chars().next();
+    if code {
+        first.is_some_and(char::is_numeric)
+    } else {
+        token.chars().any(char::is_numeric) && !first.is_some_and(|c| c.is_alphabetic() || c == '^')
+    }
+}
+
 /// Figures written in the README's Findings without a link to the report row
 /// they come from. A number there is a claim, and every claim names its
-/// evidence: any word that begins with a digit (or `~`, `≈`, `±` or a sign
-/// before one) is a figure, and so is the text of a link that holds a digit
-/// and does not point into the report. Inline code (`nested-129`), names
-/// that begin with a letter (`v3`), and rule numbers ("rules 1 and 4") are
-/// not figures.
+/// evidence. See [`is_figure`] for what a figure is; a list item's number
+/// ("1." at the start of a line) and a rule's number ("rule 1", "rules 1,
+/// 2 and 4", "rules 1–4", "rule 1's") are not figures. A link elsewhere may
+/// name things ("sonic-rs#123"), but not quote figures.
 fn bare_figures(readme: &str) -> Vec<String> {
     let Some(start) = readme
         .find("\n## Findings")
@@ -306,11 +326,11 @@ fn bare_figures(readme: &str) -> Vec<String> {
     let end = body[3..].find("\n## ").map_or(body.len(), |i| i + 3);
     let body = &body[..end];
     let mut failures = Vec::new();
-    // Links become a space; inline code too.
+    // Links become a space.
     let mut text = String::new();
     let mut at = 0;
     for link in links(body) {
-        if link.text.chars().any(|c| c.is_ascii_digit()) && !link.target.starts_with("report/README.md#") {
+        if !link.target.starts_with("report/README.md#") && link.text.split_whitespace().any(|w| is_figure(w, false)) {
             failures.push(format!(
                 "Findings quotes [{}] from {}, not from a report row",
                 link.text, link.target
@@ -324,66 +344,63 @@ fn bare_figures(readme: &str) -> Vec<String> {
     if text.contains("<a ") || text.contains("<span") || text.contains("<b>") {
         failures.push("Findings holds HTML; quote figures as Markdown links".to_owned());
     }
-    // Words, each marked as inside inline code (or a fence) or not. A dash
-    // or a slash splits words, so "fewer—16 %" and "1/3" yield their
-    // numbers.
-    let mut words: Vec<(String, bool)> = Vec::new();
+    // Words: (text, in code, first on its line). A code span is one word.
+    // In prose a dash or a slash splits words, so "fewer—16 %" and "1/3"
+    // yield their numbers.
+    let mut words: Vec<(String, bool, bool)> = Vec::new();
     let mut code = false;
     let mut word = String::new();
+    let mut line_start = true;
+    let mut word_line_start = true;
     for c in text.chars() {
-        let split = c.is_whitespace() || matches!(c, '—' | '–' | '/' | '`');
+        let split = c == '`' || (!code && (c.is_whitespace() || matches!(c, '—' | '–' | '/')));
         if split {
             if !word.is_empty() {
-                words.push((std::mem::take(&mut word), code));
+                words.push((std::mem::take(&mut word), code, word_line_start));
+                line_start = false;
             }
             if c == '`' {
                 code = !code;
             }
+            if c == '\n' {
+                line_start = true;
+            }
         } else {
+            if word.is_empty() {
+                word_line_start = line_start;
+            }
             word.push(c);
         }
     }
     if !word.is_empty() {
-        words.push((word, code));
+        words.push((word, code, word_line_start));
     }
-    let mut previous = String::new();
-    let mut previous_rule = false;
-    let mut before_previous_rule = false;
-    for (word, code) in words {
-        let token = word.trim_matches(|c: char| {
+    let mut rules = false;
+    for (word, code, first) in words {
+        let trimmed = word.trim_matches(|c: char| {
             matches!(
                 c,
                 ',' | ';' | ':' | '.' | '(' | ')' | '"' | '*' | '_' | '[' | ']' | '!' | '?' | '\''
             )
         });
-        // In code, a name (`nested-129`, `v3`) is not a figure, but a
-        // number is. In prose, so is any word holding a digit that does
-        // not begin as a name does, with a letter.
-        let figure = if code {
-            token.chars().next().is_some_and(char::is_numeric)
-        } else {
-            token.chars().any(char::is_numeric) && !token.chars().next().is_some_and(char::is_alphabetic)
-        };
-        // A rule's number: one of 1 to 4 right after "rule" or "rules", or
-        // after one such and a comma, "and" or "or".
-        let rule = !code
-            && matches!(token, "1" | "2" | "3" | "4")
-            && (matches!(previous.as_str(), "rule" | "rules")
-                || (previous_rule && previous.ends_with(','))
-                || (before_previous_rule && matches!(previous.as_str(), "and" | "or")));
-        if figure && !rule {
+        let possessive = trimmed.strip_suffix("'s").or_else(|| trimmed.strip_suffix("’s"));
+        let token = possessive.unwrap_or(trimmed);
+        let lower = token.to_lowercase();
+        let list_item = first && !code && word.ends_with('.') && token.chars().all(|c| c.is_ascii_digit());
+        let rule = !code && rules && matches!(token, "1" | "2" | "3" | "4");
+        if is_figure(token, code) && !rule && !list_item {
             failures.push(format!(
                 "Findings quotes {token} without a link to the report row it comes from"
             ));
         }
-        before_previous_rule = previous_rule;
-        previous_rule = rule;
-        // Kept with its trailing comma, which continues a list of rules.
-        previous = if code {
-            String::new()
-        } else {
-            word.trim_start_matches(['(', '*', '_', '"']).to_lowercase()
-        };
+        // A list of rule numbers runs on through "and", "or", "to" and
+        // commas, and ends at any other word or at a colon or possessive.
+        rules = !code
+            && (matches!(lower.as_str(), "rule" | "rules")
+                || (rules
+                    && (rule || matches!(lower.as_str(), "and" | "or" | "to"))
+                    && possessive.is_none()
+                    && !word.ends_with([':', '.', ';'])));
     }
     failures
 }
@@ -499,7 +516,11 @@ mod tests {
         assert!(!super::whole("2.10 M", "2.10"));
         assert!(super::whole("2.10 M", "2.10 M"));
         assert!(super::whole("0.84× (0.90× at v3)", "0.84×"));
-        let ok = "## Findings\n\nUnder rules 1, 2 and 4 it holds.\n";
+        assert!(super::whole(
+            "✅ json-small decode CPU 0.80× at native (cycles)",
+            "0.80×"
+        ));
+        let ok = "## Findings\n\nUnder rules 1, 2 and 4 it holds.\n\n1. First, rule 1's test and rules 1–4 and rules 1 to 4.\n2. On `Zen 4`, see [sonic-rs#123](https://github.com/x) and [^1].\n";
         assert!(super::bare_figures(ok).is_empty(), "{:?}", super::bare_figures(ok));
     }
 

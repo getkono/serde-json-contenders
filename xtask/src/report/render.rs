@@ -380,7 +380,7 @@ fn cpu_block(data: &Data, title: &str, workloads: &[&str], op: &str, points: &[P
                 format!(
                     "{} (±{})",
                     ratio(cpu(data, *p, "serde_json#aa", w, op), base),
-                    verdict::aa_band(data, *p, w, op).map_or("—".into(), |b| format!("{:.1} %", b * 100.0))
+                    verdict::cpu_tolerance(data, *p, w, op).map_or("—".into(), |b| format!("{:.1} %", b * 100.0))
                 )
             } else {
                 "exact".to_owned()
@@ -411,7 +411,7 @@ fn points() -> [Point; 4] {
 
 fn kynos_cpu(out: &mut String, data: &Data) {
     section(out, "kynos-decode", "CPU per operation at the Kynos shapes: decode");
-    out.push_str("serde_json is the absolute figure; every other column is a ratio to it (below 1 is faster). Owned decode of one shared frame, and `to_vec` encode: what a server does. The rule reads `native (cycles)`, hardware cycles, with the A/A column (serde_json's second copy: the ratio of the medians, and in brackets the band the rule applies, the widest gap in the medians or any one round) as its noise floor; `v3 (est. cycles)` is callgrind's deterministic count, which corroborates it. The instruction rows are the same builds counted as instructions.\n\n");
+    out.push_str("serde_json is the absolute figure; every other column is a ratio to it (below 1 is faster). Owned decode of one shared frame, and `to_vec` encode: what a server does. The rule reads `native (cycles)`, hardware cycles, with the A/A column (serde_json's second copy: the ratio of the medians, and in brackets the margin the rule applies: ε, or the band (the widest gap in the medians or any one round) where wider) as its noise floor; `v3 (est. cycles)` is callgrind's deterministic count, which corroborates it. The instruction rows are the same builds counted as instructions.\n\n");
     out.push_str(&cpu_block(data, "", KYNOS, "decode", &points(), &all_entries()));
     section(out, "kynos-encode", "CPU per operation at the Kynos shapes: encode");
     out.push_str(&cpu_block(data, "", KYNOS, "encode", &points(), &encoders()));
@@ -968,6 +968,21 @@ fn end_to_end(out: &mut String, data: &Data) {
             let floor = get("floor", route);
             let base = get("serde_json", route);
             for e in ENTRIES {
+                let wrong = data
+                    .e2e_count
+                    .iter()
+                    .find(|x| x["backend"] == e.backend && x["route"] == *route && x["variant"] == variant)
+                    .filter(|x| x["verdict"] == "wrong");
+                if let Some(w) = wrong {
+                    out.push_str(&row(&[
+                        (*route).to_owned(),
+                        format!("`{}`", e.backend),
+                        format!("wrong: {}", w["detail"].as_str().unwrap_or("?")),
+                        "—".into(),
+                        "—".into(),
+                    ]));
+                    continue;
+                }
                 let Some(me) = get(e.backend, route) else { continue };
                 let share = floor.map_or("—".into(), |f| format!("{:.0} %", (me - f) / me * 100.0));
                 out.push_str(&row(&[
@@ -981,6 +996,11 @@ fn end_to_end(out: &mut String, data: &Data) {
         }
         out.push('\n');
     }
+    e2e_timed(out, data);
+}
+
+fn e2e_timed(out: &mut String, data: &Data) {
+    let host = &data.host;
     if !host.e2e_time.is_empty() {
         section(out, "e2e-timed", "End to end: timed");
         let _ = writeln!(
@@ -998,6 +1018,21 @@ fn end_to_end(out: &mut String, data: &Data) {
         ]));
         for (route, ..) in crate::endtoend::ROUTES {
             for e in ENTRIES.iter().skip(1) {
+                if let Some(w) = host
+                    .e2e_time
+                    .iter()
+                    .find(|x| x["backend"] == e.backend && x["route"] == *route && x["verdict"] == "wrong")
+                {
+                    out.push_str(&row(&[
+                        (*route).to_owned(),
+                        format!("`{}`", e.backend),
+                        format!("wrong: {}", w["detail"].as_str().unwrap_or("?")),
+                        "—".into(),
+                        "—".into(),
+                        "—".into(),
+                    ]));
+                    continue;
+                }
                 let Some(g) = verdict::e2e_gain(&host.e2e_time, e.backend, route) else {
                     continue;
                 };

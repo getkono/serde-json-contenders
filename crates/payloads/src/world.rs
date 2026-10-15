@@ -4,13 +4,17 @@
 //! generated from the same schemas, within a factor of four of the original size, with the same
 //! character: `twitter-like` is string-heavy with `\u`-escaped non-ASCII,
 //! `citm-like` is integer- and key-heavy, `canada-like` is float-heavy.
+//!
+//! `pretty-twitter-like`, `raw-utf8` and `skip-unknown` are `twitter-like`
+//! varied in one respect each: whitespace between tokens, non-ASCII written
+//! raw rather than escaped, and a target type declaring a fifth of its keys.
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Group, Rng, Workload, ascii_escape, encode_canonical};
+use crate::{Group, Rng, Workload, ascii_escape, encode_canonical, encode_pretty};
 
 const WORDS: &[&str] = &[
     "the",
@@ -277,6 +281,139 @@ impl Workload for TwitterLike {
 
     fn bytes() -> Vec<u8> {
         ascii_escape(&encode_canonical(&Self::value()))
+    }
+}
+
+/// `twitter-like`'s value written by `to_vec_pretty`, non-ASCII still `\u`
+/// escaped, so the one difference from `twitter-like` is whitespace.
+#[derive(Debug)]
+pub struct PrettyTwitterLike;
+
+impl Workload for PrettyTwitterLike {
+    const NAME: &'static str = "pretty-twitter-like";
+    const GROUP: Group = Group::World;
+    type Owned = Twitter;
+    type Borrowed<'de> = TwitterRef<'de>;
+
+    fn value() -> Twitter {
+        TwitterLike::value()
+    }
+
+    fn bytes() -> Vec<u8> {
+        ascii_escape(&encode_pretty(&Self::value()))
+    }
+}
+
+/// `twitter-like`'s value with non-ASCII written raw, as serde_json writes it,
+/// so the one difference from `twitter-like` is `\u` escapes against UTF-8
+/// validation (and borrowing, which an escape defeats).
+#[derive(Debug)]
+pub struct RawUtf8;
+
+impl Workload for RawUtf8 {
+    const NAME: &'static str = "raw-utf8";
+    const GROUP: Group = Group::World;
+    type Owned = Twitter;
+    type Borrowed<'de> = TwitterRef<'de>;
+
+    fn value() -> Twitter {
+        TwitterLike::value()
+    }
+}
+
+/// [`User`], only the fields a client reads.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[allow(missing_docs)]
+pub struct UserBrief {
+    pub screen_name: String,
+    pub followers_count: u32,
+    pub verified: bool,
+}
+
+/// [`UserBrief`], borrowing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[allow(missing_docs)]
+pub struct UserBriefRef<'a> {
+    #[serde(borrow)]
+    pub screen_name: Cow<'a, str>,
+    pub followers_count: u32,
+    pub verified: bool,
+}
+
+/// [`Status`], only the fields a client reads.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[allow(missing_docs)]
+pub struct StatusBrief {
+    pub id: u64,
+    pub text: String,
+    pub user: UserBrief,
+    pub retweet_count: u32,
+    pub lang: String,
+}
+
+/// [`StatusBrief`], borrowing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[allow(missing_docs)]
+pub struct StatusBriefRef<'a> {
+    pub id: u64,
+    #[serde(borrow)]
+    pub text: Cow<'a, str>,
+    #[serde(borrow)]
+    pub user: UserBriefRef<'a>,
+    pub retweet_count: u32,
+    #[serde(borrow)]
+    pub lang: Cow<'a, str>,
+}
+
+/// [`Twitter`], only the fields a client reads.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TwitterBrief {
+    /// The statuses.
+    pub statuses: Vec<StatusBrief>,
+}
+
+/// [`TwitterBrief`], borrowing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TwitterBriefRef<'a> {
+    /// The statuses.
+    #[serde(borrow)]
+    pub statuses: Vec<StatusBriefRef<'a>>,
+}
+
+/// `twitter-like`'s bytes into a type declaring 8 of each status's ~37 keys
+/// (5 of 14 status keys, 3 of 22 user keys, none of the hashtags), so most of
+/// the document is skipped, not decoded. Its value, and so its encode, is the
+/// subset; its bytes are the whole document.
+#[derive(Debug)]
+pub struct SkipUnknown;
+
+impl Workload for SkipUnknown {
+    const NAME: &'static str = "skip-unknown";
+    const GROUP: Group = Group::World;
+    type Owned = TwitterBrief;
+    type Borrowed<'de> = TwitterBriefRef<'de>;
+
+    fn value() -> TwitterBrief {
+        let statuses = TwitterLike::value()
+            .statuses
+            .into_iter()
+            .map(|status| StatusBrief {
+                id: status.id,
+                text: status.text,
+                user: UserBrief {
+                    screen_name: status.user.screen_name,
+                    followers_count: status.user.followers_count,
+                    verified: status.user.verified,
+                },
+                retweet_count: status.retweet_count,
+                lang: status.lang,
+            })
+            .collect();
+        TwitterBrief { statuses }
+    }
+
+    fn bytes() -> Vec<u8> {
+        TwitterLike::bytes()
     }
 }
 

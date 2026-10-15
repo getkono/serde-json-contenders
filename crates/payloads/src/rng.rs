@@ -37,6 +37,16 @@ impl Rng {
         }
     }
 
+    /// A finite `f32` drawn uniformly over bit patterns, as [`Self::finite_f64`].
+    pub fn finite_f32(&mut self) -> f32 {
+        loop {
+            let value = f32::from_bits((self.next_u64() >> 32) as u32);
+            if value.is_finite() {
+                return value;
+            }
+        }
+    }
+
     /// One element of `items`.
     pub fn pick<'a, T>(&mut self, items: &'a [T]) -> &'a T {
         &items[self.below(items.len() as u64) as usize]

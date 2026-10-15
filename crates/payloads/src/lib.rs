@@ -10,9 +10,11 @@
 //! The borrowed form borrows wherever the backend can hand out a slice of the
 //! input and allocates otherwise, so the difference between the two forms *is*
 //! each backend's ability to borrow. Workloads with no strings (`ints`,
-//! `floats`, `nested-*`, `array-small`) use one type for both forms: there
-//! is nothing to borrow, and the two forms measure the same decode.
+//! `ints-extremes`, `floats`, `f32s`, `nested-*`, `array-small`) use one type
+//! for both forms: there is nothing to borrow, and the two forms measure the
+//! same decode.
 
+pub mod enums;
 pub mod families;
 pub mod kynos;
 pub mod rng;
@@ -73,6 +75,18 @@ pub fn encode_canonical<T: Serialize>(value: &T) -> Vec<u8> {
     }
 }
 
+/// serde_json's pretty encoding: two-space indents, one member per line.
+///
+/// # Panics
+/// As [`encode_canonical`].
+#[must_use]
+pub fn encode_pretty<T: Serialize>(value: &T) -> Vec<u8> {
+    match serde_json::to_vec_pretty(value) {
+        Ok(bytes) => bytes,
+        Err(error) => unreachable!("a generated value failed to serialize: {error}"),
+    }
+}
+
 /// Rewrite every non-ASCII character as a `\u` escape (a surrogate pair above
 /// U+FFFF). Valid because serde_json's output holds non-ASCII bytes only
 /// inside strings.
@@ -124,9 +138,17 @@ pub const ALL: &[&str] = &[
     families::Nested::<10_000>::NAME,
     families::Wide::NAME,
     families::Points::NAME,
+    families::IntsExtremes::NAME,
+    families::F32s::NAME,
+    families::LongString::NAME,
+    families::PrettyJsonLarge::NAME,
+    enums::Enums::NAME,
     world::TwitterLike::NAME,
     world::CitmLike::NAME,
     world::CanadaLike::NAME,
+    world::SkipUnknown::NAME,
+    world::PrettyTwitterLike::NAME,
+    world::RawUtf8::NAME,
 ];
 
 /// Dispatch `visitor` to the workload called `name`.
@@ -153,9 +175,17 @@ pub fn dispatch<V: Visit>(name: &str, visitor: V) -> Option<V::Output> {
         families::Nested::<10_000>::NAME => visitor.visit::<families::Nested<10_000>>(),
         families::Wide::NAME => visitor.visit::<families::Wide>(),
         families::Points::NAME => visitor.visit::<families::Points>(),
+        families::IntsExtremes::NAME => visitor.visit::<families::IntsExtremes>(),
+        families::F32s::NAME => visitor.visit::<families::F32s>(),
+        families::LongString::NAME => visitor.visit::<families::LongString>(),
+        families::PrettyJsonLarge::NAME => visitor.visit::<families::PrettyJsonLarge>(),
+        enums::Enums::NAME => visitor.visit::<enums::Enums>(),
         world::TwitterLike::NAME => visitor.visit::<world::TwitterLike>(),
         world::CitmLike::NAME => visitor.visit::<world::CitmLike>(),
         world::CanadaLike::NAME => visitor.visit::<world::CanadaLike>(),
+        world::SkipUnknown::NAME => visitor.visit::<world::SkipUnknown>(),
+        world::PrettyTwitterLike::NAME => visitor.visit::<world::PrettyTwitterLike>(),
+        world::RawUtf8::NAME => visitor.visit::<world::RawUtf8>(),
         _ => return None,
     })
 }

@@ -1,21 +1,28 @@
 //! One variable at a time, each body about 16 KiB unless the variable is its
-//! size or depth.
+//! size or depth, the body is another workload's value written differently
+//! (`pretty-json-large`), or a fixed set of values (`ints-extremes`).
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Group, Rng, Workload, encode_canonical};
+use crate::kynos::{Catalog, CatalogRef, JsonLarge};
+use crate::{Group, Rng, Workload, encode_canonical, encode_pretty};
 
 /// The target size of a family body.
 pub const FAMILY_BYTES: usize = 16 * 1024;
 
 /// Grow a vector with `next` until its encoding reaches [`FAMILY_BYTES`].
-fn fill<T: Serialize>(mut next: impl FnMut() -> T) -> Vec<T> {
+fn fill<T: Serialize>(next: impl FnMut() -> T) -> Vec<T> {
+    fill_to(FAMILY_BYTES, next)
+}
+
+/// Grow a vector with `next` until its encoding reaches `target` bytes.
+pub(crate) fn fill_to<T: Serialize>(target: usize, mut next: impl FnMut() -> T) -> Vec<T> {
     let mut values = Vec::new();
     let mut size = 2;
-    while size < FAMILY_BYTES {
+    while size < target {
         let value = next();
         size += encode_canonical(&value).len() + 1;
         values.push(value);
@@ -252,5 +259,116 @@ impl Workload for Points {
             x: rng.below(20_001) as i32 - 10_000,
             y: rng.below(20_001) as i32 - 10_000,
         })
+    }
+}
+
+/// Integers at every digit count's boundaries.
+#[derive(Debug)]
+pub struct IntsExtremes;
+
+impl Workload for IntsExtremes {
+    const NAME: &'static str = "ints-extremes";
+    const GROUP: Group = Group::Family;
+    type Owned = Integers;
+    type Borrowed<'de> = Integers;
+
+    /// For each digit count (1..=20 unsigned, 1..=19 signed, both signs) its
+    /// smallest and largest value and one drawn between them, then the type
+    /// limits, `0` and `-1`.
+    fn value() -> Integers {
+        let mut rng = Rng::new(0xe7e3);
+        let mut unsigned = Vec::new();
+        for digits in 1..=20 {
+            let low = if digits == 1 { 0 } else { 10u64.pow(digits - 1) };
+            let high = 10u64.checked_pow(digits).map_or(u64::MAX, |bound| bound - 1);
+            unsigned.extend([low, high, low + rng.below(high - low)]);
+        }
+        unsigned.extend([0, u64::MAX]);
+        let mut signed = Vec::new();
+        for digits in 1..=19 {
+            let low = if digits == 1 { 0 } else { 10i64.pow(digits - 1) };
+            let high = 10i64.checked_pow(digits).map_or(i64::MAX, |bound| bound - 1);
+            let drawn = low + rng.below((high - low) as u64) as i64;
+            signed.extend([low, high, drawn, -low, -high, -drawn]);
+        }
+        signed.extend([i64::MIN, i64::MAX, 0, -1]);
+        Integers { unsigned, signed }
+    }
+}
+
+/// `f32`s drawn uniformly over finite bit patterns.
+#[derive(Debug)]
+pub struct F32s;
+
+impl Workload for F32s {
+    const NAME: &'static str = "f32s";
+    const GROUP: Group = Group::Family;
+    type Owned = Vec<f32>;
+    type Borrowed<'de> = Vec<f32>;
+
+    fn value() -> Vec<f32> {
+        let mut rng = Rng::new(0xf32);
+        fill(|| rng.finite_f32())
+    }
+}
+
+/// Length of the `long-string` string.
+pub const LONG_STRING_BYTES: usize = 256 * 1024;
+
+/// One string.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Text {
+    /// The string.
+    pub text: String,
+}
+
+/// [`Text`], borrowing.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TextRef<'a> {
+    /// The string.
+    #[serde(borrow)]
+    pub text: Cow<'a, str>,
+}
+
+/// One 256 KiB string of printable ASCII with nothing to escape, so the
+/// string scanner's throughput is all there is to measure.
+#[derive(Debug)]
+pub struct LongString;
+
+impl Workload for LongString {
+    const NAME: &'static str = "long-string";
+    const GROUP: Group = Group::Family;
+    type Owned = Text;
+    type Borrowed<'de> = TextRef<'de>;
+
+    fn value() -> Text {
+        let mut rng = Rng::new(0x5791);
+        let printable: Vec<char> = (b' '..=b'~')
+            .filter(|b| !matches!(b, b'"' | b'\\'))
+            .map(char::from)
+            .collect();
+        Text {
+            text: (0..LONG_STRING_BYTES).map(|_| *rng.pick(&printable)).collect(),
+        }
+    }
+}
+
+/// `json-large`'s value written by `to_vec_pretty`: the one variable is the
+/// whitespace between tokens.
+#[derive(Debug)]
+pub struct PrettyJsonLarge;
+
+impl Workload for PrettyJsonLarge {
+    const NAME: &'static str = "pretty-json-large";
+    const GROUP: Group = Group::Family;
+    type Owned = Catalog;
+    type Borrowed<'de> = CatalogRef<'de>;
+
+    fn value() -> Catalog {
+        JsonLarge::value()
+    }
+
+    fn bytes() -> Vec<u8> {
+        encode_pretty(&Self::value())
     }
 }

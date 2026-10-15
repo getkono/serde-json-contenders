@@ -9,6 +9,7 @@ use anyhow::Result;
 use serde_json::json;
 
 use crate::counted::Filter;
+use crate::matrix::Set;
 use crate::util::{capture, root, run};
 
 /// The nightly toolchain fuzzing and Miri need, pinned.
@@ -18,10 +19,11 @@ pub const NIGHTLY: &str = "nightly-2026-09-25";
 /// any run that took fewer.
 pub const SECONDS: u64 = 1800;
 
-/// Fuzz targets, one binary per backend feature.
+/// Fuzz targets, one binary per backend feature, each run once per backend
+/// the set measures.
 pub const FUZZ_TARGETS: &[&str] = &["decode_value", "decode_struct", "roundtrip"];
 
-/// The build configurations each set is fuzzed at: `v3`, whose SIMD paths
+/// The build configurations each set's backends are fuzzed at: `v3`, whose SIMD paths
 /// are the ones `native` takes on the measured host (no backend has an
 /// AVX-512 path; `doctor` checks which path each build runs), and for
 /// sonic-rs, whose fallback scanner is a separate implementation, `portable`
@@ -40,14 +42,37 @@ pub fn configs(set: &str) -> &'static [(&'static str, &'static str)] {
     }
 }
 
+/// One fuzz run: its set, backend, configuration, `RUSTFLAGS`, and target.
+pub type Run = (&'static Set, &'static str, &'static str, &'static str, &'static str);
+
+/// Every run `set` gets: each of its backends, at each of its
+/// configurations, under each target. A set's backends share one build; the
+/// run picks its backend at run time.
+#[must_use]
+pub fn runs(set: &'static Set) -> Vec<Run> {
+    configs(set.name)
+        .iter()
+        .flat_map(|&(config, flags)| {
+            set.backends.iter().flat_map(move |&backend| {
+                FUZZ_TARGETS
+                    .iter()
+                    .map(move |&target| (set, backend, config, flags, target))
+            })
+        })
+        .collect()
+}
+
 /// `xtask fuzz [--seconds N] [--forks F] [--parallel P]`: every target
-/// against every candidate and build configuration, each for N seconds of
-/// wall time (default 1800) on F libFuzzer workers (default 2), P runs at
-/// once (default 4). A run continues past every crash (`-ignore_crashes=1`),
-/// so it always fuzzes its whole duration; its crashing inputs go to
-/// `fuzz/artifacts/<set>/<config>/<target>/` and its corpus, minimized and
-/// kept, to `fuzz/corpus/<set>/<config>/<target>`, so concurrent runs never
-/// share either.
+/// against every candidate backend (each backend a set measures, so
+/// `simd-json-buffers` and the in-place flexon paths are fuzzed in their own
+/// right, chosen at run time by `FUZZ_BACKEND` from the set's one build) and
+/// build configuration, each for N seconds of wall time (default 1800) on F
+/// libFuzzer workers (default 2), P runs at once (default 4). A run
+/// continues past every crash (`-ignore_crashes=1`), so it always fuzzes its
+/// whole duration; its crashing inputs go to
+/// `fuzz/artifacts/<backend>/<config>/<target>/` and its corpus, minimized
+/// and kept, to `fuzz/corpus/<backend>/<config>/<target>` (backend names are
+/// unique across sets), so concurrent runs never share either.
 pub fn fuzz(args: &[String]) -> Result<()> {
     let flag = |name: &str, default: u64| {
         args.iter()
@@ -72,75 +97,71 @@ pub fn fuzz(args: &[String]) -> Result<()> {
         .map(str::to_owned)
         .unwrap_or_default();
     let mut jobs: Vec<crate::util::Job<'_, serde_json::Value>> = Vec::new();
-    for set in filter.sets().into_iter().filter(|s| !s.name.starts_with("baseline")) {
-        let configs = configs(set.name);
-        for &(config, flags) in configs {
-            for &target in FUZZ_TARGETS {
-                let fuzz = fuzz.clone();
-                let host = host.clone();
-                jobs.push(Box::new(move || {
-                    let corpus = fuzz.join("corpus").join(set.name).join(config).join(target);
-                    let artifacts = fuzz.join("artifacts").join(set.name).join(config).join(target);
-                    let _ = std::fs::create_dir_all(&corpus);
-                    let _ = std::fs::create_dir_all(&artifacts);
-                    let artifact_prefix = format!("-artifact_prefix={}/", artifacts.display());
-                    let target_dir = root().join("target/fuzz").join(set.name).join(config);
-                    let cargo_fuzz = |sub: &str| {
-                        let mut cmd = Command::new("cargo");
-                        cmd.current_dir(&fuzz)
-                            .arg(format!("+{NIGHTLY}"))
-                            .args(["fuzz", sub, "--target", &host, "--features", set.features, target])
-                            .env("RUSTFLAGS", flags)
-                            .env("CARGO_TARGET_DIR", &target_dir);
-                        cmd
-                    };
-                    eprintln!("fuzz: {} {config} {target} for {seconds}s", set.name);
-                    let started = std::time::SystemTime::now();
-                    let (_, _, stderr) = capture(cargo_fuzz("run").arg(&corpus).args([
-                        "--",
-                        &format!("-max_total_time={seconds}"),
-                        &format!("-fork={forks}"),
-                        "-ignore_crashes=1",
-                        "-seed=1",
-                        &artifact_prefix,
-                    ]))
-                    .unwrap_or((false, String::new(), "spawn failed".into()));
-                    // Every input this run found crashing, smallest first.
-                    let crashes = crashes_since(&artifacts, started);
-                    // Replay the smallest alone: forked workers' logs are not
-                    // relayed past their `ERROR:` lines, so the assertion
-                    // message and a full sanitizer report come from here.
-                    let replay = crashes.first().map_or_else(String::new, |(path, _)| {
-                        capture(cargo_fuzz("run").arg(path).args(["--", &artifact_prefix]))
-                            .map(|(_, out, err)| format!("{out}\n{err}"))
-                            .unwrap_or_default()
-                    });
-                    let found = Findings::read(&stderr, &replay, crashes.len());
-                    let executed = stderr
-                        .lines()
-                        .rev()
-                        .find_map(|l| l.split("exec/s").next().and_then(|h| h.split_whitespace().next()).filter(|t| t.starts_with('#')))
-                        .map(str::to_owned);
-                    // Minimize what was found into the corpus that is committed.
-                    let _ = run(cargo_fuzz("cmin").arg(&corpus));
-                    let (finished, tail) = finished_run(&stderr);
-                    json!({
-                        "set": set.name, "config": config, "target": target, "seconds": seconds, "forks": forks, "seed": 1,
-                        "finished": finished, "divergence_found": found.divergence, "executions": executed, "crash_count": found.crash_count,
-                        "assertion": found.assertion,
-                        "crash_input_hex": crashes.first().and_then(|(path, _)| std::fs::read(path).ok()).map(|b| hex(&b)),
-                        "sanitizer_report": found.sanitizer_report, "crash_tail": tail,
-                    })
-                }));
-            }
-        }
+    for (set, backend, config, flags, target) in filter.sets().into_iter().flat_map(runs) {
+        let fuzz = fuzz.clone();
+        let host = host.clone();
+        jobs.push(Box::new(move || {
+            let corpus = fuzz.join("corpus").join(backend).join(config).join(target);
+            let artifacts = fuzz.join("artifacts").join(backend).join(config).join(target);
+            let _ = std::fs::create_dir_all(&corpus);
+            let _ = std::fs::create_dir_all(&artifacts);
+            let artifact_prefix = format!("-artifact_prefix={}/", artifacts.display());
+            let target_dir = root().join("target/fuzz").join(set.name).join(config);
+            let cargo_fuzz = |sub: &str| {
+                let mut cmd = Command::new("cargo");
+                cmd.current_dir(&fuzz)
+                    .arg(format!("+{NIGHTLY}"))
+                    .args(["fuzz", sub, "--target", &host, "--features", set.features, target])
+                    .env("RUSTFLAGS", flags)
+                    .env("CARGO_TARGET_DIR", &target_dir)
+                    .env("FUZZ_BACKEND", backend);
+                cmd
+            };
+            eprintln!("fuzz: {} {backend} {config} {target} for {seconds}s", set.name);
+            let started = std::time::SystemTime::now();
+            let (_, _, stderr) = capture(cargo_fuzz("run").arg(&corpus).args([
+                "--",
+                &format!("-max_total_time={seconds}"),
+                &format!("-fork={forks}"),
+                "-ignore_crashes=1",
+                "-seed=1",
+                &artifact_prefix,
+            ]))
+            .unwrap_or((false, String::new(), "spawn failed".into()));
+            // Every input this run found crashing, smallest first.
+            let crashes = crashes_since(&artifacts, started);
+            // Replay the smallest alone: forked workers' logs are not
+            // relayed past their `ERROR:` lines, so the assertion
+            // message and a full sanitizer report come from here.
+            let replay = crashes.first().map_or_else(String::new, |(path, _)| {
+                capture(cargo_fuzz("run").arg(path).args(["--", &artifact_prefix]))
+                    .map(|(_, out, err)| format!("{out}\n{err}"))
+                    .unwrap_or_default()
+            });
+            let found = Findings::read(&stderr, &replay, crashes.len());
+            let executed = stderr
+                .lines()
+                .rev()
+                .find_map(|l| l.split("exec/s").next().and_then(|h| h.split_whitespace().next()).filter(|t| t.starts_with('#')))
+                .map(str::to_owned);
+            // Minimize what was found into the corpus that is committed.
+            let _ = run(cargo_fuzz("cmin").arg(&corpus));
+            let (finished, tail) = finished_run(&stderr);
+            json!({
+                "set": set.name, "backend": backend, "config": config, "target": target, "seconds": seconds, "forks": forks, "seed": 1,
+                "finished": finished, "divergence_found": found.divergence, "executions": executed, "crash_count": found.crash_count,
+                "assertion": found.assertion,
+                "crash_input_hex": crashes.first().and_then(|(path, _)| std::fs::read(path).ok()).map(|b| hex(&b)),
+                "sanitizer_report": found.sanitizer_report, "crash_tail": tail,
+            })
+        }));
     }
     let rows = crate::util::parallel(usize::try_from(parallel).unwrap_or(1), jobs);
     crate::util::merge_write(
         &root().join("results/fuzz.json"),
         "fuzz",
         &rows,
-        &["set", "config", "target"],
+        &["set", "backend", "config", "target"],
         json!({ "toolchain": NIGHTLY }),
     )
 }
@@ -323,7 +344,25 @@ pub fn miri(args: &[String]) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Findings, crashes_since, finished_run, hex};
+    use super::{FUZZ_TARGETS, Findings, crashes_since, finished_run, hex, runs};
+    use crate::matrix::set;
+
+    #[test]
+    fn every_backend_of_a_set_is_fuzzed_under_every_target() -> anyhow::Result<()> {
+        let backends = |name: &str| -> anyhow::Result<Vec<(&str, &str, &str)>> {
+            Ok(runs(set(name)?).into_iter().map(|(_, b, c, _, t)| (b, c, t)).collect())
+        };
+        let simd = backends("simd-json")?;
+        assert_eq!(simd.len(), 2 * FUZZ_TARGETS.len());
+        for target in FUZZ_TARGETS {
+            assert!(simd.contains(&("simd-json-buffers", "v3", target)));
+        }
+        assert!(backends("flexon-rt")?.contains(&("flexon-rt-mut", "v3", "decode_struct")));
+        assert!(backends("flexon-ct")?.contains(&("flexon-ct-mut", "v3", "roundtrip")));
+        assert_eq!(backends("sonic-rs")?.len(), 2 * FUZZ_TARGETS.len());
+        assert!(backends("baseline")?.is_empty());
+        Ok(())
+    }
 
     #[test]
     fn a_run_that_reached_its_exit_line_finished() {

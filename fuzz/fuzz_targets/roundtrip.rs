@@ -4,7 +4,7 @@
 
 use arbitrary::{Arbitrary, Unstructured};
 use codecs::Backend;
-use fuzz::{Candidate, same};
+use fuzz::{Check, same};
 use libfuzzer_sys::fuzz_target;
 use serde_json::{Map, Number, Value};
 
@@ -31,22 +31,28 @@ fn value(u: &mut Unstructured<'_>, depth: u32) -> arbitrary::Result<Value> {
     })
 }
 
-fuzz_target!(|data: &[u8]| {
-    let Ok(original) = value(&mut Unstructured::new(data), 0) else {
-        return;
-    };
-    let reference = serde_json::to_vec(&original).expect("serde_json encodes any Value");
-    if let Ok(encoded) = Candidate::encode(&original) {
-        let parsed: Value = serde_json::from_slice(&encoded).expect("candidate output is JSON");
+struct Roundtrip;
+
+impl Check for Roundtrip {
+    fn check<B: Backend>(data: &[u8]) {
+        let Ok(original) = value(&mut Unstructured::new(data), 0) else {
+            return;
+        };
+        let reference = serde_json::to_vec(&original).expect("serde_json encodes any Value");
+        if let Ok(encoded) = B::encode(&original) {
+            let parsed: Value = serde_json::from_slice(&encoded).expect("candidate output is JSON");
+            assert!(
+                same(&parsed, &original),
+                "candidate encoded a different value: {}",
+                String::from_utf8_lossy(&encoded)
+            );
+        }
+        let back = B::decode::<Value>(bytes::Bytes::from(reference)).expect("candidate reads serde_json's output");
         assert!(
-            same(&parsed, &original),
-            "candidate encoded a different value: {}",
-            String::from_utf8_lossy(&encoded)
+            same(&back, &original),
+            "candidate read serde_json's output as a different value"
         );
     }
-    let back = Candidate::decode::<Value>(bytes::Bytes::from(reference)).expect("candidate reads serde_json's output");
-    assert!(
-        same(&back, &original),
-        "candidate read serde_json's output as a different value"
-    );
-});
+}
+
+fuzz_target!(|data: &[u8]| fuzz::run::<Roundtrip>(data));

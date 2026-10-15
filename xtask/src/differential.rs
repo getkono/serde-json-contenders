@@ -31,11 +31,22 @@ pub fn conformance(args: &[String]) -> Result<()> {
                     set.name.to_owned()
                 };
                 eprintln!("conformance: {} {name}", variant.name);
-                let (_, stdout, stderr) = capture(&mut Command::new(bin(&release, "conform")))?;
-                let report: serde_json::Value = serde_json::from_str(stdout.trim()).unwrap_or_else(|e| {
+                let (ok, stdout, stderr) = capture(&mut Command::new(bin(&release, "conform")))?;
+                // A run fails if it printed no report, printed an error
+                // report (a corpus that failed verification), or exited
+                // non-zero; whatever it printed is still written, with an
+                // `error` the report reads.
+                let mut report = serde_json::from_str::<serde_json::Value>(stdout.trim())
+                    .ok()
+                    .filter(serde_json::Value::is_object)
+                    .unwrap_or_else(|| json!({ "error": "conform produced no report", "stdout": stdout }));
+                if !ok && !report["error"].is_string() {
+                    report["error"] = json!("conform exited non-zero");
+                }
+                if report["error"].is_string() {
                     failures += 1;
-                    json!({ "error": format!("conform produced no report: {e}"), "stderr": stderr })
-                });
+                    report["stderr"] = json!(stderr);
+                }
                 let path = root()
                     .join("results")
                     .join(&host)
@@ -49,6 +60,9 @@ pub fn conformance(args: &[String]) -> Result<()> {
             }
         }
     }
-    anyhow::ensure!(failures == 0, "{failures} conformance runs produced no report");
+    anyhow::ensure!(
+        failures == 0,
+        "{failures} conformance runs failed or produced no report"
+    );
     Ok(())
 }

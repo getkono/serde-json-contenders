@@ -9,7 +9,9 @@
 //!
 //! Only [`e2e_measured`] is counted: callgrind runs this binary with
 //! `--collect-atstart=no --toggle-collect=*e2e_measured*`. Prints one JSON
-//! object; exit 1 on a wrong response, 2 on usage, 3 on an unknown backend.
+//! object; exit 1 when it cannot serve at all, 2 on a wrong response (the
+//! object says `"verdict": "wrong"`) or on usage (it prints nothing), 3 on
+//! an unknown backend.
 
 use std::hint::black_box;
 use std::process::ExitCode;

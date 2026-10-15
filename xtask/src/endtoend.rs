@@ -166,9 +166,11 @@ fn start(exe: &std::path::Path, backend: &str, port: u16) -> Result<Server> {
     Ok(Server(child))
 }
 
-/// One oha run. A run in which any response was not the route's status, or any
-/// request failed, records an error: a server that answers every request
-/// with a 400 is fast, and nothing about it is a result. An open-loop run
+/// One oha run. A run in which any request failed records an error. One in
+/// which every request was answered, but not with the route's status,
+/// records the verdict `wrong`: a server that answers every request with a
+/// 400 is fast, and nothing about its timing is a figure, but the wrong
+/// answer is a result (rule 2 reads it). An open-loop run
 /// the server could not keep up with is marked `saturated`: its latency is
 /// that of an overloaded server, not of the rate, so it is no p99 figure,
 /// but a backend too slow for the rate is a result, not a failed run.
@@ -233,13 +235,14 @@ fn oha(route: &(&str, &str, &str, Option<&str>), port: u16, seconds: u64, rate: 
 /// and the backend has no p99 at the rate; a wrong answer in any rep, and no
 /// throughput or latency of it is a figure.
 fn summarize(reps: &[Value]) -> Value {
-    if let Some(r) = reps
+    if let Some(run) = reps
         .iter()
-        .find(|r| r["closed"]["verdict"] == "wrong" || r["open"]["verdict"] == "wrong")
+        .flat_map(|r| [&r["closed"], &r["open"]])
+        .find(|run| run["verdict"] == "wrong")
     {
         return json!({
             "verdict": "wrong",
-            "detail": format!("answered other than the route's status: {}", r["closed"]["status_codes"]),
+            "detail": format!("answered other than the route's status: {}", run["status_codes"]),
         });
     }
     let saturated = reps.iter().any(|r| r["open"]["saturated"] == true);
@@ -403,4 +406,31 @@ pub fn time(args: &[String]) -> Result<()> {
         .join(crate::provenance::host_slug())
         .join("e2e-time.json");
     crate::util::replace_write(&path, "e2e-time", &rows)
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::summarize;
+
+    #[test]
+    fn a_wrong_answer_in_any_run_leaves_no_figure() {
+        let ok = json!({ "rps": 100.0, "p99_ms": 1.0, "status_codes": { "200": 10 } });
+        let wrong = json!({ "verdict": "wrong", "rps": 900.0, "p99_ms": 0.1, "status_codes": { "400": 10 } });
+        let row = summarize(&[json!({ "closed": ok, "open": wrong })]);
+        assert_eq!(row["verdict"], "wrong");
+        assert!(row["rps"].is_null() && row["p99_ms"].is_null(), "{row}");
+        assert!(row["detail"].as_str().unwrap().contains("400"), "{row}");
+    }
+
+    #[test]
+    fn one_saturated_rep_leaves_no_p99() {
+        let rep =
+            |saturated: bool| json!({ "closed": { "rps": 100.0 }, "open": { "p99_ms": 2.0, "saturated": saturated } });
+        let row = summarize(&[rep(false), rep(true), rep(false)]);
+        assert_eq!(row["saturated"], true);
+        assert!(row["p99_ms"].is_null(), "{row}");
+        assert_eq!(row["rps"], 100.0);
+    }
 }

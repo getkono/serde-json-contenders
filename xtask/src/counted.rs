@@ -556,6 +556,17 @@ mod tests {
     }
 
     #[test]
+    fn a_verdict_the_recount_does_not_reproduce_fails() {
+        let mut wrong = row("json-small", None);
+        wrong["error"] = serde_json::Value::Null;
+        wrong["verdict"] = json!("wrong");
+        let committed = json!({ "rows": [row("json-large", Some(10.0)), wrong] });
+        let mut now_exact = row("json-small", Some(5.0));
+        now_exact["verdict"] = json!("exact");
+        assert!(check_reproduced(&committed, &[row("json-large", Some(10.0)), now_exact], 0.0).is_err());
+    }
+
+    #[test]
     fn a_counted_process_sees_only_a_fixed_path() {
         let mut cmd = std::process::Command::new("env");
         cmd.env("SJC_GIT_DIRTY", "true");

@@ -10,7 +10,7 @@ use payloads::Workload;
 use serde_json::{Value, json};
 
 use crate::modes;
-use crate::verify::{Verdict, compare};
+use crate::verify::{Verdict, compare, judge_encoding};
 
 /// Which operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -300,14 +300,7 @@ impl<B: Backend, W: Workload> Job for Encode<B, W> {
             B::encode(&self.value)
         };
         match encoded {
-            Ok(bytes) => match serde_json::from_slice::<Value>(&bytes) {
-                Ok(parsed) => {
-                    let reference = serde_json::from_slice::<Value>(&payloads::encode_canonical(&self.value))
-                        .unwrap_or_else(|e| unreachable!("baseline re-parses its own output: {e}"));
-                    compare(&parsed, &reference)
-                }
-                Err(e) => Verdict::Wrong(format!("output is not JSON: {e}")),
-            },
+            Ok(bytes) => judge_encoding::<W>(&bytes, &payloads::encode_canonical(&self.value)),
             Err(failure) => Verdict::Rejected(failure.to_string()),
         }
     }

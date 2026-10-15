@@ -109,7 +109,7 @@
       "backend": "simd-json-buffers",
       "crate": "simd-json",
       "deserves_to_exist": true,
-      "exists_evidence": "Reusing `Buffers` across calls roughly halves plain `from_slice`'s allocated bytes: 2.93 MB against 5.54 MB for twitter-like into borrowed types from a unique buffer.",
+      "exists_evidence": "Reusing `Buffers` across calls cuts the bytes plain `from_slice` allocates: 2.93 MB against 5.54 MB for twitter-like into borrowed types from a unique buffer.",
       "reason": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
       "recommended": "fail",
       "rules": [
@@ -265,7 +265,7 @@
       "backend": "hifijson",
       "crate": "hifijson",
       "deserves_to_exist": true,
-      "exists_evidence": "No `unsafe`: 0 unsafe blocks, functions or impls in its 1 runtime crate. Lexes any byte iterator (`IterLexer`), so input need not be in memory; numbers kept as text.",
+      "exists_evidence": "No `unsafe`: 0 unsafe blocks, 0 functions and 0 impls across its 1 runtime crate(s). Lexes any byte iterator (`IterLexer`), so input need not be in memory; numbers kept as text.",
       "reason": "reference point: no borrowed slice decode plus `to_vec`-style encoder",
       "recommended": "fail",
       "rules": [
@@ -291,7 +291,7 @@
       "backend": "struson",
       "crate": "struson",
       "deserves_to_exist": true,
-      "exists_evidence": "No `unsafe`: 0 unsafe blocks, functions or impls across its 5 runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors.",
+      "exists_evidence": "No `unsafe`: 0 unsafe blocks, 0 functions and 0 impls across its 5 runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors.",
       "reason": "reference point: no borrowed slice decode plus `to_vec`-style encoder",
       "recommended": "fail",
       "rules": [

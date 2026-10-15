@@ -30,7 +30,7 @@ cargo xtask <task> [--sets a,b] [--variants v,w] [--workloads x,y] [--jobs N]
   hw            hardware cycles and instructions at native [--rounds 3] [--core 2] [--trust solo|canonical]
   time          timed sampling [--rounds 3] [--core 2] [--trust solo|canonical]
   e2e-count     callgrind per HTTP request, codec share (container)
-  e2e-time      loopback throughput and open-loop p99 [--reps 5] [--seconds 30]
+  e2e-time      loopback throughput and open-loop p99 [--reps 5] [--seconds 30] [--trust solo|canonical]
   size          .text of a fixture per backend, minus the floor
   compile-time  clean and incremental build times [--reps 5]
   msrv          does each backend build on Rust 1.85
@@ -38,7 +38,7 @@ cargo xtask <task> [--sets a,b] [--variants v,w] [--workloads x,y] [--jobs N]
   conformance   the differential suite, every set at every variant
   fuzz          differential fuzzing [--seconds 1800]
   miri          conformance subset under Miri
-  report        regenerate README results [--check]
+  report        regenerate report/ from results/ [--check] [--allow-stale]
 ";
 
 fn main() -> Result<()> {

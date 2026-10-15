@@ -67,7 +67,7 @@ const QUIET_LOAD: f64 = 1.0;
 
 /// Refuse `canonical` on a host that is not quiet: a busy machine, or a
 /// governor that moves the clock under the measurement.
-fn check_trust(trust: &str) -> Result<()> {
+pub fn check_trust(trust: &str) -> Result<()> {
     anyhow::ensure!(
         matches!(trust, "solo" | "canonical"),
         "--trust is solo or canonical"

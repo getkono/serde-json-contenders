@@ -197,11 +197,12 @@ pub fn time(args: &[String]) -> Result<()> {
     };
     let reps = flag("--reps").unwrap_or(REPS);
     let seconds = flag("--seconds").unwrap_or(SECONDS);
-    let trust = if args.iter().any(|a| a == "--canonical") {
-        "canonical"
-    } else {
-        "solo"
-    };
+    let trust = args
+        .iter()
+        .position(|a| a == "--trust")
+        .and_then(|i| args.get(i + 1))
+        .map_or("solo", String::as_str);
+    crate::timed::check_trust(trust)?;
     let bodies = root().join("target/e2e-bodies");
     std::fs::create_dir_all(&bodies)?;
     std::fs::write(

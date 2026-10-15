@@ -356,18 +356,32 @@ pub fn incomplete(data: &Data) -> Vec<String> {
     }
     gaps.extend(per_set(data));
     gaps.extend(fuzz_and_miri(data));
-    gaps.extend(end_to_end(
-        &data.e2e_count,
-        "callgrind/e2e-x86_64.json",
-        COUNTED_VARIANTS,
-        false,
-    ));
-    gaps.extend(end_to_end(&host.e2e_time, "e2e-time.json", &["native"], true));
+    if !skipped(data, "callgrind/e2e-x86_64.json") {
+        gaps.extend(end_to_end(
+            &data.e2e_count,
+            "callgrind/e2e-x86_64.json",
+            COUNTED_VARIANTS,
+            false,
+        ));
+    }
+    if !skipped(data, &format!("{}/e2e-time.json", host.slug)) {
+        gaps.extend(end_to_end(&host.e2e_time, "e2e-time.json", &["native"], true));
+    }
     let r = &data.recount;
-    if !r.is_null() && (r["tolerance"] != 0.0 || r["compared"] != r["committed"] || r["committed"] == 0) {
+    let counted = data.callgrind.rows.values().filter(|r| r["ir"].is_number()).count();
+    if !r.is_null()
+        && (r["tolerance"] != 0.0 || r["compared"] != r["committed"] || r["committed"] != counted || counted == 0)
+    {
         gaps.push(format!(
-            "callgrind/recount.json: {} of {} counts recounted at tolerance {}; the check needs all of them at 0",
+            "callgrind/recount.json: {} of {} counts recounted at tolerance {}, against {counted} counts committed now; the check needs every one of them at 0",
             r["compared"], r["committed"], r["tolerance"]
+        ));
+    }
+    let builds = host.doctor["builds"].as_array().map_or(0, Vec::len);
+    let expected = crate::matrix::variants().len() * crate::matrix::SETS.len();
+    if !host.doctor.is_null() && builds != expected {
+        gaps.push(format!(
+            "doctor.json: {builds} builds checked, not every set at every variant ({expected})"
         ));
     }
     if let Some(f) = host.doctor["failures"].as_array().filter(|f| !f.is_empty()) {
@@ -378,6 +392,11 @@ pub fn incomplete(data: &Data) -> Vec<String> {
         ));
     }
     gaps
+}
+
+/// Whether `results/skipped.toml` declared `name` skipped (and it is absent).
+fn skipped(data: &Data, name: &str) -> bool {
+    data.sources.iter().any(|s| s.name == name && s.skipped.is_some())
 }
 
 /// The rows of one per-operation table that are missing or failed.
@@ -443,12 +462,13 @@ fn per_set(data: &Data) -> Vec<String> {
     use crate::matrix::SETS;
     let host = &data.host;
     let mut gaps = Vec::new();
+    let at = |file: &str| format!("{}/{file}", host.slug);
     for (name, rows, per_variant) in [
-        ("size.json", &host.size, true),
-        ("compile-time.json", &host.compile, false),
-        ("msrv.json", &host.msrv, false),
-        ("footprint.json", &data.footprint, false),
-        ("miri.json", &data.miri, false),
+        (at("size.json"), &host.size, true),
+        (at("compile-time.json"), &host.compile, false),
+        (at("msrv.json"), &host.msrv, false),
+        ("footprint.json".to_owned(), &data.footprint, false),
+        ("miri.json".to_owned(), &data.miri, false),
     ] {
         let variants: Vec<&str> = if per_variant {
             crate::matrix::variants().iter().map(|v| v.name).collect()
@@ -465,7 +485,7 @@ fn per_set(data: &Data) -> Vec<String> {
             })
             .map(|(set, v)| format!("{set} {v}").trim().to_owned())
             .collect();
-        if !lacking.is_empty() && !rows.is_empty() {
+        if !lacking.is_empty() && !skipped(data, &name) {
             gaps.push(format!("{name}: no row for {}", lacking.join(", ")));
         }
     }
@@ -488,7 +508,7 @@ fn fuzz_and_miri(data: &Data) -> Vec<String> {
         })
         .map(|(_, backend, c, _, t)| format!("{backend} {c} {t}"))
         .collect();
-    if !lacking.is_empty() && !data.fuzz.is_empty() {
+    if !lacking.is_empty() && !skipped(data, "fuzz.json") {
         gaps.push(format!("fuzz.json: no run for {}", lacking.join(", ")));
     }
     let unfinished: Vec<String> = data
@@ -518,9 +538,6 @@ fn fuzz_and_miri(data: &Data) -> Vec<String> {
 /// The servers and routes an end-to-end file lacks, or whose run failed.
 fn end_to_end(rows: &[Value], name: &str, variants: &[&str], aa: bool) -> Option<String> {
     use crate::matrix::{SETS, label};
-    if rows.is_empty() {
-        return None;
-    }
     let mut lacking = Vec::new();
     for v in variants {
         for set in SETS {

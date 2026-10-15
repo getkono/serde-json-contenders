@@ -8,6 +8,7 @@
 //! verifies each one against the row it names.
 
 mod data;
+mod export;
 mod figures;
 mod notes;
 mod render;
@@ -45,7 +46,8 @@ pub fn report(args: &[String]) -> Result<()> {
     }
     let mut stale_notes = stale;
     stale_notes.extend(problems);
-    let body = render::render(&data, &verdicts, &figures, &stale_notes);
+    let exported = export::exports(&data);
+    let body = render::render(&data, &verdicts, &figures, &exported, &stale_notes);
     let mut files: Vec<(String, String)> = vec![
         ("README.md".into(), body.clone()),
         (
@@ -54,9 +56,12 @@ pub fn report(args: &[String]) -> Result<()> {
         ),
     ];
     files.extend(figures.iter().map(|f| (format!("figures/{}", f.file), f.svg.clone())));
+    files.extend(exported.iter().map(|e| (format!("data/{}", e.name), e.csv.clone())));
     let dir = root().join("report");
     let readme = std::fs::read_to_string(root().join("README.md")).context("reading README.md")?;
-    let claims = check_claims(&readme, &body);
+    let mut claims = check_claims(&readme, &body);
+    claims.extend(bare_figures(&readme));
+    claims.extend(dead_links(&readme, &files));
     if check {
         let mut differ: Vec<String> = files
             .iter()
@@ -76,8 +81,10 @@ pub fn report(args: &[String]) -> Result<()> {
         );
         return Ok(());
     }
-    if dir.join("figures").exists() {
-        std::fs::remove_dir_all(dir.join("figures"))?;
+    for sub in ["figures", "data"] {
+        if dir.join(sub).exists() {
+            std::fs::remove_dir_all(dir.join(sub))?;
+        }
     }
     for (name, text) in &files {
         let path = dir.join(name);
@@ -158,7 +165,8 @@ fn check_claims(readme: &str, report: &str) -> Vec<String> {
 }
 
 /// Whether a table under `section` has exactly one row matching `title`'s
-/// row words whose named column (or any cell) holds `quoted`.
+/// row words (each a whole cell, or a whole word of one) whose named column
+/// (or any cell) holds `quoted`.
 fn holds(section: &str, title: &str, quoted: &str) -> Result<(), String> {
     let (words, column) = match title.split_once(" | ") {
         Some((w, c)) => (w, Some(c.trim())),
@@ -187,7 +195,10 @@ fn holds(section: &str, title: &str, quoted: &str) -> Result<(), String> {
             continue;
         }
         let row = cells(line);
-        if words.iter().all(|w| row.iter().any(|c| c.contains(w))) {
+        if words
+            .iter()
+            .all(|w| row.iter().any(|c| c == w || c.split_whitespace().any(|t| t == *w)))
+        {
             rows.push((header.clone(), row));
         }
     }
@@ -212,11 +223,77 @@ fn holds(section: &str, title: &str, quoted: &str) -> Result<(), String> {
 }
 
 /// Whether `cell` holds `quoted` as a whole figure: equal, or present with
-/// no digit, point or comma directly around it.
+/// no digit, point, comma or sign directly around it.
 fn whole(cell: &str, quoted: &str) -> bool {
-    let joins = |c: Option<char>| c.is_some_and(|c| c.is_ascii_digit() || c == '.' || c == ',');
+    let joins = |c: Option<char>| c.is_some_and(|c| c.is_ascii_digit() || matches!(c, '.' | ',' | '+' | '-' | '−'));
     cell.match_indices(quoted)
         .any(|(i, _)| !joins(cell[..i].chars().next_back()) && !joins(cell[i + quoted.len()..].chars().next()))
+}
+
+/// Figures written in the README's Findings without a link to the report row
+/// they come from. A number there is a claim, and every claim names its
+/// evidence. Inline code (`nested-129`) and a rule's number ("rule 4") are
+/// names, not figures.
+fn bare_figures(readme: &str) -> Vec<String> {
+    let Some(start) = readme
+        .find("\n## Findings")
+        .map(|i| i + 1)
+        .or_else(|| readme.starts_with("## Findings").then_some(0))
+    else {
+        return Vec::new();
+    };
+    let body = &readme[start..];
+    let end = body[3..].find("\n## ").map_or(body.len(), |i| i + 3);
+    let mut text = String::new();
+    let mut rest = &body[..end];
+    // Drop link texts with their targets, and inline code.
+    while let Some(i) = rest.find(['[', '`']) {
+        text.push_str(&rest[..i]);
+        let close = if rest[i..].starts_with('`') {
+            rest[i + 1..].find('`').map(|j| i + 1 + j + 1)
+        } else {
+            rest[i..]
+                .find("](")
+                .and_then(|j| rest[i + j..].find(')').map(|k| i + j + k + 1))
+        };
+        let Some(close) = close else {
+            rest = &rest[i + 1..];
+            continue;
+        };
+        text.push(' ');
+        rest = &rest[close..];
+    }
+    text.push_str(rest);
+    let mut failures = Vec::new();
+    let mut previous = "";
+    for word in text.split_whitespace() {
+        let token = word.trim_matches(|c: char| matches!(c, ',' | ';' | ':' | '.' | '(' | ')' | '"' | '*'));
+        let figure = token.chars().any(|c| c.is_ascii_digit())
+            && token
+                .chars()
+                .all(|c| c.is_ascii_digit() || matches!(c, '.' | ',' | '%' | '×' | '+' | '-' | '−'));
+        if figure && !matches!(previous.to_lowercase().as_str(), "rule" | "rules") {
+            failures.push(format!(
+                "Findings quotes {token} without a link to the report row it comes from"
+            ));
+        }
+        previous = token;
+    }
+    failures
+}
+
+/// README links into `report/` that point at no generated file.
+fn dead_links(readme: &str, files: &[(String, String)]) -> Vec<String> {
+    readme
+        .match_indices("](report/")
+        .filter_map(|(i, _)| {
+            let target = &readme[i + 2..];
+            let end = target.find([')', ' ', '#']).unwrap_or(target.len());
+            let file = target[..end].trim_start_matches("report/");
+            (!files.iter().any(|(name, _)| name == file))
+                .then(|| format!("README links to report/{file}, which the report does not generate"))
+        })
+        .collect()
 }
 
 /// The report text from `anchor`'s marker to the next anchor marker.
@@ -263,7 +340,7 @@ mod tests {
     fn a_figure_from_another_section_fails() {
         let readme = "[11](report/README.md#kynos-decode \"simd-json json-small\")";
         assert_eq!(check_claims(readme, REPORT).len(), 1);
-        let readme = "[11](report/README.md#heap \"simd-json json-small | Decode allocations\")";
+        let readme = "[11](report/README.md#heap \"`simd-json` json-small | Decode allocations\")";
         assert!(check_claims(readme, REPORT).is_empty());
     }
 
@@ -271,6 +348,15 @@ mod tests {
     fn a_row_two_lines_match_is_ambiguous() {
         let readme = "[0.84×](report/README.md#kynos-decode \"native (cycles)\")";
         assert_eq!(check_claims(readme, REPORT).len(), 1);
+    }
+
+    #[test]
+    fn a_figure_in_findings_without_a_link_fails() {
+        use super::bare_figures;
+        let ok = "## Findings\n\nsonic-rs takes [0.84×](report/README.md#x \"y\") under rule 1 on `nested-129`.\n\n## Licence\n\n2026";
+        assert!(bare_figures(ok).is_empty(), "{:?}", bare_figures(ok));
+        let bad = "## Findings\n\nsonic-rs takes 0.84× of the cycles, 16 % less.\n\n## Licence\n";
+        assert_eq!(bare_figures(bad).len(), 2, "{:?}", bare_figures(bad));
     }
 
     #[test]

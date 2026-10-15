@@ -149,7 +149,7 @@ fn figure(
                     Axis {
                         value: Some(y),
                         tol: verdict::EPSILON,
-                        may_win: true,
+                        count: verdict::Count::Untimed,
                     },
                 ],
                 conforms: conforming.iter().any(|c| c.backend == e.backend),
@@ -461,13 +461,13 @@ fn draw(title: &str, ylabel: &str, pts: &[Pt], front: &[usize], base: Option<(f6
 #[cfg(test)]
 mod tests {
     use super::{Pt, frontier, short};
-    use crate::report::verdict::{Axis, EPSILON};
+    use crate::report::verdict::{Axis, Count, EPSILON};
 
     fn pt(name: &'static str, x: f64, y: f64, tx: f64) -> Pt {
         let axis = |v: f64, tol: f64| Axis {
             value: Some(v),
             tol,
-            may_win: true,
+            count: Count::Untimed,
         };
         Pt {
             name,
@@ -508,9 +508,11 @@ mod tests {
     /// A cycles advantage the count contradicts cannot push anyone off.
     #[test]
     fn an_uncorroborated_advantage_dominates_nobody() {
+        let mut a = pt("a", 100.0, 100.0, 0.05);
         let mut b = pt("b", 50.0, 100.0, 0.05);
-        b.axes[0].may_win = false;
-        assert_eq!(names(&[pt("a", 100.0, 100.0, 0.05), b]), ["a", "b"]);
+        a.axes[0].count = Count::At(100.0);
+        b.axes[0].count = Count::At(130.0);
+        assert_eq!(names(&[a, b]), ["a", "b"]);
     }
 
     #[test]

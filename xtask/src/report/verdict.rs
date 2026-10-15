@@ -264,14 +264,25 @@ pub fn compile(data: &Data, set: &str) -> Option<f64> {
 }
 
 /// One axis of an entry: its figure, if measured; the fraction within which
-/// two figures on it are not different (ε, or the A/A band where wider); and
-/// whether being better on it counts (a cycles advantage the deterministic
-/// count contradicts does not).
+/// two figures on it are not different (ε, or the A/A band where wider); and,
+/// on a timed cycles axis, the same cell's deterministic count at v3, which
+/// any advantage on the axis must agree with.
 #[derive(Debug, Clone, Copy)]
 pub struct Axis {
     pub value: Option<f64>,
     pub tol: f64,
-    pub may_win: bool,
+    pub count: Count,
+}
+
+/// The deterministic count behind an axis.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Count {
+    /// The axis is not timed: nothing to agree with.
+    Untimed,
+    /// The same cell's estimated cycles at v3.
+    At(f64),
+    /// A timed axis with no count: no advantage on it counts.
+    Missing,
 }
 
 impl Axis {
@@ -279,7 +290,7 @@ impl Axis {
         Self {
             value,
             tol: EPSILON,
-            may_win: true,
+            count: Count::Untimed,
         }
     }
 }
@@ -293,16 +304,21 @@ pub fn cpu_tolerance(data: &Data, p: Point, workload: &str, op: &str) -> Option<
 /// The cycles axis of `backend` at a point. Without an A/A control the
 /// figure cannot be weighed, so it is treated as unmeasured.
 pub fn cpu_axis(data: &Data, p: Point, backend: &str, workload: &str, op: &str) -> Axis {
+    let count = if p.timed() {
+        cpu(data, X86_V3, backend, workload, op).map_or(Count::Missing, Count::At)
+    } else {
+        Count::Untimed
+    };
     match cpu_tolerance(data, p, workload, op) {
         Some(tol) => Axis {
             value: cpu(data, p, backend, workload, op),
             tol,
-            may_win: corroborated(data, p, backend, workload, op),
+            count,
         },
         None => Axis {
             value: None,
             tol: EPSILON,
-            may_win: false,
+            count,
         },
     }
 }
@@ -322,20 +338,34 @@ fn axes(data: &Data, p: Point, e: &Entry, workload: &str, encode: bool) -> Vec<A
     v
 }
 
+/// Whether the deterministic counts agree that `x` costs no more than `y`
+/// (within ε). An axis without counts has nothing to contradict.
+fn count_agrees(x: &Axis, y: &Axis) -> bool {
+    match (x.count, y.count) {
+        (Count::Untimed, _) | (_, Count::Untimed) => true,
+        (Count::At(a), Count::At(b)) => a <= b * (1.0 + EPSILON),
+        _ => false,
+    }
+}
+
 /// Whether `a` dominates `b`: no more than the axis's tolerance worse on any
-/// axis, and more than it better on at least one where being better counts.
-/// An axis `b` was measured on and `a` was not (a rejected input, a failed
-/// cell) is one `a` cannot be shown no worse on, so `a` does not dominate.
+/// axis, and more than it better on at least one. On a cycles axis the two
+/// entries' own counts at v3 must agree with each advantage: `a` being
+/// faster counts only if its count is no higher than `b`'s, and `a` being
+/// slower holds it back only if `b`'s count is no higher than `a`'s. Noise
+/// can make a timed figure look like a win; it cannot move a count. An axis
+/// `b` was measured on and `a` was not (a rejected input, a failed cell) is
+/// one `a` cannot be shown no worse on, so `a` does not dominate.
 pub fn dominates(a: &[Axis], b: &[Axis]) -> bool {
     let mut better = false;
     for (x, y) in a.iter().zip(b) {
         match (x.value, y.value) {
             (None, Some(_)) => return false,
             (Some(av), Some(bv)) => {
-                if av > bv * (1.0 + x.tol) {
+                if av > bv * (1.0 + x.tol) && count_agrees(y, x) {
                     return false;
                 }
-                if av < bv * (1.0 - x.tol) && x.may_win {
+                if av < bv * (1.0 - x.tol) && count_agrees(x, y) {
                     better = true;
                 }
             }
@@ -357,23 +387,6 @@ pub fn on_frontier(data: &Data, p: Point, e: &Entry, workload: &str, pool: &[&En
                 && (!encode || other.encodes)
                 && dominates(&axes(data, p, other, workload, encode), &mine)
         })
-}
-
-/// Whether a CPU win at a timed point is borne out by the deterministic
-/// count: at v3, `backend` costs no more than ε over serde_json on the same
-/// cell. Noise can make a timed figure look like a win; it cannot move a
-/// count.
-pub fn corroborated(data: &Data, p: Point, backend: &str, workload: &str, op: &str) -> bool {
-    if !p.timed() {
-        return true;
-    }
-    match (
-        cpu(data, X86_V3, backend, workload, op),
-        cpu(data, X86_V3, "serde_json", workload, op),
-    ) {
-        (Some(m), Some(t)) => m <= t * (1.0 + EPSILON),
-        _ => false,
-    }
 }
 
 /// Whether `e` is on the frontier at `p` for `workload` among `pool`, and
@@ -400,7 +413,7 @@ pub fn frontier_win(data: &Data, p: Point, e: &Entry, workload: &str, pool: &[&E
             let (Some(mv), Some(tv)) = (m.value, t.value) else {
                 return None;
             };
-            (tv > 0.0 && mv < tv * (1.0 - m.tol) && m.may_win).then(|| ((*name).to_owned(), mv / tv))
+            (tv > 0.0 && mv < tv * (1.0 - m.tol) && count_agrees(&m, &t)).then(|| ((*name).to_owned(), mv / tv))
         })
         .min_by(|a, b| a.1.total_cmp(&b.1))
 }
@@ -717,9 +730,11 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
             continue;
         }
         // The count bounds what the codec can give: more throughput than it
-        // predicts, or a faster p99 from a codec the count says is no
-        // cheaper, is a measurement error, not a result.
-        if g.rps > predicted + EPSILON.max(aa_rps) || (pass_p99 && !pass_rps && predicted <= 0.0) {
+        // predicts is a measurement error, not a result. A p99 under load is
+        // not proportional to the cost of a request (a cheaper request also
+        // shortens every queue behind it), so it has no such bound; it counts
+        // only where the count itself predicts a material gain.
+        if g.rps > predicted + EPSILON.max(aa_rps) || (pass_p99 && !pass_rps && predicted <= EPSILON) {
             inconsistent.push(format!(
                 "{route}: {:+.0} % rps and p99 {:+.0} % measured, {:+.0} % rps predicted",
                 g.rps * 100.0,
@@ -974,6 +989,28 @@ pub(super) mod tests {
         let simd = verdicts.iter().find(|v| v.entry.backend == simd().backend).unwrap();
         assert!(matches!(simd.rules[0], Outcome::Fail(_)), "{:?}", simd.rules[0]);
         assert!(!simd.exists.0, "{:?}", simd.exists);
+    }
+
+    /// sonic-rs measures fewer cycles than simd-json, but callgrind counts
+    /// simd-json 30 % cheaper: the counts contradict sonic-rs's advantage, so
+    /// it cannot push simd-json off the frontier.
+    #[test]
+    fn a_cycles_advantage_the_counts_contradict_dominates_nobody() {
+        let data = measured(
+            &[
+                ("serde_json", 100.0, 100.0),
+                ("serde_json#aa", 100.0, 100.0),
+                ("sonic-rs", 60.0, 100.0),
+                ("simd-json", 80.0, 70.0),
+            ],
+            "canonical",
+        );
+        let verdicts = super::judge(&data);
+        let simd = verdicts.iter().find(|v| v.entry.backend == "simd-json").unwrap();
+        assert_eq!(
+            simd.rules[0],
+            Outcome::Pass("json-small decode CPU 0.80× at native (cycles)".into())
+        );
     }
 
     #[test]

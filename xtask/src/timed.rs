@@ -1,4 +1,5 @@
-//! Timed measurement: corroboration, stamped with how far to trust it.
+//! Timed measurement: hardware cycles, which decide, and wall-clock time,
+//! which corroborates, each stamped with how far to trust it.
 //!
 //! Every cell of a round runs as its own process, in an order shuffled per
 //! round, so drift over a session spreads across backends instead of
@@ -65,8 +66,8 @@ pub fn time(args: &[String]) -> Result<()> {
 /// `xtask hw`: hardware cycle and instruction counters at `native`, every
 /// workload and shape, under the same protocol as [`time`]: one pinned
 /// process at a time, rounds in shuffled order, an A/A copy of serde_json.
-/// The cycles decide rule 1, so a run on a loaded host is refused unless it
-/// is declared `solo`.
+/// The cycles decide rule 1, so a run is `solo` unless it claims `canonical`,
+/// which a loaded host is refused.
 pub fn hw(args: &[String]) -> Result<()> {
     let mut filter = Filter::parse(args);
     if filter.variants.is_none() {

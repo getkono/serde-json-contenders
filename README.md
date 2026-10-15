@@ -24,7 +24,7 @@ arm64 is excluded on purpose. Hardware cycles decide the rule (see [Axes](#axes)
 | hifijson | 0.5.0 | reference point, not eligible | none, no `unsafe` | `serde::exactly_one` over a slice lexer |
 | struson | 0.7.2 | reference point, not eligible | none, no `unsafe` | `JsonReaderDeserializer`, `JsonWriterSerializer` |
 
-Every version is pinned exactly. flexon's latest release, 0.4.9, does not compile on any stable Rust (E0499 in `value/lazy`), so 0.4.8, the newest release that builds, is measured instead. Not compiling on stable is itself a finding against 0.4.9.
+Every version is pinned exactly. flexon's latest release, 0.4.9, does not compile with Rust 1.97.1, the compiler every build here uses (E0499, a double mutable borrow in `value/lazy`; checked with `cargo check` on 2026-10-15), so 0.4.8, the newest release that builds, is measured instead.
 
 hifijson and struson are measured and tested like the rest, and so appear in the "deserves to exist" column. Neither can be recommended as a server codec, because neither offers a borrowing decode from a slice together with a `to_vec`-style encoder.
 
@@ -60,13 +60,13 @@ Every build uses the same profile: `opt-level = 3`, `lto = "fat"`, `codegen-unit
 | `v3` | `-C target-cpu=x86-64-v3 -C target-feature=+pclmulqdq` |
 | `native` | `-C target-cpu=native` |
 
-A gain that only shows up in a native build is accepted: applications are assumed to be built for the machines they run on. The decision rule is evaluated at `native`. `v3` corroborates it, because valgrind cannot run the AVX-512 code a `native` build emits on the measured host. `portable` is reported for information only.
+A gain that only shows up in a native build is accepted: applications are assumed to be built for the machines they run on. The decision rule is evaluated at `native`. `v3` corroborates it, because valgrind cannot run the AVX-512 code a `native` build emits on the measured host. `portable` is counted for information only: it appears in no table, and its counts are in `report/data/callgrind.csv`.
 
 `cargo xtask doctor` checks, on each machine, that every build really runs the path it claims:
 
-- The target features compiled into each binary are exactly the ones rustc reports for that CPU and that variant's `RUSTFLAGS`.
-- sonic-rs took its compile-time fast path.
-- simd-json and flexon selected their best path at run time.
+- The SIMD-relevant target features compiled into each binary (SSE2 to AVX-512) are exactly the ones rustc reports for that CPU and that variant's `RUSTFLAGS`.
+- simd-json reports the path it selected, which must be its best for the CPU.
+- sonic-rs and flexon select theirs with a compile-time `cfg` or a CPUID check; `doctor` evaluates the same condition inside the built binary.
 
 Every measuring task (`count`, `alloc`, `hw`, `time`, `e2e-count`, `e2e-time`) refuses to start unless `doctor` passed on this host for the same code, and the report refuses a doctor result with failures.
 
@@ -76,10 +76,10 @@ Every measuring task (`count`, `alloc`, `hw`, `time`, `e2e-count`, `e2e-time`) r
 | --- | --- | --- | --- |
 | 1 | Decode CPU | **hardware `cycles:u`** at `native`, through `perf_event_open`: this decides. callgrind estimated cycles (`Ir + 5·L1 misses + 35·LL misses`, with a fixed cache geometry of 32 KiB 8-way L1 and 8 MiB 16-way LL, so the figure does not depend on the host) and instructions at `v3` corroborate it and reproduce exactly. Wall-clock time is reported for information. | cycles and time on the host; callgrind in a container pinned by digest (valgrind 3.24.0, Debian snapshot 2026-09-25) |
 | 2 | Encode CPU | same | same |
-| 3 | Heap | a counting global allocator, built only into the binary that counts allocations (its atomic counters would add to every other figure): allocations, reallocations, bytes, peak live bytes per operation, at `native` (the counts are the same at every variant) | host |
+| 3 | Heap | a counting global allocator, built only into the binary that counts allocations (its atomic counters would add to every other figure): allocations, reallocations, bytes, peak live bytes per operation, at `native` | host |
 | 4 | Binary size | `.text` of a program that decodes and re-encodes the two body types a handler would declare, minus the `.text` of the same program without JSON; a decode-only program as well | host |
 | 5 | Compile time | clean release build, clean dev build, and incremental dev rebuild after touching the program; median of 5 runs; no compiler cache | host |
-| 6 | MSRV | declared `rust-version`, and whether the adapter builds with Rust 1.85 | host |
+| 6 | MSRV | declared `rust-version`, and whether the adapter type-checks (`cargo check`) with Rust 1.85 | host |
 | 7 | `unsafe` and soundness | `unsafe` blocks, functions (trait method declarations included), impls and traits, parsed with `syn` from every Rust file of every crate the backend adds to the build (its build script included; its tests, benches and examples not), plus every `unsafe` token inside a macro body or invocation, counted separately as well; RustSec advisories at a pinned advisory-db commit; open soundness issues, reviewed by hand (`results/soundness.toml`) | host |
 | 8 | Conformance | the differential suite below | gate, not trade-off |
 
@@ -91,7 +91,7 @@ Each per-operation measurement follows the same protocol:
 2. A warm-up call pays one-time costs: CPU detection, lazy statics, first-touch page faults.
 3. The operation is repeated inside a function that is the only thing counted. That is `max(1, min(1000, 4 MiB ÷ size))` iterations, and the result is dropped inside the counted region, as a server drops it. A `unique` arrival gets a fresh copy of the input each iteration. A `shared` arrival clones one `Bytes` handle each iteration, so the input stays in cache, as a frame a server has just read does.
 
-Hardware cycles add the timed protocol below. Each cell is its own process, pinned to one core (a process that cannot pin is an error, not a figure), and every repetition (101 per process, the median kept) during which another task ran on that core for more than 2 % of the time is discarded and repeated. The core's SMT sibling shares its caches and pipeline, so it must be idle too: its busy share is read from `/proc/stat` over 100 ms before the process, over the process, and over 100 ms after, and a cell is rerun, up to 30 times, while it exceeds 10 %. Cells run one at a time, in 3 rounds in shuffled order, with serde_json twice per round as the A/A control. The figure is the median over rounds, and a timed task always runs the whole matrix with the baseline in one session, replacing its result file rather than merging into an earlier session's.
+Hardware cycles add the timed protocol below. Each cell is its own process, pinned to one core (a process that cannot pin is an error, not a figure), and every repetition (101 per process, the median kept) during which another task ran on that core for more than 2 % of the time is discarded and repeated. The core's SMT sibling shares its caches and pipeline, so it must be idle too: its busy share is read from `/proc/stat` over 100 ms before the process, over the process, and over 100 ms after, and a cell is rerun, up to 30 times, while it exceeds 10 %. Cells run one at a time, in 3 rounds in shuffled order, with serde_json twice per round as the A/A control. The figure is the median over rounds, and a timed task always runs with the baseline in the same session, replacing its result file rather than merging into an earlier session's (a run narrowed to some sets or workloads leaves the file incomplete, which the report refuses).
 
 ### Workloads
 
@@ -101,8 +101,8 @@ Every workload is a typed Rust struct, never an untyped tree. Each has an owned 
 | --- | --- | --- |
 | Kynos shapes (decision rule) | `json-small` (91 B `Item`), `echo-post` (1 076 B `Echo`, a 1 KiB ASCII payload), `json-large` (64 KiB `Catalog`, 705 items) | byte-identical to kynos-bench's golden bodies, asserted by digest |
 | Size sweep | `Vec<Item>` at exactly 64 B, 256 B, 1 KiB, 4 KiB, 16 KiB, 64 KiB, 256 KiB, 1 MiB | where SIMD setup starts paying for itself |
-| Families (about 16 KiB where size is not the variable; exceptions: `ints` 15 KiB, `ints-extremes` 2 KiB, `wide-1000` 27 KiB, `long-string` 256 KiB, `enums` 64 KiB, `nested-*` 2–214 KiB, `pretty-json-large` 122 KiB) | `ints` (every digit count, 1–19 signed and 1–20 unsigned), `ints-extremes` (each digit count's boundaries, `i64::MIN`, `i64::MAX`, `u64::MAX`), `floats` (uniform over finite `f64` bit patterns), `f32s` (the same over `f32`), `escapes` (about 25 % escaped bytes), `unicode` (raw CJK, Hangul, Cyrillic, Greek, emoji), `long-string` (one 256 KiB ASCII string with nothing to escape), `nested-{100,127,129,10000}` (object depth either side of serde_json's limit of 128), `wide-1000` (a 1 000-key map), `array-small` (a long `Vec<Point>`), `enums` (64 KiB of records holding one externally, internally, adjacently tagged and untagged enum each), `pretty-json-large` (`json-large`'s value, pretty-printed) | one variable at a time |
-| Real-world schemas | `twitter-like` (800 KiB, non-ASCII written as `\u` escapes), `citm-like` (480 KiB, integer- and key-heavy), `canada-like` (2.1 MiB of full-precision floats) | the schemas of the three documents most JSON benchmarks use; the originals carry no licence that permits redistribution, so they are regenerated, not copied |
+| Families (about 16 KiB where size is not the variable; exceptions: `ints` 15 KiB, `ints-extremes` 2 KiB, `wide-1000` 27 KiB, `long-string` 256 KiB, `enums` 64 KiB, `nested-*` 2–214 KiB, `pretty-json-large` 122 KiB) | `ints` (every digit count, 1–19 signed and 1–20 unsigned), `ints-extremes` (each digit count's boundaries, `i64::MIN`, `i64::MAX`, `u64::MAX`), `floats` (uniform over finite `f64` bit patterns), `f32s` (the same over `f32`), `escapes` (about 27 % escaped bytes), `unicode` (raw CJK, Hangul, Cyrillic, Greek, emoji), `long-string` (one 256 KiB ASCII string with nothing to escape), `nested-{100,127,129,10000}` (object depth either side of serde_json's limit of 128), `wide-1000` (a 1 000-key map), `array-small` (a long `Vec<Point>`), `enums` (64 KiB of records holding one externally, internally, adjacently tagged and untagged enum each), `pretty-json-large` (`json-large`'s value, pretty-printed) | one variable at a time |
+| Real-world schemas | `twitter-like` (800 KiB, non-ASCII written as `\u` escapes), `citm-like` (477 KiB, integer- and key-heavy), `canada-like` (2.1 MiB of full-precision floats) | the schemas of the three documents most JSON benchmarks use; the originals carry no licence that permits redistribution, so they are regenerated, not copied |
 | Real-world variants | `raw-utf8` (`twitter-like` with its non-ASCII written raw), `pretty-twitter-like` (`twitter-like` pretty-printed), `skip-unknown` (`twitter-like`'s bytes into a struct that declares 8 of each status's 36 to 38 keys, so the rest must be skipped) | how a document is written, and how much of it the handler wants |
 
 `pretty-json-large`, `pretty-twitter-like` and `raw-utf8` hold another workload's value, so their encode is that workload's encode byte for byte; only their decode is measured.
@@ -120,7 +120,7 @@ Encoding is measured two ways: `to_vec` into a new `Vec`, and `to_writer` into a
 
 ### Conformance
 
-The differential suite is `crates/conformance`. It compares every backend with serde_json in the same build, and runs at every variant, because SIMD paths differ between variants. It also runs once with serde_json's `arbitrary_precision` unified in.
+The differential suite is `crates/conformance`. It compares every backend with serde_json in the same build (so `serde_json+float_roundtrip`, which is serde_json, passes rule 2 as the reference; Miri still runs on it), and runs at every variant, because SIMD paths differ between variants. It also runs once with serde_json's `arbitrary_precision` unified in.
 
 | Section | What | Gates? |
 | --- | --- | --- |
@@ -137,12 +137,12 @@ The differential suite is `crates/conformance`. It compares every backend with s
 
 Beyond the differential suite:
 
-- **Fuzzing**: differential fuzzing (cargo-fuzz, `nightly-2026-09-25`, AddressSanitizer), at `v3` for every candidate and also at `portable` for sonic-rs, whose fallback scanner is a separate implementation. `v3` runs the SIMD paths `native` takes on the measured host: no backend has an AVX-512 path, and `doctor` checks which path each build takes. It covers arbitrary bytes into `Value`, arbitrary bytes into an attribute-heavy struct (owned, and borrowed from a shared body, so an in-place parser's copy is fuzzed too), and arbitrary values round-tripped through both encoders. Each entry point is fuzzed on its own (`simd-json-buffers` and the in-place `-mut` entries included), and every target runs for 30 minutes per entry point and build configuration on two libFuzzer workers, and continues past each divergence, so the whole 30 minutes is fuzzed and nothing behind the first finding is missed. Each run records how many inputs crashed, the smallest of them, its assertion, and any memory error the sanitizer reported. A divergence fails rule 2 (conformance); a sanitizer report fails rule 3 (soundness).
+- **Fuzzing**: differential fuzzing (cargo-fuzz, `nightly-2026-09-25`, AddressSanitizer), at `v3` for every candidate and also at `portable` for sonic-rs, whose fallback scanner is a separate implementation. `v3` runs the SIMD paths `native` takes on the measured host: no backend has an AVX-512 path, and `doctor` checks which path each build takes. It covers arbitrary bytes into `Value`, arbitrary bytes into an attribute-heavy struct (owned, and borrowed from a shared body, so an in-place parser's copy is fuzzed too), and arbitrary values round-tripped through both encoders, against serde_json built with `float_roundtrip`, so a candidate's floats are compared with the correctly rounded value. Each entry point is fuzzed on its own (`simd-json-buffers` and the in-place `-mut` entries included), and every target runs for 30 minutes per entry point and build configuration on two libFuzzer workers, and continues past each divergence, so the whole 30 minutes is fuzzed and nothing behind the first finding is missed. Each run records how many inputs crashed, the smallest of them, its assertion, and any memory error the sanitizer reported. A divergence fails rule 2 (conformance); a sanitizer report fails rule 3 (soundness).
 - **Miri**: runs a subset of the suite wherever the backend's intrinsics allow it.
 
 A backend that disagrees silently with serde_json on anything that gates fails. Two rules decide what counts as a disagreement:
 
-- **Untyped values are judged against the input.** A decoded `Value` passes if it equals serde_json's, or if it holds exactly what the input text says, with numbers compared as values. Floats count as equal when both are correctly rounded, and `-0` counts as equal to the integer `0`. Without this rule, every backend that rounds correctly would fail wherever serde_json's default parser does not. Differences allowed by this rule are still listed.
+- **Untyped values are judged against the input.** A decoded `Value` passes if it equals serde_json's, or if it holds exactly what the input text says, with numbers compared as values. Floats count as equal when both are correctly rounded, and `-0` counts as equal to the integer `0`. Without this rule, every backend that rounds correctly would fail wherever serde_json's default parser does not. Differences allowed by this rule are still recorded: every section counts all of its differences and keeps the first 50, all exported to `report/data/`.
 - **Typed targets are strict.** An `f64` field decoded from `-0.0` must keep its sign.
 
 Each adapter maps its crate's errors to 400/422 as faithfully as that crate's error type allows, and says in a comment what it cannot distinguish.
@@ -152,7 +152,7 @@ Each adapter maps its crate's errors to 400/422 as faithfully as that crate's er
 `crates/e2e` is a hyper 1.x server that reads each body the way a hyper-based framework does (`collect().to_bytes()`) and uses one backend per build. Its routes are `POST /echo`, `GET /json/large`, `POST /json/large` and `GET /json/small`. A *floor* build serves the same routes with no JSON: it collects request bodies as every build does, discards them, and returns pre-encoded bytes. The 64 KiB `POST /json/large` body arrives in several frames through the counted in-memory connection (so the decode reads a fresh, unique buffer), but over loopback almost always in one (a shared frame, which an in-place parser copies).
 
 - **Counted**: callgrind per request over an in-memory connection, at `portable` and `v3`; the rule reads `v3`. The codec's share of a request is (backend − floor) ÷ backend. That share bounds what swapping the codec can gain end to end. A timed gain larger than the count predicts is treated as a measurement error, not a result.
-- **Timed**: loopback, with the server on cores 0–3 and oha 1.16.0 on every other core that is not an SMT sibling of those. Closed-loop throughput is measured at 64 connections, then open-loop p99 at 70 % of serde_json's throughput (with coordinated-omission correction), where serde_json's throughput is the median of three closed-loop calibration runs. Each measurement is 30 s, the backends run 5 times in shuffled order, and serde_json runs twice as an A/A control. A run in which any response is not the route's 200, or any request fails, is an error, and so is an open-loop run that achieves less than 99 % of its offered rate.
+- **Timed**: loopback, with the server on cores 0–3 and oha 1.16.0 on every other core that is not an SMT sibling of those. Closed-loop throughput is measured at 64 connections, then open-loop p99 at 70 % of serde_json's throughput (with coordinated-omission correction), where serde_json's throughput is the median of three closed-loop calibration runs. Each measurement is 30 s, the backends run 5 times in shuffled order, and serde_json runs twice as an A/A control. A run in which any response is not the route's status (200, or 204 for `POST /json/large`), or any request fails, is an error, and so is an open-loop run that achieves less than 99 % of its offered rate.
 
 ### Timed measurements and trust
 
@@ -187,12 +187,12 @@ Decode-only entries are compared on the decode axes alone, and an encoder is onl
 
 A backend is **recommended for Kynos** only if all four hold:
 
-1. **Frontier.** On at least one Kynos shape, it is non-dominated among eligible entries at x86-64 `native` and more than the margin better than serde_json on decode or encode cycles or heap. A cycles win must be corroborated: at `v3`, callgrind's estimated cycles for the same cell are no more than 5 % above serde_json's.
+1. **Frontier.** On at least one Kynos shape, it is non-dominated among eligible entries at x86-64 `native` and more than the margin better than serde_json on decode or encode cycles or heap. Every cycles advantage, in a win or in dominance, must agree with the counts: one entry's cycles advantage over another counts only if, at `v3`, its callgrind estimated cycles for the same cell are no more than 5 % above the other's. Without an A/A control for a Kynos cell the rule is pending, and it is provisional unless the cycles are `canonical`.
 2. **Conformance.** No gating disagreement at any variant, no fuzz divergence, and no undefined behaviour under Miri.
 3. **Soundness.** No advisory affecting the pinned version, no open soundness issue, and no memory error reported by the sanitizer while fuzzing.
-4. **End to end.** At least 10 % better throughput or p99 on `echo-post` or `json-large`, outside the A/A band, and consistent with the counted codec share.
+4. **End to end.** At least 10 % better throughput or p99 on `echo-post` or `json-large`, outside the A/A band, and consistent with the counted codec share: no more throughput than the count predicts, and a p99 gain only where the count predicts a gain of more than 5 % (a p99 under load is not proportional to a request's cost, so it has no tighter bound). The A/A control and the prediction must both exist, or the rule is pending.
 
-Separately from Kynos, a library **deserves to exist** if either of these holds:
+Separately from Kynos, a library **deserves to exist** if either of these holds. Neither eligibility nor conformance is required here: a library can be worth having for what it does without being a drop-in replacement, and its frontier is drawn among every entry that passes conformance.
 
 - It is on the frontier, with a win under the same margins, for *any* workload at `native`.
 - It offers a capability serde_json lacks. The capability is stated with its evidence; any figure in it is computed from the results (`results/notes.toml` names the query, the report fills in the number).
@@ -202,18 +202,19 @@ Separately from Kynos, a library **deserves to exist** if either of these holds:
 The results stand only after these checks:
 
 1. **The harness is correct.** The unit and integration tests (`mise run test`).
-2. **The results are one measurement of the committed code.** Every result file is stamped with a fingerprint of the measured code: a hash of every tracked file at the commit, excluding the report, this README, CI and the results. The report refuses a file stamped with another fingerprint or from a dirty checkout. It also refuses a per-operation table missing a row of the matrix, and a note whose figure the results cannot answer. A partial rerun after a change to measured code is therefore caught, not mixed in.
-3. **The counts reproduce.** callgrind has no noise, so a recount on the host that took the committed counts, from an empty `target/`, must return every count unchanged. `mise run count:check` recounts the whole matrix at zero tolerance and records the result in `results/callgrind/recount.json`, and the report refuses results without a recount of every committed count. That holds only because every counted process runs with the same environment, nothing but a fixed `PATH`: the environment sits on the process's stack, and its length alone moves some counts (struson's json-small decode by 12 instructions; `xtask/src/counted.rs`). On another x86-64 host, CI's `count --check` holds the Kynos shapes to 0.5 %, which covers differences in libc and kernel.
+2. **The results are one measurement of the committed code.** Every result file is stamped with a fingerprint of the measured code: a hash of every tracked file at the commit, excluding the report and the code that renders it (`xtask/src/report*`), this README, CI and the results. The report refuses a file stamped with another fingerprint or from a dirty checkout. It also refuses a per-operation table missing a row of the matrix, and a note whose figure the results cannot answer. A partial rerun after a change to measured code is therefore caught, not mixed in.
+3. **The counts reproduce.** callgrind has no noise, so a recount on the host that took the committed counts, from an empty `target/`, must return every count unchanged. `mise run count:check` recounts the whole matrix at zero tolerance and records the result in `results/callgrind/recount.json`, and the report refuses results without a recount of every committed count. That holds only because every counted process runs with the same environment, nothing but a fixed `PATH`: the environment sits on the process's stack, and its length alone moves some counts (`xtask/src/counted.rs`). On another x86-64 host, CI's `count --check` holds the Kynos shapes to 0.5 %, which covers differences in libc and kernel.
 4. **The harness can fail.** A faulty backend is caught exactly where it is faulty, and nowhere else:
    - An `n_` file accepted, a wrong shape answered 400, and floats one bit off each fail conformance in their own section. Floats written in a different format appear in `encode_diff` as a difference that does not gate (`crates/conformance/tests/harness.rs`).
    - An adapter that copies its input once more shows exactly one more allocation, of the input's size, and that much more peak. Under callgrind it costs the copy's instructions (`crates/cell/src/sensitivity.rs`). The callgrind half needs valgrind, so it runs in the container rather than in `mise run test`: `mise run sensitivity`, which `mise run all` runs before measuring.
    - An adapter that does less work than it should, the kind of variant an optimizer could delete, is refused by the result check in every mode and never measured.
    - A cycles "win" inside the A/A band, or one the count contradicts, is not a win (`xtask/src/report/verdict.rs` tests).
-5. **The commentary matches the report.** Every number quoted under [Findings](#findings) links to the report row it comes from, and `cargo xtask report --check` fails if that row does not hold it.
-6. **Nothing is left out.** Every requirement above maps to a task, a result file and a report table, or to a deviation listed here.
+5. **The commentary matches the report.** Every number quoted under [Findings](#findings) links to the report row it comes from, and `cargo xtask report --check` fails if that row does not hold it, or if a figure in Findings has no link.
+6. **Nothing is left out.** Every requirement above maps to a task, a result file and a report table, or to a deviation listed here. Every row of every result file is exported to `report/data/`.
 
 Deviations:
 
+- `mise run test` and `mise run sensitivity` (checks 1 and 4) leave no result file: `mise run all` stops if either fails.
 - End-to-end counts are not exactly reproducible from an empty `target/`, so the zero-tolerance recount covers the per-operation counts only. The end-to-end counts feed only the codec share and rule 4's prediction.
 - A stage that was not measured must be declared, with its reason, in `results/skipped.toml`; the report states every such reason under Limitations.
 

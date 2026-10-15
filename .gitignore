@@ -1,9 +1,9 @@
 /target
 /fuzz/target
 /fuzz/artifacts
+/fuzz/corpus
+/fuzz/coverage
 /results/raw/
 *.profraw
 callgrind.out.*
-/fuzz/artifacts
-/fuzz/coverage
 /.claude/worktrees/

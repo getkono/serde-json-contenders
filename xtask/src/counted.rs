@@ -216,7 +216,12 @@ fn cell_json(stdout: &str) -> Value {
 /// there when it is not).
 pub fn count(args: &[String]) -> Result<()> {
     if std::env::var_os("SJC_IN_CONTAINER").is_none() {
-        crate::doctor::require()?;
+        // A recount compares with committed counts and writes none, so it
+        // needs no doctor of its own (CI's cross-host check runs on a fresh
+        // runner).
+        if !args.iter().any(|a| a == "--check") {
+            crate::doctor::require()?;
+        }
         return crate::container::reexec("count", args);
     }
     let filter = Filter::parse(args);

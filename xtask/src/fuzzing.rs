@@ -144,7 +144,8 @@ pub fn fuzz(args: &[String]) -> Result<()> {
                 .rev()
                 .find_map(|l| l.split("exec/s").next().and_then(|h| h.split_whitespace().next()).filter(|t| t.starts_with('#')))
                 .map(str::to_owned);
-            // Minimize what was found into the corpus that is committed.
+            // Minimize what was found into the run's corpus (kept locally, not
+            // committed: it is an input to the next run, not a result).
             let _ = run(cargo_fuzz("cmin").arg(&corpus));
             let (finished, tail) = finished_run(&stderr);
             json!({

@@ -41,12 +41,8 @@ jobs:
       - run: mise run report:check
 
   conformance:
-    name: Conformance (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04]
-    runs-on: ${{ matrix.os }}
+    name: Conformance
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
@@ -56,16 +52,12 @@ jobs:
       - run: cargo xtask conformance --variants portable
       - uses: actions/upload-artifact@v4
         with:
-          name: conformance-${{ matrix.os }}
+          name: conformance
           path: results/*/conformance/
 
   reproduce:
-    name: Counts reproduce (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-24.04]
-    runs-on: ${{ matrix.os }}
+    name: Counts reproduce
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2

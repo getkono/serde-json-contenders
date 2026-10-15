@@ -8,7 +8,7 @@ This README holds the method and the commentary. Every measured number, table an
 
 This benchmark measures x86-64 Linux, and only that. Its instruments are Linux's: `perf_event_open` for hardware cycles, `/proc/schedstat` and `sched_setaffinity` for pinning and for rejecting disturbed samples, `taskset` for the end-to-end server, and valgrind's callgrind for deterministic counts. Its builds are x86-64 builds: `x86-64`, `x86-64-v3`, and the host's own CPU.
 
-arm64 is excluded on purpose. Hardware cycles decide the rule (see [Axes](#axes)), and there is no arm64 server to take them on. An instruction count alone cannot stand in for them: instructions are not equally expensive, so a count can rank two codecs in the wrong order. The earlier arm64 counts, which valgrind could only take with SVE and RCpc switched off, have been dropped. macOS goes with arm64: its hosts are Apple Silicon, and it has none of the instruments above.
+arm64 is excluded on purpose. Hardware cycles decide the rule (see [Axes](#axes)), and there is no arm64 server to take them on. An instruction count alone cannot stand in for them: instructions are not equally expensive, so a count can rank two codecs in the wrong order. macOS is excluded too: it has none of the instruments above.
 
 ## Methodology
 
@@ -16,7 +16,7 @@ arm64 is excluded on purpose. Hardware cycles decide the rule (see [Axes](#axes)
 
 | Crate | Version | Role | How it picks SIMD on x86-64 | Entry points measured |
 | --- | --- | --- | --- | --- |
-| serde_json | 1.0.151 | baseline | none (SWAR + `memchr`) | `from_slice`, `to_vec`, `to_writer`; also built with `float_roundtrip` |
+| serde_json | 1.0.154 | baseline | none (SWAR + `memchr`) | `from_slice`, `to_vec`, `to_writer`; also built with `float_roundtrip` |
 | sonic-rs | 0.5.10 | candidate | compile time only (`avx2`+`pclmulqdq`) | `from_slice`, `to_vec`, `to_writer` |
 | simd-json | 0.18.1 | candidate | run time (AVX2 → SSE4.2 → scalar) | `serde::from_slice` on a writable copy of the body (`simd-json`), and with reused `Buffers` (`simd-json-buffers`) |
 | flexon | 0.4.8 | candidate | `rt`: run-time AVX2 check for container skipping only; `ct`: compile-time SSE4.2/AVX2/PCLMUL paths | `from_slice`, `from_mut_slice` (`-mut`, in place), `to_vec`, `to_writer`, each as `flexon-rt` and `flexon-ct` |
@@ -30,13 +30,13 @@ hifijson and struson are measured and tested like the rest, and so appear in the
 
 ### Not measured, and why
 
-None of these can sit behind a serde body type, so measuring one means writing a second set of body types with its own derive. That is a different change from "replace serde_json and change nothing else". Each also has its own reason, checked on 2026-10-15:
+None of the first four can sit behind a serde body type, so measuring one means writing a second set of body types with its own derive. That is a different change from "replace serde_json and change nothing else". Each also has its own reason, checked on 2026-10-15:
 
-- **facet-json** (facet 0.46.1, 0.50.0-rc.7) is the only one built for typed bodies at this scope. It has borrowing decode, `flatten`, all three enum taggings, `rename_all`, `deny_unknown_fields`, and errors that separate syntax from type mismatches. But it is reflection-based by design: "facet's goal is not speed" ([facet.rs/guide/why](https://facet.rs/guide/why/)). The Cranelift JIT fast path that beat serde_json was removed in facet-json 0.46.0 on 2026-04-15 ([changelog](https://github.com/facet-rs/facet-format/blob/main/CHANGELOG.md)), and its experimental successor was deleted in August 2026 ([facet#2649](https://github.com/facet-rs/facet/pull/2649)). The path that ships decoded at a geometric mean of about 8× serde_json's instructions, and encoded at about 2×, across facet's own 30 JSON benchmarks in the last published run ([perf.facet.rs](https://perf.facet.rs/index.json), 2026-01-25). Nothing published since the removal shows otherwise. It would be measured to confirm it is slower, at the cost of a parallel `#[derive(Facet)]` copy of every fixture.
+- **facet-json** (0.46.1, the latest stable, and 0.50.0-rc.7) is the only one built for typed bodies at this scope. It has borrowing decode, `flatten`, all three enum taggings, `rename_all`, `deny_unknown_fields`, and errors that separate syntax from type mismatches. But it is reflection-based by design: "facet's goal is not speed" ([facet.rs/guide/why](https://facet.rs/guide/why/)). The Cranelift JIT fast path that beat serde_json was removed in facet-json 0.46.0 on 2026-04-15 ([changelog](https://github.com/facet-rs/facet-format/blob/main/CHANGELOG.md)), and its experimental successor was deleted in August 2026 ([facet#2649](https://github.com/facet-rs/facet/pull/2649)). The path that ships decoded at a geometric mean of about 8× serde_json's instructions, and encoded at about 2×, across facet's own 30 JSON benchmarks in the last published run (target `facet_json_t0`, the path without the JIT, in [perf.facet.rs run 26db41ea](https://perf.facet.rs/runs/main/26db41ea6abe3f5e93ca90b5465cc0a02952ae16/run.json), 2026-01-25). Nothing published since the removal shows otherwise. It would be measured to confirm it is slower, at the cost of a parallel `#[derive(Facet)]` copy of every fixture.
 - **merde / merde_json** was archived on 2025-06-03 and is deprecated by its author in favour of facet ([bearcove/merde](https://github.com/bearcove/merde)).
 - **miniserde** trades speed for small code and no recursion, and its author expects it to be up to about 2× slower than serde_json ([dtolnay/miniserde](https://github.com/dtolnay/miniserde)). Its decode is owned-only, from `&str`. It supports unit enums only, and `rename` is its only attribute. Its error type carries no information, so it cannot tell a client's syntax error (400) from the wrong shape (422).
 - **nanoserde** decodes from `&str` a character at a time, with no borrowing, no `flatten`, no enum tagging and no `rename_all` ([not-fl3/nanoserde](https://github.com/not-fl3/nanoserde)). Its last release was 0.2.1 on 2025-03-22.
-- serde_json_lenient and the json5 crates accept a looser grammar than JSON. serde-json-core is `no_std` and does not escape strings. json-rust and serde_jsonrc are unmaintained. asmjson describes itself as experimental.
+- serde_json_lenient and the json5 crates accept a looser grammar than JSON, so they would answer 200 where a server must answer 400. serde-json-core is `no_std` for fixed-size buffers, and its decode does not unescape strings unless the caller supplies a scratch buffer (`from_slice_escaped`). json (json-rust) has had no release since 0.12.4 on 2020-03-18, and serde_jsonrc none since 0.1.0 on 2019-01-26. asmjson 0.2.6 describes itself as "Experimental — not production ready".
 
 ### What a backend must do
 
@@ -91,7 +91,7 @@ Each per-operation measurement follows the same protocol:
 2. A warm-up call pays one-time costs: CPU detection, lazy statics, first-touch page faults.
 3. The operation is repeated inside a function that is the only thing counted. That is `max(1, min(1000, 4 MiB ÷ size))` iterations, and the result is dropped inside the counted region, as a server drops it. A `unique` arrival gets a fresh copy of the input each iteration. A `shared` arrival clones one `Bytes` handle each iteration, so the input stays in cache, as a frame a server has just read does.
 
-Hardware cycles add the timed protocol below. Each cell is its own process, pinned to one core (a process that cannot pin is an error, not a figure), and every repetition (101 per process, the median kept) during which another task ran on that core for more than 2 % of the time is discarded and repeated. The core's SMT sibling shares its caches and pipeline, so it must be idle too: its busy share is read from `/proc/stat` over 250 ms before the process, over the process, and over 250 ms after, and a cell is rerun, up to 30 times, while it exceeds 10 %. Cells run one at a time, in 3 rounds in shuffled order, with serde_json twice per round as the A/A control. The figure is the median over rounds, and a timed task always runs with the baseline in the same session, replacing its result file rather than merging into an earlier session's (a run narrowed to some sets or workloads leaves the file incomplete, which the report refuses).
+Hardware cycles add the timed protocol below. Each cell is its own process, pinned to one core (a process that cannot pin is an error, not a figure), and every repetition (101 per process, the median kept) during which another task ran on that core for more than 2 % of the time is discarded and repeated. The core's SMT sibling shares its caches and pipeline, so it must be idle too: its busy share is read from `/proc/stat` over 250 ms before the process, over the process, and over 250 ms after, and a cell is rerun, up to 30 times, while it exceeds 10 %. Cells run one at a time, in 3 rounds in shuffled order, with serde_json twice per round as the A/A control. The figure is the median over rounds, and a timed task always runs with the baseline in the same session, replacing its result file rather than merging into an earlier session's (a run narrowed to some sets or workloads leaves the file incomplete, which the report refuses). Hardware cycles are taken at every shape for the Kynos workloads, and at the server's own two shapes (owned decode of a shared frame, `to_vec` encode) for every other workload; their other shapes are counted by callgrind and alloc only.
 
 ### Workloads
 
@@ -108,7 +108,7 @@ Every workload is a typed Rust struct, never an untyped tree. Each has an owned 
 
 `pretty-json-large`, `pretty-twitter-like` and `raw-utf8` hold another workload's value, so their encode is that workload's encode byte for byte; `skip-unknown` measures skipping, and its encode would be of a smaller document than its bytes; the rejections have nothing to encode. Only their decode is measured.
 
-Owned and borrowed forms coincide for the workloads with no strings: `ints`, `ints-extremes`, `floats`, `f32s`, `nested-*` and `array-small`.
+Owned and borrowed forms coincide for the workloads with no strings: `ints`, `ints-extremes`, `floats`, `f32s`, `floats-short`, `nested-*` and `array-small`.
 
 ### How the body arrives and how the response leaves
 
@@ -162,14 +162,14 @@ Hardware cycles, wall-clock time and end-to-end timing all carry a trust class:
 - **`solo`**: a shared machine, with the sample checks above.
 - **`canonical`**: a quiet, dedicated machine, stated with `--trust canonical`, which is refused unless the 1-minute load average is at most 1.0 and the CPU governor is `performance`.
 
-A pass under rule 1 or rule 4 that rests on `solo` timing is reported as provisional. Wall-clock time per operation uses the hardware-cycles protocol, with 100 samples of 20 ms after a 3 s warm-up in place of counters. It replaces criterion: rejecting a disturbed sample and interleaving processes across rounds are the two things the protocol needs, and neither can be done inside one criterion run.
+A pass under rule 1 or rule 4 that rests on `solo` timing is reported as provisional. Wall-clock time per operation uses the hardware-cycles protocol, with 100 samples of 20 ms after a 3 s warm-up in place of counters. It covers the Kynos, sweep and real-world workloads at the server's own two shapes; the families are counted and cycle-measured, not timed. It replaces criterion: rejecting a disturbed sample and interleaving processes across rounds are the two things the protocol needs, and neither can be done inside one criterion run.
 
 ### Hosts
 
 | Host | Counted (callgrind) | Hardware cycles | Timed |
 | --- | --- | --- | --- |
 | AMD Ryzen 7 7800X3D (Zen 4), Linux | `portable`, `v3` in the container (valgrind cannot run AVX-512, so not `native`) | `native` | `native` |
-| GitHub `ubuntu-24.04` | reproducibility check only: counts must match the committed ones within 0.5 % | no | no |
+| GitHub `ubuntu-24.04` | reproducibility check only: the Kynos shapes' counts at `portable` must match the committed ones within 0.5 % | no | no |
 
 There is no Intel machine, so no Intel hardware-cycle or wall-clock number exists.
 
@@ -204,7 +204,7 @@ The results stand only after these checks:
 
 1. **The harness is correct.** The unit and integration tests (`mise run test`).
 2. **The results are one measurement of the committed code.** Every result file is stamped with a fingerprint of the measured code: a hash of every tracked file at the commit, excluding the report and the code that renders it (`xtask/src/report*`), this README, CI and the results. The report refuses a file stamped with another fingerprint or from a dirty checkout. It also refuses a per-operation table missing a row of the matrix, and a note whose figure the results cannot answer. A partial rerun after a change to measured code is therefore caught, not mixed in.
-3. **The counts reproduce.** callgrind has no noise, so a recount on the host that took the committed counts, from an empty `target/`, must return every count unchanged. `mise run count:check` recounts the whole matrix at zero tolerance and records the result in `results/callgrind/recount.json`, and the report refuses results without a recount of every committed count. That holds only because every counted process runs with the same environment, nothing but a fixed `PATH`: the environment sits on the process's stack, and its length alone moves some counts (`xtask/src/counted.rs`). On another x86-64 host, CI's `count --check` holds the Kynos shapes to 0.5 %, which covers differences in libc and kernel.
+3. **The counts reproduce.** callgrind has no noise, so a recount on the host that took the committed counts, from an empty `target/`, must return every count unchanged. `mise run count:check` recounts the whole matrix at zero tolerance and records the result in `results/callgrind/recount.json`, and the report refuses results without a recount of every committed count. That holds only because every counted process runs with the same environment, nothing but a fixed `PATH`: the environment sits on the process's stack, and its length alone moves some counts (`xtask/src/counted.rs`). On another x86-64 host, CI's `count --check` holds the Kynos shapes at `portable` to 0.5 %, which covers differences in libc and kernel.
 4. **The harness can fail.** A faulty backend is caught exactly where it is faulty, and nowhere else:
    - An `n_` file accepted, a wrong shape answered 400, and floats one bit off each fail conformance in their own section. Floats written in a different format appear in `encode_diff` as a difference that does not gate (`crates/conformance/tests/harness.rs`).
    - An adapter that copies its input once more shows exactly one more allocation, of the input's size, and that much more peak. Under callgrind it costs the copy's instructions (`crates/cell/src/sensitivity.rs`). The callgrind half needs valgrind, so it runs in the container rather than in `mise run test`: `mise run sensitivity`, which `mise run all` runs before measuring.

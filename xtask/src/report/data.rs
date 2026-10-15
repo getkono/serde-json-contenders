@@ -391,6 +391,23 @@ pub fn incomplete(data: &Data) -> Vec<String> {
             f[0]
         ));
     }
+    // Rule 3 reads the hand review of open issues; a crate missing from it
+    // would pass unreviewed.
+    let mut unreviewed: Vec<&str> = super::verdict::ENTRIES
+        .iter()
+        .map(|e| e.krate)
+        .filter(|k| {
+            data.soundness
+                .get(*k)
+                .and_then(|t| t.get("open"))
+                .and_then(toml::Value::as_array)
+                .is_none()
+        })
+        .collect();
+    unreviewed.dedup();
+    if !unreviewed.is_empty() {
+        gaps.push(format!("soundness.toml: no `open` list for {}", unreviewed.join(", ")));
+    }
     gaps
 }
 

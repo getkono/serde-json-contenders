@@ -48,6 +48,7 @@ fn main() -> Result<()> {
         eprint!("{HELP}");
         return Ok(());
     };
+    provenance::begin();
     match task.as_str() {
         "image" => container::image(),
         "doctor" => doctor::doctor(rest),

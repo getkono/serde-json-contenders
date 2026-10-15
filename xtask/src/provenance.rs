@@ -137,6 +137,34 @@ fn passed_git_state(commit: Option<&str>, dirty: Option<&str>) -> (Option<String
     (commit, dirty.map(str::trim) != Some("false"))
 }
 
+/// The stamp taken when the task began.
+static START: std::sync::OnceLock<Value> = std::sync::OnceLock::new();
+
+/// Record the code a task is about to measure. Builds start from the
+/// checkout as it is now, so a result is stamped with what this saw, not
+/// with whatever the checkout holds when the task finishes hours later.
+pub fn begin() {
+    let _ = START.set(stamp());
+}
+
+/// [`stamp`], refused if the measured code changed since [`begin`]: a
+/// commit or an edit in the middle of a run would otherwise label rows
+/// measured on the old code with the new code's fingerprint.
+pub fn stamp_checked() -> anyhow::Result<Value> {
+    let now = stamp();
+    if let Some(start) = START.get() {
+        for k in ["git_commit", "git_dirty", "fingerprint"] {
+            anyhow::ensure!(
+                start[k] == now[k],
+                "the measured code changed during the run ({k}: {} -> {}); rerun the task",
+                start[k],
+                now[k]
+            );
+        }
+    }
+    Ok(now)
+}
+
 /// Everything that could change a number.
 #[must_use]
 pub fn stamp() -> Value {

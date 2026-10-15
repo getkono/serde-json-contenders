@@ -45,6 +45,34 @@ fn expected_path(set: &str, backend: &str, compiled: &[String], detected: &[Stri
     })
 }
 
+/// Refuse to measure unless `doctor` passed on this host for the code about
+/// to be measured. A dirty checkout is let through with a warning: nothing it
+/// measures is accepted by the report anyway.
+pub fn require() -> Result<()> {
+    let stamp = crate::provenance::stamp();
+    if stamp["git_dirty"] != false {
+        eprintln!("doctor: the checkout is dirty, so these results are drafts; doctor is not required");
+        return Ok(());
+    }
+    let path = root()
+        .join("results")
+        .join(crate::provenance::host_slug())
+        .join("doctor.json");
+    let doc = crate::util::read_json(&path)
+        .map_err(|_| anyhow::anyhow!("no doctor result: run `cargo xtask doctor` first"))?;
+    anyhow::ensure!(
+        doc["provenance"]["fingerprint"] == stamp["fingerprint"] && doc["provenance"]["git_dirty"] == false,
+        "doctor ran on other code ({}); run `cargo xtask doctor` first",
+        doc["provenance"]["fingerprint"]
+    );
+    let failures = doc["failures"].as_array().map_or(0, Vec::len);
+    anyhow::ensure!(
+        failures == 0,
+        "doctor found {failures} builds that do not run the path they claim"
+    );
+    Ok(())
+}
+
 /// `xtask doctor`: build every set at every variant on this host, ask each
 /// `cell` what it compiled and what it will run, and check both.
 pub fn doctor(args: &[String]) -> Result<()> {

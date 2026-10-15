@@ -40,6 +40,7 @@ pub fn routes_for(backend: &str) -> Vec<&'static (&'static str, &'static str, &'
 /// `xtask e2e-count`: callgrind instructions per request, in the container.
 pub fn count(args: &[String]) -> Result<()> {
     if std::env::var_os("SJC_IN_CONTAINER").is_none() {
+        crate::doctor::require()?;
         return crate::container::reexec("e2e-count", args);
     }
     let filter = Filter::parse(args);
@@ -118,8 +119,36 @@ fn taskset(cores: &str, program: &std::path::Path) -> Command {
     cmd
 }
 
+/// The cores the server runs on.
+const SERVER_CORES: &str = "0-3";
+
+/// The cores the load generator runs on: every online CPU that is neither a
+/// server core nor an SMT sibling of one, so the two never share a physical
+/// core.
+fn load_cores() -> String {
+    let online = std::fs::read_to_string("/sys/devices/system/cpu/online").unwrap_or_default();
+    let server = crate::timed::cpu_list(SERVER_CORES);
+    let taken: Vec<usize> = server
+        .iter()
+        .flat_map(|c| {
+            let mut s = crate::timed::siblings(&c.to_string())
+                .iter()
+                .filter_map(|x| x.parse().ok())
+                .collect::<Vec<usize>>();
+            s.push(*c);
+            s
+        })
+        .collect();
+    crate::timed::cpu_list(online.trim())
+        .into_iter()
+        .filter(|c| !taken.contains(c))
+        .map(|c| c.to_string())
+        .collect::<Vec<_>>()
+        .join(",")
+}
+
 fn start(exe: &std::path::Path, backend: &str, port: u16) -> Result<Server> {
-    let mut child = taskset("0-3", exe)
+    let mut child = taskset(SERVER_CORES, exe)
         .args([backend, &port.to_string(), "4"])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -132,9 +161,14 @@ fn start(exe: &std::path::Path, backend: &str, port: u16) -> Result<Server> {
     Ok(Server(child))
 }
 
+/// One oha run. A run in which any response was not the route's 200, or any
+/// request failed, records an error: a server that answers every request
+/// with a 400 is fast, and nothing about it is a result. An open-loop run
+/// that could not offer its rate records one too: its latency is that of an
+/// overloaded server, not of the rate.
 fn oha(route: &(&str, &str, &str, Option<&str>), port: u16, seconds: u64, rate: Option<f64>) -> Result<Value> {
     let program = which("oha")?;
-    let mut cmd = taskset("8-15", &program);
+    let mut cmd = taskset(&load_cores(), &program);
     cmd.args([
         "--no-tui",
         "--output-format",
@@ -158,7 +192,23 @@ fn oha(route: &(&str, &str, &str, Option<&str>), port: u16, seconds: u64, rate: 
     anyhow::ensure!(ok, "oha failed: {stderr}");
     let v: Value = serde_json::from_str(&stdout)?;
     let codes = v["statusCodeDistribution"].clone();
+    let only_200 = codes
+        .as_object()
+        .is_some_and(|c| !c.is_empty() && c.keys().all(|k| k == "200"));
+    let errors = v["errorDistribution"].as_object().map_or(0, serde_json::Map::len);
+    let rps = v["summary"]["requestsPerSec"].as_f64();
+    let mut error = None;
+    if !only_200 || v["summary"]["successRate"].as_f64() != Some(1.0) || errors > 0 {
+        error = Some(format!(
+            "responses other than 200 or failed requests: status {codes}, {errors} error kinds"
+        ));
+    } else if let (Some(offered), Some(achieved)) = (rate, rps)
+        && achieved < offered * 0.99
+    {
+        error = Some(format!("offered {offered:.0} rps, achieved {achieved:.0}"));
+    }
     Ok(json!({
+        "error": error,
         "rps": v["summary"]["requestsPerSec"],
         "success_rate": v["summary"]["successRate"],
         "p50_ms": v["latencyPercentiles"]["p50"].as_f64().map(|s| s * 1e3),
@@ -174,6 +224,34 @@ fn which(name: &str) -> Result<std::path::PathBuf> {
         return Ok(out.trim().into());
     }
     Ok(name.into())
+}
+
+/// The open-loop rate for `route`: 70 % of the median of three closed-loop
+/// runs of serde_json, not of one, which a disturbed run would set above
+/// capacity. Returns the runs and the rate.
+fn open_loop_rate(
+    route: &(&str, &str, &str, Option<&str>),
+    serde_json: Option<&std::path::Path>,
+    seconds: u64,
+) -> Result<(Vec<f64>, Option<f64>)> {
+    let mut calibration: Vec<f64> = Vec::new();
+    if let Some(exe) = serde_json {
+        for _ in 0..3 {
+            let server = start(exe, "serde_json", 17_999)?;
+            let closed = oha(route, 17_999, seconds, None)?;
+            drop(server);
+            anyhow::ensure!(
+                closed["error"].is_null(),
+                "calibrating {}: {}",
+                route.0,
+                closed["error"]
+            );
+            calibration.extend(closed["rps"].as_f64());
+        }
+    }
+    calibration.sort_by(f64::total_cmp);
+    let rate = calibration.get(calibration.len() / 2).map(|r| r * 0.7);
+    Ok((calibration, rate))
 }
 
 /// Reps per route and seconds per load phase unless `--reps` and `--seconds`
@@ -197,9 +275,18 @@ pub fn time(args: &[String]) -> Result<()> {
     };
     let reps = flag("--reps").unwrap_or(REPS);
     let seconds = flag("--seconds").unwrap_or(SECONDS);
+    crate::doctor::require()?;
     let trust = crate::timed::trust(args);
     crate::timed::check_trust(&trust)?;
+    anyhow::ensure!(
+        filter.sets().iter().any(|s| s.name == "baseline"),
+        "e2e-time compares every backend with serde_json in the same session, so the baseline set must run too"
+    );
     let trust = trust.as_str();
+    // The load generator's version is part of what a percentile means.
+    let oha_version = crate::util::output(Command::new(which("oha")?).arg("--version"))?
+        .trim()
+        .to_owned();
     let bodies = root().join("target/e2e-bodies");
     std::fs::create_dir_all(&bodies)?;
     std::fs::write(
@@ -228,26 +315,20 @@ pub fn time(args: &[String]) -> Result<()> {
                 .filter(|(_, b, _)| routes_for(server_name(b)).iter().any(|r| r.0 == route.0))
                 .collect();
             let mut results: Vec<Vec<Value>> = vec![Vec::new(); eligible.len()];
-            let mut rate = None;
+            let serde_json = eligible
+                .iter()
+                .find(|(_, b, _)| b == "serde_json")
+                .map(|(_, _, exe)| exe.as_path());
+            let (calibration, rate) = open_loop_rate(route, serde_json, seconds)?;
             for rep in 0..reps {
                 let mut order: Vec<usize> = (0..eligible.len()).collect();
                 shuffle(&mut order, 0xe2e + rep);
-                // The open-loop rate is fixed from serde_json's first closed-loop run.
-                if rate.is_none()
-                    && let Some(i) = eligible.iter().position(|(_, b, _)| b == "serde_json")
-                {
-                    order.retain(|&j| j != i);
-                    order.insert(0, i);
-                }
                 for &i in &order {
                     let (_, backend, exe) = eligible[i];
                     eprintln!("e2e-time: {} rep {}/{reps} {}", route.0, rep + 1, backend);
                     let port = 18_000 + u16::try_from(i).unwrap_or(0);
                     let server = start(exe, server_name(backend), port)?;
                     let closed = oha(route, port, seconds, None)?;
-                    if rate.is_none() && backend == "serde_json" {
-                        rate = closed["rps"].as_f64().map(|r| r * 0.7);
-                    }
                     let open = match rate {
                         Some(r) => oha(route, port, seconds, Some(r))?,
                         None => Value::Null,
@@ -257,6 +338,10 @@ pub fn time(args: &[String]) -> Result<()> {
                 }
             }
             for ((set, backend, _), reps) in eligible.iter().zip(results) {
+                let failed = reps
+                    .iter()
+                    .find_map(|r| r["closed"]["error"].as_str().or(r["open"]["error"].as_str()))
+                    .map(str::to_owned);
                 let mut rps: Vec<f64> = reps.iter().filter_map(|r| r["closed"]["rps"].as_f64()).collect();
                 let mut p99: Vec<f64> = reps.iter().filter_map(|r| r["open"]["p99_ms"].as_f64()).collect();
                 rps.sort_by(f64::total_cmp);
@@ -265,7 +350,7 @@ pub fn time(args: &[String]) -> Result<()> {
                     "variant": variant.name, "set": set, "backend": backend, "route": route.0, "trust": trust, "seconds": seconds,
                     "rps": rps.get(rps.len() / 2), "rps_spread": rps.last().zip(rps.first()).map(|(a, b)| a - b),
                     "open_loop_rate": rate, "p99_ms": p99.get(p99.len() / 2), "p99_spread": p99.last().zip(p99.first()).map(|(a, b)| a - b),
-                    "reps": reps,
+                    "calibration_rps": calibration, "error": failed, "oha": oha_version, "load_cores": load_cores(), "reps": reps,
                 }));
             }
         }
@@ -274,11 +359,5 @@ pub fn time(args: &[String]) -> Result<()> {
         .join("results")
         .join(crate::provenance::host_slug())
         .join("e2e-time.json");
-    crate::util::merge_write(
-        &path,
-        "e2e-time",
-        &rows,
-        &["variant", "set", "backend", "route"],
-        json!({}),
-    )
+    crate::util::replace_write(&path, "e2e-time", &rows)
 }

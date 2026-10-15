@@ -203,6 +203,22 @@ pub const TIMED_SHAPES: &[Shape] = &[SHAPES[0], SHAPES[4]];
 /// The workloads the decision rule is evaluated on.
 pub const KYNOS: &[&str] = &["json-small", "echo-post", "json-large"];
 
+/// Workloads whose value is another workload's, written differently: their
+/// encode is that workload's encode, byte for byte, so only their decode is
+/// measured.
+pub const DECODE_ONLY: &[&str] = &["pretty-json-large", "pretty-twitter-like", "raw-utf8"];
+
+/// `shapes` as they apply to `workload`: the decode shapes alone (they come
+/// first in every shape list) for a [`DECODE_ONLY`] workload.
+#[must_use]
+pub fn for_workload(workload: &str, shapes: &'static [Shape]) -> &'static [Shape] {
+    if DECODE_ONLY.contains(&workload) {
+        &shapes[..shapes.iter().take_while(|s| s.op == "decode").count()]
+    } else {
+        shapes
+    }
+}
+
 /// The variants callgrind counts on the measured host. valgrind cannot run
 /// AVX-512, so its `native` build is not counted; the report expects exactly
 /// these, whatever CPU it runs on.
@@ -214,9 +230,12 @@ pub const COUNTED_VARIANTS: &[&str] = &["portable", "v3"];
 /// unreported.
 #[must_use]
 pub fn hw_shapes(workload: &str) -> &'static [Shape] {
-    if KYNOS.contains(&workload) {
-        SHAPES
-    } else {
-        TIMED_SHAPES
-    }
+    for_workload(
+        workload,
+        if KYNOS.contains(&workload) {
+            SHAPES
+        } else {
+            TIMED_SHAPES
+        },
+    )
 }

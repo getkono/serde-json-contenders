@@ -123,33 +123,21 @@ fn thread_cpu() -> Duration {
 }
 
 /// Measures how much of a sample window something other than this thread
-/// spent on the CPU the sample needed: the pinned core, and its SMT siblings
-/// (`CELL_SIBLINGS`, comma-separated), which share its caches and pipeline.
-/// Everything that ran on a sibling is interference.
+/// spent on the CPU the sample needed. Only the pinned core is read here:
+/// `/proc/schedstat` credits a task's run time when it is switched out, so a
+/// task that keeps another CPU busy without switching shows nothing there.
+/// The SMT sibling is checked by `xtask` around each cell instead.
 #[derive(Debug)]
 pub struct Interference {
     core: Option<usize>,
     busy: Option<u64>,
-    siblings: Option<u64>,
     own: Duration,
-}
-
-/// The pinned core's SMT siblings, from `CELL_SIBLINGS`.
-fn sibling_cores() -> &'static [usize] {
-    static SIBLINGS: std::sync::OnceLock<Vec<usize>> = std::sync::OnceLock::new();
-    SIBLINGS.get_or_init(|| {
-        std::env::var("CELL_SIBLINGS")
-            .unwrap_or_default()
-            .split(',')
-            .filter_map(|c| c.trim().parse().ok())
-            .collect()
-    })
 }
 
 impl Interference {
     /// How interference is detected.
     pub fn method() -> &'static str {
-        "run time from /proc/schedstat on the pinned core (minus this thread's CPU time) and on its SMT siblings"
+        "per-core run time from /proc/schedstat minus this thread's CPU time"
     }
 
     /// Start observing. `core` is the CPU the thread is pinned to, if any.
@@ -157,7 +145,6 @@ impl Interference {
         Self {
             core,
             busy: busy_ns(core),
-            siblings: siblings_ns(core),
             own: thread_cpu(),
         }
     }
@@ -165,22 +152,14 @@ impl Interference {
     /// The fraction of `window` spent by other work.
     pub fn finish(self, window: Duration) -> f64 {
         let own = thread_cpu().saturating_sub(self.own);
-        let core = match (self.busy, busy_ns(self.core)) {
-            (Some(before), Some(after)) => after.saturating_sub(before) as f64 - own.as_nanos() as f64,
+        match (self.busy, busy_ns(self.core)) {
+            (Some(before), Some(after)) => {
+                let other = after.saturating_sub(before) as f64 - own.as_nanos() as f64;
+                (other / window.as_nanos() as f64).max(0.0)
+            }
             _ => 0.0,
-        };
-        let siblings = match (self.siblings, siblings_ns(self.core)) {
-            (Some(before), Some(after)) => after.saturating_sub(before) as f64,
-            _ => 0.0,
-        };
-        ((core.max(0.0) + siblings) / window.as_nanos() as f64).max(0.0)
+        }
     }
-}
-
-/// Nanoseconds tasks have run on the siblings of `core`, if it is pinned.
-fn siblings_ns(core: Option<usize>) -> Option<u64> {
-    core?;
-    sibling_cores().iter().map(|c| busy_ns(Some(*c))).sum()
 }
 
 /// Nanoseconds tasks have run on `core`.

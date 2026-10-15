@@ -96,6 +96,19 @@ pub fn shuffle<T>(items: &mut [T], seed: u64) {
     }
 }
 
+/// Write `rows` as the whole of the result file at `path`, stamped. Timed
+/// results are compared within one session only (the rounds interleave the
+/// backends, and the A/A copy runs beside them), so a timed task replaces
+/// its file instead of merging into an earlier session's rows.
+pub fn replace_write(path: &Path, kind: &str, rows: &[serde_json::Value]) -> Result<()> {
+    let doc = serde_json::json!({
+        "schema": 1, "kind": kind, "provenance": crate::provenance::stamp_checked()?, "rows": rows,
+    });
+    write_json(path, &doc)?;
+    eprintln!("wrote {}", path.display());
+    Ok(())
+}
+
 /// Write `rows` into the result file at `path`, replacing earlier rows whose
 /// `keys` fields match a new row's, and stamp provenance. Partial reruns
 /// therefore update in place instead of dropping what they did not rerun,
@@ -111,9 +124,10 @@ pub fn merge_write(
 ) -> Result<()> {
     let key = |r: &serde_json::Value| keys.iter().map(|k| r[*k].to_string()).collect::<Vec<_>>().join("|");
     let fresh: std::collections::HashSet<String> = rows.iter().map(key).collect();
-    let stamp = crate::provenance::stamp();
+    let stamp = crate::provenance::stamp_checked()?;
     let old = read_json(path).unwrap_or(serde_json::Value::Null);
-    let same_code = old["provenance"]["git_dirty"] == false
+    let same_code = old["provenance"]["host"] == stamp["host"]
+        && old["provenance"]["git_dirty"] == false
         && stamp["git_dirty"] == false
         && old["provenance"]["fingerprint"].is_string()
         && old["provenance"]["fingerprint"] == stamp["fingerprint"];
@@ -122,10 +136,12 @@ pub fn merge_write(
     } else {
         if old["rows"].as_array().is_some_and(|r| !r.is_empty()) {
             eprintln!(
-                "{}: dropping rows measured on other code ({} -> {})",
+                "{}: dropping rows not measured on this code (fingerprint {} -> {}, dirty {} -> {})",
                 path.display(),
                 old["provenance"]["fingerprint"],
-                stamp["fingerprint"]
+                stamp["fingerprint"],
+                old["provenance"]["git_dirty"],
+                stamp["git_dirty"]
             );
         }
         Vec::new()

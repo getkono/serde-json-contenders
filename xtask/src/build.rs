@@ -37,6 +37,27 @@ pub fn build(place: Place, package: &str, set: &Set, variant: &Variant) -> Resul
     build_with(place, package, set, variant, None)
 }
 
+/// [`build`], with `feature` of `package` switched on as well, in its own
+/// target directory (`<set>+<feature>`).
+pub fn build_featured(place: Place, package: &str, set: &Set, variant: &Variant, feature: &str) -> Result<PathBuf> {
+    let mut dir = target_dir(place, variant, set);
+    dir.set_file_name(format!("{}+{feature}", set.name));
+    let features = [set.features, feature]
+        .iter()
+        .filter(|f| !f.is_empty())
+        .copied()
+        .collect::<Vec<_>>()
+        .join(",");
+    let mut cmd = Command::new("cargo");
+    cmd.current_dir(root())
+        .args(["build", "--release", "--locked", "-p", package, "--features", &features])
+        .env("RUSTFLAGS", variant.rustflags)
+        .env("CARGO_TARGET_DIR", &dir);
+    run(&mut cmd).with_context(|| format!("building {package} +{feature} for {} at {}", set.name, variant.name))?;
+    check_serde_json_features(package, &features, set.name, set.serde_json_features)?;
+    Ok(dir.join("release"))
+}
+
 /// [`build`], with serde_json's `arbitrary_precision` unified in when
 /// `arbitrary_precision` is set — the build a program gets when any crate in
 /// it asks for that feature.

@@ -12,7 +12,7 @@ use anyhow::Result;
 use serde_json::{Value, json};
 
 use crate::build::{Place, bin, build};
-use crate::counted::{Cell, Filter, merge_rows};
+use crate::counted::{Cell, Filter};
 use crate::matrix::{KYNOS, Shape, TIMED_SHAPES, hw_shapes, variant};
 use crate::util::{capture, root, shuffle};
 
@@ -108,17 +108,123 @@ pub fn check_trust(trust: &str) -> Result<()> {
     Ok(())
 }
 
-/// The SMT siblings of `core`, other than itself, from sysfs.
-fn siblings(core: &str) -> String {
-    std::fs::read_to_string(format!(
+/// The SMT siblings of `core`, other than itself, from sysfs
+/// (`thread_siblings_list`, a list of CPUs and ranges such as `2,10` or
+/// `2-3`).
+pub fn siblings(core: &str) -> Vec<String> {
+    let list = std::fs::read_to_string(format!(
         "/sys/devices/system/cpu/cpu{core}/topology/thread_siblings_list"
     ))
-    .unwrap_or_default()
-    .trim()
-    .split([',', '-'])
-    .filter(|c| *c != core && !c.is_empty())
-    .collect::<Vec<_>>()
-    .join(",")
+    .unwrap_or_default();
+    cpu_list(list.trim())
+        .into_iter()
+        .map(|c| c.to_string())
+        .filter(|c| c != core)
+        .collect()
+}
+
+/// The CPUs in a sysfs CPU list (`0-3,8,10-11`).
+pub fn cpu_list(list: &str) -> Vec<usize> {
+    list.split(',')
+        .filter(|p| !p.is_empty())
+        .flat_map(|part| match part.split_once('-') {
+            Some((a, b)) => match (a.trim().parse::<usize>(), b.trim().parse::<usize>()) {
+                (Ok(a), Ok(b)) => (a..=b).collect(),
+                _ => Vec::new(),
+            },
+            None => part.trim().parse().map(|c| vec![c]).unwrap_or_default(),
+        })
+        .collect()
+}
+
+/// Busy and total time of `cpus` in `/proc/stat` ticks.
+fn ticks(cpus: &[String]) -> Option<(u64, u64)> {
+    let stat = std::fs::read_to_string("/proc/stat").ok()?;
+    let mut busy = 0;
+    let mut total = 0;
+    for cpu in cpus {
+        let line = stat.lines().find(|l| l.starts_with(&format!("cpu{cpu} ")))?;
+        // user nice system idle iowait irq softirq steal guest guest_nice;
+        // guest time is already counted in user.
+        let f: Vec<u64> = line
+            .split_whitespace()
+            .skip(1)
+            .take(8)
+            .filter_map(|v| v.parse().ok())
+            .collect();
+        let [user, nice, system, idle, iowait, irq, softirq, steal] = f[..] else {
+            return None;
+        };
+        busy += user + nice + system + irq + softirq + steal;
+        total += user + nice + system + idle + iowait + irq + softirq + steal;
+    }
+    Some((busy, total))
+}
+
+/// How busy `cpus` were over the next `window`, as a fraction. Ticks are
+/// 10 ms, so the window is long enough for a steady neighbour to show; a
+/// brief one the rounds and the A/A control absorb.
+fn busy_over(cpus: &[String], window: std::time::Duration) -> f64 {
+    if cpus.is_empty() {
+        return 0.0;
+    }
+    let before = ticks(cpus);
+    std::thread::sleep(window);
+    match (before, ticks(cpus)) {
+        (Some((b0, t0)), Some((b1, t1))) if t1 > t0 => (b1 - b0) as f64 / (t1 - t0) as f64,
+        _ => 0.0,
+    }
+}
+
+/// The most of the SMT sibling's time other work may take around a cell.
+const MAX_SIBLING_BUSY: f64 = 0.10;
+/// How long the sibling is watched before and after each cell.
+const SIBLING_WINDOW: std::time::Duration = std::time::Duration::from_millis(100);
+/// How many times a cell waits for its sibling to go quiet before it is
+/// recorded as refused.
+const SIBLING_TRIES: u32 = 30;
+
+/// Run one pinned cell process, retrying while the core's SMT sibling is
+/// busy before or after it. The row records the sibling's busiest reading.
+fn pinned_cell(cmd: &mut Command, siblings: &[String]) -> Value {
+    let mut busiest = 0.0f64;
+    let fraction = |a: Option<(u64, u64)>, b: Option<(u64, u64)>| match (a, b) {
+        (Some((b0, t0)), Some((b1, t1))) if t1 > t0 => (b1 - b0) as f64 / (t1 - t0) as f64,
+        _ => 0.0,
+    };
+    for _ in 0..SIBLING_TRIES {
+        let start = ticks(siblings);
+        let before = busy_over(siblings, SIBLING_WINDOW);
+        if before > MAX_SIBLING_BUSY {
+            busiest = busiest.max(before);
+            std::thread::sleep(std::time::Duration::from_secs(1));
+            continue;
+        }
+        let mut result = capture(cmd).map_or(Value::Null, |(_, out, _)| {
+            out.lines()
+                .rev()
+                .find_map(|l| serde_json::from_str(l).ok())
+                .unwrap_or(Value::Null)
+        });
+        let after = busy_over(siblings, SIBLING_WINDOW);
+        // Over the whole span too, the cell's own run included: a cell long
+        // enough to cover several ticks is checked while it runs.
+        let span = if siblings.is_empty() {
+            0.0
+        } else {
+            fraction(start, ticks(siblings))
+        };
+        let worst = before.max(after).max(span);
+        if worst > MAX_SIBLING_BUSY {
+            busiest = busiest.max(worst);
+            continue;
+        }
+        if let Value::Object(o) = &mut result {
+            o.insert("sibling_busy".into(), json!(worst));
+        }
+        return result;
+    }
+    json!({ "error": format!("the SMT sibling stayed busy (up to {:.0} %) around every try", busiest * 100.0) })
 }
 
 /// Run every cell of `filter` once per round as its own pinned process, in
@@ -135,8 +241,13 @@ fn rounds(
 ) -> Result<()> {
     let rounds: u64 = flag(args, "--rounds").and_then(|v| v.parse().ok()).unwrap_or(ROUNDS);
     let core = flag(args, "--core").unwrap_or("2").to_owned();
+    crate::doctor::require()?;
     let trust = trust(args);
     check_trust(&trust)?;
+    anyhow::ensure!(
+        filter.sets().iter().any(|s| s.name == "baseline"),
+        "{mode} compares every backend with serde_json in the same session, so the baseline set must run too"
+    );
     let sibling = siblings(&core);
     let mut rows = Vec::new();
     for variant_name in filter.variants.clone().unwrap_or_default() {
@@ -167,17 +278,8 @@ fn rounds(
                     cell.backend
                 );
                 let mut cmd = Command::new(cell_bin);
-                cmd.arg(mode)
-                    .args(cell.args())
-                    .env("CELL_CORE", &core)
-                    .env("CELL_SIBLINGS", &sibling);
-                let result = capture(&mut cmd).map_or(Value::Null, |(_, out, _)| {
-                    out.lines()
-                        .rev()
-                        .find_map(|l| serde_json::from_str(l).ok())
-                        .unwrap_or(Value::Null)
-                });
-                per_round[i].push(result);
+                cmd.arg(mode).args(cell.args()).env("CELL_CORE", &core);
+                per_round[i].push(pinned_cell(&mut cmd, &sibling));
             }
         }
         for ((cell, copy, _), results) in cells.iter().zip(per_round) {
@@ -187,7 +289,7 @@ fn rounds(
             }
             row["trust"] = json!(trust);
             row["core"] = json!(core);
-            row["siblings"] = json!(sibling);
+            row["siblings"] = json!(sibling.join(","));
             if let Some(first) = results.first() {
                 for k in ["verdict", "detail", "size", "iters"] {
                     if !first[k].is_null() {
@@ -218,12 +320,12 @@ fn rounds(
             rows.push(row);
         }
     }
-    merge_rows(
+    crate::util::replace_write(
         &root()
             .join("results")
             .join(crate::provenance::host_slug())
             .join(format!("{mode}.json")),
-        &rows,
         mode,
+        &rows,
     )
 }

@@ -68,7 +68,7 @@ A gain that only shows up in a native build is accepted: applications are assume
 - sonic-rs took its compile-time fast path.
 - simd-json and flexon selected their best path at run time.
 
-A run on a machine where any of these checks fails is refused.
+Every measuring task (`count`, `alloc`, `hw`, `time`, `e2e-count`, `e2e-time`) refuses to start unless `doctor` passed on this host for the same code, and the report refuses a doctor result with failures.
 
 ### Axes
 
@@ -76,7 +76,7 @@ A run on a machine where any of these checks fails is refused.
 | --- | --- | --- | --- |
 | 1 | Decode CPU | **hardware `cycles:u`** at `native`, through `perf_event_open`: this decides. callgrind estimated cycles (`Ir + 5·L1 misses + 35·LL misses`, with a fixed cache geometry of 32 KiB 8-way L1 and 8 MiB 16-way LL, so the figure does not depend on the host) and instructions at `v3` corroborate it and reproduce exactly. Wall-clock time is reported for information. | cycles and time on the host; callgrind in a container pinned by digest (valgrind 3.24.0, Debian snapshot 2026-09-25) |
 | 2 | Encode CPU | same | same |
-| 3 | Heap | a counting global allocator: allocations, reallocations, bytes, peak live bytes per operation | host |
+| 3 | Heap | a counting global allocator, built only into the binary that counts allocations (its atomic counters would add to every other figure): allocations, reallocations, bytes, peak live bytes per operation, at `native` (the counts are the same at every variant) | host |
 | 4 | Binary size | `.text` of a program that decodes and re-encodes the two body types a handler would declare, minus the `.text` of the same program without JSON; a decode-only program as well | host |
 | 5 | Compile time | clean release build, clean dev build, and incremental dev rebuild after touching the program; median of 5 runs; no compiler cache | host |
 | 6 | MSRV | declared `rust-version`, and whether the adapter builds with Rust 1.85 | host |
@@ -91,7 +91,7 @@ Each per-operation measurement follows the same protocol:
 2. A warm-up call pays one-time costs: CPU detection, lazy statics, first-touch page faults.
 3. The operation is repeated inside a function that is the only thing counted. That is `max(1, min(1000, 4 MiB ÷ size))` iterations, and the result is dropped inside the counted region, as a server drops it. A `unique` arrival gets a fresh copy of the input each iteration. A `shared` arrival clones one `Bytes` handle each iteration, so the input stays in cache, as a frame a server has just read does.
 
-Hardware cycles add the timed protocol below. Each cell is its own process, pinned to one core, and every repetition (101 per process, the median kept) during which another task ran on that core or its SMT sibling for more than 2 % of the time is discarded and repeated. Cells run one at a time, in 3 rounds in shuffled order, with serde_json twice per round as the A/A control. The figure is the median over rounds.
+Hardware cycles add the timed protocol below. Each cell is its own process, pinned to one core (a process that cannot pin is an error, not a figure), and every repetition (101 per process, the median kept) during which another task ran on that core for more than 2 % of the time is discarded and repeated. The core's SMT sibling shares its caches and pipeline, so it must be idle too: its busy share is read from `/proc/stat` over 100 ms before the process, over the process, and over 100 ms after, and a cell is rerun, up to 30 times, while it exceeds 10 %. Cells run one at a time, in 3 rounds in shuffled order, with serde_json twice per round as the A/A control. The figure is the median over rounds, and a timed task always runs the whole matrix with the baseline in one session, replacing its result file rather than merging into an earlier session's.
 
 ### Workloads
 
@@ -101,9 +101,11 @@ Every workload is a typed Rust struct, never an untyped tree. Each has an owned 
 | --- | --- | --- |
 | Kynos shapes (decision rule) | `json-small` (91 B `Item`), `echo-post` (1 076 B `Echo`, a 1 KiB ASCII payload), `json-large` (64 KiB `Catalog`, 705 items) | byte-identical to kynos-bench's golden bodies, asserted by digest |
 | Size sweep | `Vec<Item>` at exactly 64 B, 256 B, 1 KiB, 4 KiB, 16 KiB, 64 KiB, 256 KiB, 1 MiB | where SIMD setup starts paying for itself |
-| Families (about 16 KiB, unless the variable is size or depth, or the value is another workload's: `pretty-json-large` is 122 KiB) | `ints` (every digit count, 1–19 signed and 1–20 unsigned), `ints-extremes` (each digit count's boundaries, `i64::MIN`, `i64::MAX`, `u64::MAX`), `floats` (uniform over finite `f64` bit patterns), `f32s` (the same over `f32`), `escapes` (about 25 % escaped bytes), `unicode` (raw CJK, Hangul, Cyrillic, Greek, emoji), `long-string` (one 256 KiB ASCII string with nothing to escape), `nested-{100,127,129,10000}` (object depth either side of serde_json's limit of 128), `wide-1000` (a 1 000-key map), `array-small` (a long `Vec<Point>`), `enums` (64 KiB of records holding one externally, internally, adjacently tagged and untagged enum each), `pretty-json-large` (`json-large`'s value, pretty-printed) | one variable at a time |
+| Families (about 16 KiB where size is not the variable; exceptions: `ints` 15 KiB, `ints-extremes` 2 KiB, `wide-1000` 27 KiB, `long-string` 256 KiB, `enums` 64 KiB, `nested-*` 2–214 KiB, `pretty-json-large` 122 KiB) | `ints` (every digit count, 1–19 signed and 1–20 unsigned), `ints-extremes` (each digit count's boundaries, `i64::MIN`, `i64::MAX`, `u64::MAX`), `floats` (uniform over finite `f64` bit patterns), `f32s` (the same over `f32`), `escapes` (about 25 % escaped bytes), `unicode` (raw CJK, Hangul, Cyrillic, Greek, emoji), `long-string` (one 256 KiB ASCII string with nothing to escape), `nested-{100,127,129,10000}` (object depth either side of serde_json's limit of 128), `wide-1000` (a 1 000-key map), `array-small` (a long `Vec<Point>`), `enums` (64 KiB of records holding one externally, internally, adjacently tagged and untagged enum each), `pretty-json-large` (`json-large`'s value, pretty-printed) | one variable at a time |
 | Real-world schemas | `twitter-like` (800 KiB, non-ASCII written as `\u` escapes), `citm-like` (480 KiB, integer- and key-heavy), `canada-like` (2.1 MiB of full-precision floats) | the schemas of the three documents most JSON benchmarks use; the originals carry no licence that permits redistribution, so they are regenerated, not copied |
-| Real-world variants | `raw-utf8` (`twitter-like` with its non-ASCII written raw), `pretty-twitter-like` (`twitter-like` pretty-printed), `skip-unknown` (`twitter-like`'s bytes into a struct that declares 8 of each status's 37 keys, so the rest must be skipped) | how a document is written, and how much of it the handler wants |
+| Real-world variants | `raw-utf8` (`twitter-like` with its non-ASCII written raw), `pretty-twitter-like` (`twitter-like` pretty-printed), `skip-unknown` (`twitter-like`'s bytes into a struct that declares 8 of each status's 36 to 38 keys, so the rest must be skipped) | how a document is written, and how much of it the handler wants |
+
+`pretty-json-large`, `pretty-twitter-like` and `raw-utf8` hold another workload's value, so their encode is that workload's encode byte for byte; only their decode is measured.
 
 Owned and borrowed forms coincide for the workloads with no strings: `ints`, `ints-extremes`, `floats`, `f32s`, `nested-*` and `array-small`.
 
@@ -147,10 +149,10 @@ Each adapter maps its crate's errors to 400/422 as faithfully as that crate's er
 
 ### End to end
 
-`crates/e2e` is a hyper 1.x server that reads each body the way a hyper-based framework does (`collect().to_bytes()`) and uses one backend per build. Its routes are `POST /echo`, `GET /json/large`, `POST /json/large` (whose 64 KiB body arrives in several frames) and `GET /json/small`. A *floor* build serves the same routes with no JSON: it returns pre-encoded bytes and discards request bodies.
+`crates/e2e` is a hyper 1.x server that reads each body the way a hyper-based framework does (`collect().to_bytes()`) and uses one backend per build. Its routes are `POST /echo`, `GET /json/large`, `POST /json/large` and `GET /json/small`. A *floor* build serves the same routes with no JSON: it collects request bodies as every build does, discards them, and returns pre-encoded bytes. The 64 KiB `POST /json/large` body arrives in several frames through the counted in-memory connection (so the decode reads a fresh, unique buffer), but over loopback almost always in one (a shared frame, which an in-place parser copies).
 
 - **Counted**: callgrind per request over an in-memory connection, at `portable` and `v3`; the rule reads `v3`. The codec's share of a request is (backend − floor) ÷ backend. That share bounds what swapping the codec can gain end to end. A timed gain larger than the count predicts is treated as a measurement error, not a result.
-- **Timed**: loopback, with the server on cores 0–3 and oha 1.16.0 on cores 8–15. Closed-loop throughput is measured at 64 connections, then open-loop p99 at 70 % of serde_json's throughput (with coordinated-omission correction). Each measurement is 30 s, the backends run 5 times in shuffled order, and serde_json runs twice as an A/A control.
+- **Timed**: loopback, with the server on cores 0–3 and oha 1.16.0 on every other core that is not an SMT sibling of those. Closed-loop throughput is measured at 64 connections, then open-loop p99 at 70 % of serde_json's throughput (with coordinated-omission correction), where serde_json's throughput is the median of three closed-loop calibration runs. Each measurement is 30 s, the backends run 5 times in shuffled order, and serde_json runs twice as an A/A control. A run in which any response is not the route's 200, or any request fails, is an error, and so is an open-loop run that achieves less than 99 % of its offered rate.
 
 ### Timed measurements and trust
 

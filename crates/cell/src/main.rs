@@ -9,6 +9,7 @@
 //! Modes: `check`, `callgrind` (run under valgrind by `xtask`), `alloc`,
 //! `hw` (Linux hardware counters), `time`, `doctor`, `list`.
 
+#[cfg(feature = "count-alloc")]
 #[global_allocator]
 static ALLOCATOR: alloc_count::Counting = alloc_count::Counting;
 

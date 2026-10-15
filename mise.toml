@@ -43,7 +43,7 @@ done
 
 [tasks.test]
 description = "Unit and integration tests"
-run = "cargo nextest run --workspace --locked --no-tests=pass --features sonic-rs,simd-json,flexon-rt,jiter,hifijson,struson && cargo nextest run --workspace --locked --no-tests=pass --features flexon-ct"
+run = "cargo nextest run --workspace --locked --no-tests=pass --features sonic-rs,simd-json,flexon-rt,jiter,hifijson,struson,cell/count-alloc && cargo nextest run --workspace --locked --no-tests=pass --features flexon-ct,cell/count-alloc"
 
 [tasks.image]
 description = "Build the valgrind container image"
@@ -73,7 +73,7 @@ run = "rm -rf target/matrix/container target/callgrind && cargo xtask count --ch
 description = "The harness-can-fail checks under callgrind, in the container"
 run = """
 cargo xtask image
-podman run --rm --security-opt label=disable -v "$PWD:/work" serde-json-contenders:valgrind cargo test -p cell --locked -- --ignored sensitivity
+podman run --rm --security-opt label=disable -v "$PWD:/work" serde-json-contenders:valgrind cargo test -p cell --locked --features count-alloc -- --ignored sensitivity
 """
 
 [tasks.alloc]

@@ -460,7 +460,12 @@ fn families(out: &mut String, data: &Data) {
         "families-encode",
         "One variable at a time, and real-world shapes: encode",
     );
-    out.push_str(&cpu_block(data, "", &fams, "encode", &points, &encoders()));
+    let encoded: Vec<&str> = fams
+        .iter()
+        .copied()
+        .filter(|w| !crate::matrix::DECODE_ONLY.contains(w))
+        .collect();
+    out.push_str(&cpu_block(data, "", &encoded, "encode", &points, &encoders()));
 }
 
 fn heap_table(out: &mut String, data: &Data) {

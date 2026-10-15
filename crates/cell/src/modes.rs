@@ -61,6 +61,9 @@ fn callgrind(job: &mut impl Job, iters: u64) -> Value {
 }
 
 fn alloc(job: &mut impl Job, iters: u64) -> Value {
+    if !cfg!(feature = "count-alloc") {
+        return json!({ "error": "this build has no counting allocator (feature count-alloc)" });
+    }
     job.prepare(1);
     job.run();
     job.prepare(iters);
@@ -86,8 +89,10 @@ fn alloc(job: &mut impl Job, iters: u64) -> Value {
 /// repetition during which other tasks took more than
 /// `CELL_MAX_OTHER_PERMILLE` of that core is discarded and repeated, as in
 /// [`time`]: `cycles:u` counts this thread's cycles, but a neighbour on the
-/// core (or its SMT sibling, which `xtask` keeps idle) still evicts caches and
-/// shares the pipeline.
+/// core still evicts caches and shares the pipeline. A pinning that fails is
+/// an error, not a figure: an unpinned process is measured wherever the
+/// scheduler puts it. The SMT sibling, which shares the core's caches and
+/// pipeline, is checked by `xtask` before and after the process.
 fn hw(job: &mut impl Job, iters: u64) -> Value {
     use perf_event::Builder;
     use perf_event::events::Hardware;
@@ -114,6 +119,9 @@ fn hw(job: &mut impl Job, iters: u64) -> Value {
     let max_other = env("CELL_MAX_OTHER_PERMILLE", 20) as f64 / 1000.0;
     let core = std::env::var("CELL_CORE").ok().and_then(|v| v.parse().ok());
     let pinned = core.map(crate::doctor::pin);
+    if pinned == Some(false) {
+        return json!({ "error": "could not pin to CELL_CORE" });
+    }
     job.prepare(1);
     job.run();
     let reps = 101;
@@ -181,6 +189,9 @@ fn time(job: &mut impl Job) -> Value {
     let core = std::env::var("CELL_CORE").ok().and_then(|v| v.parse().ok());
 
     let pinned = core.map(crate::doctor::pin);
+    if pinned == Some(false) {
+        return json!({ "error": "could not pin to CELL_CORE" });
+    }
     // Calibrate a batch so one sample lasts about one window.
     job.prepare(1);
     let start = Instant::now();

@@ -404,7 +404,7 @@ fn per_operation(
                 }
                 for b in &labels {
                     for w in workloads {
-                        for s in shapes(w) {
+                        for s in crate::matrix::for_workload(w, shapes(w)) {
                             let key = Key {
                                 variant: (*variant).to_owned(),
                                 backend: b.clone(),

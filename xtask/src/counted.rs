@@ -176,7 +176,11 @@ impl Filter {
         let mut cells = Vec::new();
         for backend in set.backends {
             for workload in &workloads {
-                for shape in self.shapes.as_deref().unwrap_or_else(|| shapes_of(workload)) {
+                let shapes = self.shapes.as_deref().unwrap_or_else(|| shapes_of(workload));
+                for shape in shapes
+                    .iter()
+                    .filter(|s| !crate::matrix::DECODE_ONLY.contains(workload) || s.op == "decode")
+                {
                     cells.push(Cell {
                         set,
                         backend,
@@ -212,6 +216,7 @@ fn cell_json(stdout: &str) -> Value {
 /// there when it is not).
 pub fn count(args: &[String]) -> Result<()> {
     if std::env::var_os("SJC_IN_CONTAINER").is_none() {
+        crate::doctor::require()?;
         return crate::container::reexec("count", args);
     }
     let filter = Filter::parse(args);
@@ -295,8 +300,9 @@ fn tolerance(args: &[String]) -> Result<f64> {
 }
 
 /// `count --check`: compare fresh rows with the committed ones; returns how
-/// many were compared. A committed count that the rerun failed to produce is
-/// a failure too, not a row to skip.
+/// many were compared. A committed count that the rerun failed to produce,
+/// or did not run although it ran its variant, set and workload, is a
+/// failure too, not a row to skip.
 ///
 /// Counts are compared as the whole-run totals callgrind reported: a row
 /// stores the total divided by its iterations, and the committed quotient
@@ -341,6 +347,17 @@ fn check_reproduced(committed: &Value, fresh: &[Value], tolerance: f64) -> Resul
         }
     }
     anyhow::ensure!(compared > 0, "no committed rows to compare against");
+    // A committed count inside the rerun's scope (its variants, sets and
+    // workloads) that the rerun did not produce at all is a failure too: a
+    // cell dropped from the matrix must not pass by being skipped.
+    let scope = |r: &Value| ["variant", "set", "workload"].map(|k| r[k].to_string()).join("|");
+    let fresh_keys: std::collections::HashSet<String> = fresh.iter().map(key).collect();
+    let fresh_scope: std::collections::HashSet<String> = fresh.iter().map(scope).collect();
+    for r in committed["rows"].as_array().into_iter().flatten() {
+        if total(r).is_some() && fresh_scope.contains(&scope(r)) && !fresh_keys.contains(&key(r)) {
+            off.push(format!("{}: not recounted", key(r)));
+        }
+    }
     if !off.is_empty() {
         anyhow::bail!(
             "{} of {compared} counts moved more than {} %:\n{}",
@@ -447,6 +464,7 @@ pub fn merge_rows(path: &std::path::Path, rows: &[Value], kind: &str) -> Result<
 /// Only at `native` unless `--variants` says otherwise: allocation counts do
 /// not depend on the target CPU, and the report reads `native`.
 pub fn alloc(args: &[String]) -> Result<()> {
+    crate::doctor::require()?;
     let mut args = args.to_vec();
     if !args.iter().any(|a| a == "--variants") {
         args.extend(["--variants".to_owned(), "native".to_owned()]);
@@ -460,7 +478,9 @@ fn host_mode(args: &[String], mode: &str, shapes: &[Shape], host: &str, threads:
     let mut rows = Vec::new();
     for variant in filter.variants() {
         for set in filter.sets() {
-            let release = build(Place::Host, "cell", set, &variant)?;
+            // Only this mode counts allocations, so only its build pays for
+            // the counting allocator.
+            let release = crate::build::build_featured(Place::Host, "cell", set, &variant, "count-alloc")?;
             let cell_bin = bin(&release, "cell");
             let cells = filter.cells(set, shapes);
             eprintln!("{mode}: {} {} ({} cells)", variant.name, set.name, cells.len());
@@ -564,6 +584,17 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(err.contains("no count (valgrind died)"), "{err}");
+    }
+
+    #[test]
+    fn a_committed_count_the_rerun_dropped_is_a_failure() {
+        let mut dropped = row("json-small", Some(2000.0));
+        dropped["op"] = json!("encode");
+        let committed = json!({ "rows": [row("json-small", Some(1000.0)), dropped] });
+        let err = check_reproduced(&committed, &[row("json-small", Some(1000.0))], 0.0)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("not recounted"), "{err}");
     }
 
     #[test]

@@ -31,13 +31,10 @@ pub fn image() -> Result<()> {
 ///
 /// Core dumps are off: valgrind writes a `vgcore.<pid>` into the working
 /// directory, the mounted repository, for every client a signal kills, so a
-/// variant it cannot decode (SVE and `ldapr` on aarch64, AVX-512 on x86-64) would
+/// variant it cannot decode (AVX-512) would
 /// otherwise leave one core per cell until the disk fills. The cell's row
 /// records the failure; a core file adds nothing to it.
 pub fn reexec(task: &str, args: &[String]) -> Result<()> {
-    if !cfg!(target_os = "linux") {
-        anyhow::bail!("{task} runs valgrind, which does not run on this OS; run it on Linux (or let CI run it)");
-    }
     image()?;
     let id = output(Command::new(engine()).args(["image", "inspect", "--format", "{{.Id}}", IMAGE]))?;
     let home = std::env::var("CARGO_HOME")

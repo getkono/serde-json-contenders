@@ -1,6 +1,6 @@
 # The environment every callgrind count is taken in.
 #
-# Pinned by digest (multi-arch index: amd64 and arm64), with Debian packages
+# Pinned by digest (multi-arch index; only amd64 is used), with Debian packages
 # from a dated snapshot, so the image rebuilds to the same valgrind and the
 # same toolchain on any host. The Rust toolchain is the image's own 1.97.1,
 # the version rust-toolchain.toml names.

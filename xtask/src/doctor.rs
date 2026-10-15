@@ -29,21 +29,18 @@ fn rustc_features(rustflags: &str) -> Result<Vec<String>> {
 }
 
 /// What each backend's path must be, given the CPU and the build's features.
-fn expected_path(set: &str, backend: &str, compiled: &[String], detected: &[String], arch: &str) -> Option<String> {
+fn expected_path(set: &str, backend: &str, compiled: &[String], detected: &[String]) -> Option<String> {
     let has = |list: &[String], f: &str| list.iter().any(|x| x == f);
-    Some(match (backend, arch) {
-        ("sonic-rs", "aarch64") => "neon".into(),
-        ("sonic-rs", _) if has(compiled, "avx2") && has(compiled, "pclmulqdq") => "avx2+pclmulqdq".into(),
-        ("sonic-rs", _) => "sse2 (fallback scanner)".into(),
-        ("simd-json", "aarch64") => "NEON".into(),
-        ("simd-json", _) if has(detected, "avx2") => "AVX2".into(),
-        ("simd-json", _) if has(detected, "sse4.2") => "SSE42".into(),
-        ("flexon", "aarch64") => "swar (no aarch64 SIMD)".into(),
-        ("flexon", _) if set == "flexon-rt" && has(detected, "avx2") => "rt: avx2 skip, sse2 scan".into(),
-        ("flexon", _) if set == "flexon-ct" && has(compiled, "avx2") && has(compiled, "pclmulqdq") => {
+    Some(match backend {
+        "sonic-rs" if has(compiled, "avx2") && has(compiled, "pclmulqdq") => "avx2+pclmulqdq".into(),
+        "sonic-rs" => "sse2 (fallback scanner)".into(),
+        "simd-json" if has(detected, "avx2") => "AVX2".into(),
+        "simd-json" if has(detected, "sse4.2") => "SSE42".into(),
+        "flexon" if set == "flexon-rt" && has(detected, "avx2") => "rt: avx2 skip, sse2 scan".into(),
+        "flexon" if set == "flexon-ct" && has(compiled, "avx2") && has(compiled, "pclmulqdq") => {
             "ct: avx2+pclmulqdq".into()
         }
-        ("flexon", _) if set == "flexon-ct" && has(compiled, "sse4.2") => "ct: sse4.2".into(),
+        "flexon" if set == "flexon-ct" && has(compiled, "sse4.2") => "ct: sse4.2".into(),
         _ => return None,
     })
 }
@@ -83,7 +80,6 @@ pub fn doctor(args: &[String]) -> Result<()> {
                 "bmi2",
                 "pclmulqdq",
                 "avx512f",
-                "neon",
             ];
             for f in probed {
                 let want = expected.iter().any(|e| e == f);
@@ -97,7 +93,7 @@ pub fn doctor(args: &[String]) -> Result<()> {
             }
             if let Value::Object(paths) = &doc["paths"] {
                 for (backend, path) in paths {
-                    if let Some(want) = expected_path(set.name, backend, &compiled, &detected, std::env::consts::ARCH)
+                    if let Some(want) = expected_path(set.name, backend, &compiled, &detected)
                         && path.as_str() != Some(want.as_str())
                     {
                         failures.push(format!(

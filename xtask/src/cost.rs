@@ -17,7 +17,6 @@ pub fn text_size(path: &std::path::Path) -> Result<u64> {
     let file = object::File::parse(&*data)?;
     let section = file
         .section_by_name(".text")
-        .or_else(|| file.section_by_name("__text"))
         .context("no text section")?;
     Ok(section.size())
 }

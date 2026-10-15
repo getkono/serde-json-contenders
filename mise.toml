@@ -9,7 +9,7 @@ hk = "1.53.0"
 # The load generator for end-to-end timing, pinned: a generator that upgrades
 # itself under a parser changes what a percentile means.
 "github:hatoo/oha" = "1.16.0"
-# Fuzzing and Miri only; built from source because it has no macOS binary.
+# Fuzzing and Miri only; built from source.
 "cargo:cargo-fuzz" = "0.13.2"
 
 [hooks]

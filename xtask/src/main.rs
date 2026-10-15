@@ -27,7 +27,7 @@ cargo xtask <task> [--sets a,b] [--variants v,w] [--workloads x,y] [--jobs N]
   doctor        verify every build compiled and runs its claimed SIMD paths
   count         callgrind instructions and estimated cycles (container)
   alloc         allocations per operation
-  hw            hardware instruction and cycle counters (Linux)
+  hw            hardware cycles and instructions at native [--rounds 3] [--core 2] [--trust solo|canonical]
   time          timed sampling [--rounds 3] [--core 2] [--trust solo|canonical]
   e2e-count     callgrind per HTTP request, codec share (container)
   e2e-time      loopback throughput and open-loop p99 [--reps 5] [--seconds 30]
@@ -52,7 +52,7 @@ fn main() -> Result<()> {
         "doctor" => doctor::doctor(rest),
         "count" => counted::count(rest),
         "alloc" => counted::alloc(rest),
-        "hw" => counted::hw(rest),
+        "hw" => timed::hw(rest),
         "time" => timed::time(rest),
         "e2e-count" => endtoend::count(rest),
         "e2e-time" => endtoend::time(rest),

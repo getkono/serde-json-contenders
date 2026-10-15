@@ -20,13 +20,10 @@ fn read(path: &str) -> Option<String> {
 /// The CPU's marketing name.
 #[must_use]
 pub fn cpu_model() -> String {
-    if cfg!(target_os = "macos") {
-        return first_line(Command::new("sysctl").args(["-n", "machdep.cpu.brand_string"])).unwrap_or_default();
-    }
     read("/proc/cpuinfo")
         .and_then(|info| {
             info.lines()
-                .find(|l| l.starts_with("model name") || l.starts_with("Model"))
+                .find(|l| l.starts_with("model name"))
                 .and_then(|l| l.split(':').nth(1))
                 .map(|s| s.trim().to_owned())
         })

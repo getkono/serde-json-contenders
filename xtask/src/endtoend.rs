@@ -113,13 +113,9 @@ impl Drop for Server {
 }
 
 fn taskset(cores: &str, program: &std::path::Path) -> Command {
-    if cfg!(target_os = "linux") {
-        let mut cmd = Command::new("taskset");
-        cmd.args(["-c", cores]).arg(program);
-        cmd
-    } else {
-        Command::new(program)
-    }
+    let mut cmd = Command::new("taskset");
+    cmd.args(["-c", cores]).arg(program);
+    cmd
 }
 
 fn start(exe: &std::path::Path, backend: &str, port: u16) -> Result<Server> {

@@ -45,7 +45,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        os: [ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -64,15 +64,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        os: [ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
       - name: Recount the Kynos shapes and compare with the committed counts
-        run: |
-          arch=$(uname -m)
-          if [ ! -f "results/callgrind/$arch.json" ]; then
-            echo "no committed counts for $arch yet"; exit 0
-          fi
-          cargo xtask count --check --workloads json-small,echo-post,json-large --variants portable --jobs 4
+        run: cargo xtask count --check --workloads json-small,echo-post,json-large --variants portable --jobs 4

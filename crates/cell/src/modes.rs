@@ -82,7 +82,12 @@ fn alloc(job: &mut impl Job, iters: u64) -> Value {
     })
 }
 
-#[cfg(target_os = "linux")]
+/// Hardware counters. The process is pinned to `CELL_CORE` when set, and a
+/// repetition during which other tasks took more than
+/// `CELL_MAX_OTHER_PERMILLE` of that core is discarded and repeated, as in
+/// [`time`]: `cycles:u` counts this thread's cycles, but a neighbour on the
+/// core (or its SMT sibling, which `xtask` keeps idle) still evicts caches and
+/// shares the pipeline.
 fn hw(job: &mut impl Job, iters: u64) -> Value {
     use perf_event::Builder;
     use perf_event::events::Hardware;
@@ -105,13 +110,23 @@ fn hw(job: &mut impl Job, iters: u64) -> Value {
         Ok(c) => c,
         Err(e) => return json!({ "error": format!("perf_event_open: {e}") }),
     };
+    let env = |name: &str, default: u64| std::env::var(name).ok().and_then(|v| v.parse().ok()).unwrap_or(default);
+    let max_other = env("CELL_MAX_OTHER_PERMILLE", 20) as f64 / 1000.0;
+    let core = std::env::var("CELL_CORE").ok().and_then(|v| v.parse().ok());
+    let pinned = core.map(crate::doctor::pin);
     job.prepare(1);
     job.run();
     let reps = 101;
     let mut ins = Vec::with_capacity(reps);
     let mut cyc = Vec::with_capacity(reps);
-    for _ in 0..reps {
+    let mut discarded = 0u64;
+    while cyc.len() < reps {
+        if discarded > 20 * reps as u64 {
+            return json!({ "error": "host too busy: more than 20 discarded repetitions per kept one", "discarded": discarded });
+        }
         job.prepare(iters);
+        let probe = crate::doctor::Interference::start(core);
+        let t = Instant::now();
         let read = (|| -> std::io::Result<_> {
             group.reset()?;
             group.enable()?;
@@ -119,10 +134,15 @@ fn hw(job: &mut impl Job, iters: u64) -> Value {
             group.disable()?;
             group.read()
         })();
+        let elapsed = t.elapsed();
         match read {
             Ok(data) => {
                 if data.time_running() != data.time_enabled() {
                     return json!({ "error": "counters were multiplexed; results would be scaled estimates" });
+                }
+                if probe.finish(elapsed) > max_other {
+                    discarded += 1;
+                    continue;
                 }
                 ins.push(data[&instructions] as f64 / iters as f64);
                 cyc.push(data[&cycles] as f64 / iters as f64);
@@ -135,12 +155,9 @@ fn hw(job: &mut impl Job, iters: u64) -> Value {
         "cycles": median(&mut cyc),
         "cycles_iqr": iqr(&mut cyc),
         "reps": reps,
+        "discarded": discarded,
+        "pinned": pinned,
     })
-}
-
-#[cfg(not(target_os = "linux"))]
-fn hw(_: &mut impl Job, _: u64) -> Value {
-    json!({ "error": "hardware counters are read through perf_event_open, which only Linux has" })
 }
 
 fn median(v: &mut [f64]) -> f64 {

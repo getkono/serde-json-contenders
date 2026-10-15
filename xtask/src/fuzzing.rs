@@ -63,7 +63,6 @@ pub fn fuzz(args: &[String]) -> Result<()> {
             &[("v3", "-C target-cpu=x86-64-v3 -C target-feature=+pclmulqdq")]
         };
         for &(config, flags) in configs {
-            let flags = if cfg!(target_arch = "x86_64") { flags } else { "" };
             for &target in FUZZ_TARGETS {
                 let fuzz = fuzz.clone();
                 let host = host.clone();

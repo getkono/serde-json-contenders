@@ -429,14 +429,6 @@ pub fn alloc(args: &[String]) -> Result<()> {
     host_mode(args, "alloc", SHAPES, &crate::provenance::host_slug(), None)
 }
 
-/// `xtask hw`: hardware instruction and cycle counters (Linux).
-pub fn hw(args: &[String]) -> Result<()> {
-    if !cfg!(target_os = "linux") {
-        anyhow::bail!("hardware counters need perf_event_open, which only Linux has");
-    }
-    host_mode(args, "hw", SHAPES, &crate::provenance::host_slug(), Some(jobs(args, 4)))
-}
-
 fn host_mode(args: &[String], mode: &str, shapes: &[Shape], host: &str, threads: Option<usize>) -> Result<()> {
     let filter = Filter::parse(args);
     let threads = threads.unwrap_or_else(|| jobs(args, 8));
@@ -597,8 +589,8 @@ mod tests {
     fn names_the_instruction_valgrind_could_not_decode() {
         let stderr = "\
 ==7== Callgrind, a call-graph generating cache profiler
-disInstr(arm64): unhandled instruction 0x25F8C540
-disInstr(arm64): 0010'0101 1111'1000 1100'0101 0100'0000
+vex amd64->IR: unhandled instruction bytes: 0x62 0xF1 0x7C 0x48 0x10 0x6
+vex amd64->IR:   REX=0 REX.W=0 REX.R=0 REX.X=0 REX.B=0
 ==7== valgrind: Unrecognised instruction at address 0x4a1f20.
 ==7==    at 0x4a1f20: std::rt::lang_start_internal (mod.rs:713)
 ==7== Process terminating with default action of signal 4 (SIGILL)
@@ -607,7 +599,7 @@ In the bug report, send all the above text, the valgrind
 version, and what OS and version you are using.  Thanks.";
         assert_eq!(
             valgrind_error(stderr),
-            "disInstr(arm64): unhandled instruction 0x25F8C540\n\
+            "vex amd64->IR: unhandled instruction bytes: 0x62 0xF1 0x7C 0x48 0x10 0x6\n\
              ==7== valgrind: Unrecognised instruction at address 0x4a1f20."
         );
     }

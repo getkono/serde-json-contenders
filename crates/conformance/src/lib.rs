@@ -150,11 +150,7 @@ pub fn target_features() -> Vec<&'static str> {
         "lzcnt",
         "pclmulqdq",
         "avx512f",
-        "avx512bw",
-        "neon",
-        "aes",
-        "sha2",
-        "crc"
+        "avx512bw"
     );
     features
 }

@@ -1,7 +1,7 @@
 name: Measure
 
-# The counted results of record for aarch64, and a cross-host check of the
-# x86-64 ones. Manual: a full sweep takes hours.
+# A cross-host check of the x86-64 results on another CPU. Its artifacts are
+# for comparison, not results of record. Manual: a full sweep takes hours.
 on:
   workflow_dispatch:
     inputs:
@@ -18,7 +18,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        os: [ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     steps:
@@ -33,15 +33,15 @@ jobs:
 
   # One job per task: each writes its own result file, builds its own targets
   # and needs its own share of the runner's disk, so a runner lost in one task
-  # loses only that task's results. Conformance runs here too, so aarch64's
-  # variants are gated as x86-64's are, not only its portable build in CI.
+  # loses only that task's results. Conformance runs here too, so every
+  # variant is gated on a second CPU, not only the portable build in CI.
   measure:
     name: ${{ matrix.task }} (${{ matrix.os }})
     needs: doctor
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        os: [ubuntu-24.04]
         task: [count, e2e-count, alloc, conformance]
         include:
           - task: count

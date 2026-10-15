@@ -28,7 +28,7 @@ fn fill<T: Serialize>(mut next: impl FnMut() -> T) -> Vec<T> {
 pub struct Integers {
     /// Unsigned values across every digit count up to `u64::MAX`'s 20.
     pub unsigned: Vec<u64>,
-    /// Signed values across every digit count up to 19.
+    /// Signed values across every digit count up to `i64::MAX`'s 19.
     pub signed: Vec<i64>,
 }
 
@@ -50,10 +50,12 @@ impl Workload for Ints {
                 rng.below(10u64.saturating_pow(digits).max(10)) | u64::from(digits == 19) << 63
             })
             .collect();
+        // At 19 digits the bound is 2^63, not 10^19, so the magnitude stays an
+        // `i64` and negates without overflow.
         let signed = (0..700)
             .map(|_| {
-                let digits = rng.below(19) as u32;
-                let magnitude = rng.below(10u64.pow(digits).max(10)) as i64;
+                let digits = rng.below(20) as u32;
+                let magnitude = rng.below(10u64.pow(digits).clamp(10, 1 << 63)) as i64;
                 if rng.below(2) == 0 { -magnitude } else { magnitude }
             })
             .collect();

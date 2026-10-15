@@ -95,6 +95,21 @@ fn nested_bodies_have_their_depth() {
     assert!(serde_json::from_slice::<families::Node>(&families::Nested::<127>::bytes()).is_ok());
 }
 
+/// The digit counts present among `values`, by their decimal text.
+fn digit_counts<T: ToString>(values: &[T]) -> std::collections::BTreeSet<usize> {
+    values
+        .iter()
+        .map(|v| v.to_string().trim_start_matches('-').len())
+        .collect()
+}
+
+#[test]
+fn ints_cover_every_digit_count() {
+    let ints = families::Ints::value();
+    assert_eq!(digit_counts(&ints.unsigned), (1..=20).collect());
+    assert_eq!(digit_counts(&ints.signed), (1..=19).collect());
+}
+
 #[test]
 fn twitter_like_escapes_all_non_ascii() {
     let bytes = world::TwitterLike::bytes();

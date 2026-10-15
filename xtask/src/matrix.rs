@@ -203,10 +203,16 @@ pub const TIMED_SHAPES: &[Shape] = &[SHAPES[0], SHAPES[4]];
 /// The workloads the decision rule is evaluated on.
 pub const KYNOS: &[&str] = &["json-small", "echo-post", "json-large"];
 
-/// Workloads whose value is another workload's, written differently: their
-/// encode is that workload's encode, byte for byte, so only their decode is
-/// measured.
-pub const DECODE_ONLY: &[&str] = &["pretty-json-large", "pretty-twitter-like", "raw-utf8"];
+/// Workloads only decoded: those whose value is another workload's, written
+/// differently (their encode is that workload's encode, byte for byte), and
+/// those whose bytes must be refused (nothing to encode).
+pub const DECODE_ONLY: &[&str] = &[
+    "pretty-json-large",
+    "pretty-twitter-like",
+    "raw-utf8",
+    "reject-truncated",
+    "reject-shape",
+];
 
 /// `shapes` as they apply to `workload`: the decode shapes alone (they come
 /// first in every shape list) for a [`DECODE_ONLY`] workload.

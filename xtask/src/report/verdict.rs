@@ -615,24 +615,25 @@ fn wrong_results(data: &Data, backend: &str) -> Vec<String> {
             })
             .is_some_and(|sj| matches!(sj["verdict"].as_str(), Some("exact" | "inexact")))
     };
-    let mut wrong: Vec<String> = tables
+    // One line per workload and operation, with how many of its cells
+    // (variants, forms, arrivals) said so.
+    let mut cells: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+    for (k, r) in tables
         .iter()
         .flat_map(|t| t.rows.iter().map(move |(k, r)| (*t, k, r)))
         .filter(|(t, k, r)| k.backend == backend && (r["verdict"] == "wrong" || refused(t, k, r)))
-        .map(|(_, k, r)| {
-            format!(
-                "{} on {} {} {} {}",
-                if r["verdict"] == "wrong" {
-                    "wrong result"
-                } else {
-                    "refuses what serde_json decodes"
-                },
-                k.workload,
-                k.op,
-                k.form,
-                k.arrival
-            )
-        })
+        .map(|(_, k, r)| (k, r))
+    {
+        let what = match (r["verdict"] == "wrong", k.op.starts_with("encode")) {
+            (true, _) => "wrong result",
+            (false, true) => "refuses what serde_json encodes",
+            (false, false) => "refuses what serde_json decodes",
+        };
+        *cells.entry(format!("{what} on {} {}", k.workload, k.op)).or_default() += 1;
+    }
+    let mut wrong: Vec<String> = cells
+        .into_iter()
+        .map(|(w, n)| if n > 1 { format!("{w} ({n} cells)") } else { w })
         .chain(
             data.e2e_count
                 .iter()
@@ -1476,7 +1477,7 @@ pub(super) mod tests {
         }
         assert_eq!(
             super::wrong_results(&data, "jiter"),
-            ["refuses what serde_json decodes on ints decode owned shared"]
+            ["refuses what serde_json decodes on ints decode"]
         );
     }
 

@@ -68,7 +68,7 @@ A gain that only shows up in a native build is accepted: applications are assume
 - simd-json reports the path it selected, which must be its best for the CPU.
 - sonic-rs and flexon select theirs with a compile-time `cfg` or a CPUID check; `doctor` evaluates the same condition inside the built binary.
 
-Every measuring task (`count`, `alloc`, `hw`, `time`, `e2e-count`, `e2e-time`) refuses to start unless `doctor` passed on this host for the same code, and the report refuses a doctor result with failures.
+Every measuring task (`count`, `alloc`, `hw`, `time`, `e2e-count`, `e2e-time`) refuses to start unless `doctor` passed on this host for the same code (a `count --check` recount, which writes no counts, excepted), and the report refuses a doctor result with failures.
 
 ### Axes
 
@@ -91,7 +91,7 @@ Each per-operation measurement follows the same protocol:
 2. A warm-up call pays one-time costs: CPU detection, lazy statics, first-touch page faults.
 3. The operation is repeated inside a function that is the only thing counted. That is `max(1, min(1000, 4 MiB ÷ size))` iterations, and the result is dropped inside the counted region, as a server drops it. A `unique` arrival gets a fresh copy of the input each iteration. A `shared` arrival clones one `Bytes` handle each iteration, so the input stays in cache, as a frame a server has just read does.
 
-Hardware cycles add the timed protocol below. Each cell is its own process, pinned to one core (a process that cannot pin is an error, not a figure), and every repetition (101 per process, the median kept) during which another task ran on that core for more than 2 % of the time is discarded and repeated. The core's SMT sibling shares its caches and pipeline, so it must be idle too: its busy share is read from `/proc/stat` over 250 ms before the process, over the process, and over 250 ms after, and a cell is rerun, up to 30 times, while it exceeds 10 %. Cells run one at a time, in 3 rounds in shuffled order, with serde_json twice per round as the A/A control. The figure is the median over rounds, and a timed task always runs with the baseline in the same session, replacing its result file rather than merging into an earlier session's (a run narrowed to some sets or workloads leaves the file incomplete, which the report refuses). Hardware cycles are taken at every shape for the Kynos workloads, and at the server's own two shapes (owned decode of a shared frame, `to_vec` encode) for every other workload; their other shapes are counted by callgrind and alloc only.
+Hardware cycles add the timed protocol below. Each cell is its own process, pinned to one core (a process that cannot pin is an error, not a figure), and every repetition (101 per process, the median kept) during which another task ran on that core for more than 2 % of the time is discarded and repeated. The core's SMT sibling shares its caches and pipeline, so it must be idle too: its busy share is read from `/proc/stat` over 250 ms before the process, over the process, and over 250 ms after, and a cell is rerun, up to 30 times, while it exceeds 10 %. Cells run one at a time, in 3 rounds in shuffled order, with serde_json twice per round as the A/A control. The figure is the median over rounds, and a timed task always runs with the baseline in the same session, replacing its result file rather than merging into an earlier session's (a run narrowed to some sets or workloads leaves the file incomplete, which the report refuses). Hardware cycles are taken at every shape for the Kynos workloads, and at the server's own shapes (owned decode of a shared frame, and `to_vec` encode where encode is measured) for every other workload; their other shapes are counted by callgrind and alloc only.
 
 ### Workloads
 
@@ -162,14 +162,14 @@ Hardware cycles, wall-clock time and end-to-end timing all carry a trust class:
 - **`solo`**: a shared machine, with the sample checks above.
 - **`canonical`**: a quiet, dedicated machine, stated with `--trust canonical`, which is refused unless the 1-minute load average is at most 1.0 and the CPU governor is `performance`.
 
-A pass under rule 1 or rule 4 that rests on `solo` timing is reported as provisional. Wall-clock time per operation uses the hardware-cycles protocol, with 100 samples of 20 ms after a 3 s warm-up in place of counters. It covers the Kynos, sweep and real-world workloads at the server's own two shapes; the families are counted and cycle-measured, not timed. It replaces criterion: rejecting a disturbed sample and interleaving processes across rounds are the two things the protocol needs, and neither can be done inside one criterion run.
+A pass under rule 1 or rule 4 that rests on `solo` timing is reported as provisional. Wall-clock time per operation uses the hardware-cycles protocol, with 100 samples of 20 ms after a 3 s warm-up in place of counters. It covers the Kynos, sweep and real-world workloads at the server's own shapes; the families and rejections are counted and cycle-measured, not timed. It replaces criterion: rejecting a disturbed sample and interleaving processes across rounds are the two things the protocol needs, and neither can be done inside one criterion run.
 
 ### Hosts
 
 | Host | Counted (callgrind) | Hardware cycles | Timed |
 | --- | --- | --- | --- |
 | AMD Ryzen 7 7800X3D (Zen 4), Linux | `portable`, `v3` in the container (valgrind cannot run AVX-512, so not `native`) | `native` | `native` |
-| GitHub `ubuntu-24.04` | reproducibility check only: the Kynos shapes' counts at `portable` must match the committed ones within 0.5 % | no | no |
+| GitHub `ubuntu-24.04` | reproducibility check only: the Kynos shapes' counts at `portable` must match the committed ones within 0.5 %; conformance at `portable` also runs there, as an artifact the report does not read | no | no |
 
 There is no Intel machine, so no Intel hardware-cycle or wall-clock number exists.
 
@@ -188,7 +188,7 @@ Decode-only entries are compared on the decode axes alone, and an encoder is onl
 
 A backend is **recommended for Kynos** only if all four hold:
 
-1. **Frontier.** On at least one Kynos shape, it is non-dominated among eligible entries at x86-64 `native` and more than the margin better than serde_json on decode or encode cycles or heap. Every cycles advantage, in a win or in dominance, must agree with the counts: one entry's cycles advantage over another counts only if, at `v3`, its callgrind estimated cycles for the same cell are lower than the other's, and a cycles disadvantage is excused as noise only if its count is more than 5 % lower. An entry without both counts on a cycles axis cannot dominate on it. Without an A/A control or a `v3` count for a Kynos cell the rule is pending, and it is provisional unless the cycles are `canonical`.
+1. **Frontier.** On at least one Kynos shape, it is non-dominated among eligible entries at x86-64 `native` and more than the margin better than serde_json on decode or encode cycles or heap. Every cycles advantage, in a win or in dominance, must agree with the counts: one entry's cycles advantage over another counts only if, at `v3`, its callgrind estimated cycles for the same cell are lower than the other's, and a cycles disadvantage is excused as noise only if the other's count is more than 5 % higher. An entry cannot dominate another where either lacks a count on a cycles axis both were timed on. Without an A/A control or a `v3` count for a Kynos cell the rule is pending, and it is provisional unless the cycles are `canonical`.
 2. **Conformance.** No gating disagreement at any variant, no wrong result on any measured cell, no fuzz divergence, and no undefined behaviour under Miri.
 3. **Soundness.** No advisory affecting the pinned version, no open soundness issue, and no memory error reported by the sanitizer while fuzzing.
 4. **End to end.** At least 10 % better throughput or p99 on `echo-post` or `json-large`, outside the A/A band, and consistent with the counted codec share: no more throughput than the count predicts, give or take ε or the A/A band, whichever is wider (more is a measurement error, and leaves the rule pending until a rerun), and a p99 gain only where the count predicts a gain of more than 5 % (a p99 under load is not proportional to a request's cost, so it has no tighter bound). The A/A control and the prediction must both exist, or the rule is pending.
@@ -211,7 +211,7 @@ The results stand only after these checks:
    - An adapter that does less work than it should, the kind of variant an optimizer could delete, is refused by the result check in every mode and never measured.
    - A cycles "win" inside the A/A band, or one the count contradicts, is not a win (`xtask/src/report/verdict.rs` tests).
 5. **The commentary matches the report.** Every number quoted under [Findings](#findings) links to the report row it comes from, and `cargo xtask report --check` fails if that row does not hold it, or if a figure in Findings has no link.
-6. **Nothing is left out.** Every requirement above maps to a task, a result file and a report table, or to a deviation listed here. Every row of every result file is exported to `report/data/`.
+6. **Nothing is left out.** Every requirement above maps to a task, a result file and a report table, or to a deviation listed here. Every row of every result file is exported to `report/data/`, and so is every figure and note in the conformance reports.
 
 Deviations:
 

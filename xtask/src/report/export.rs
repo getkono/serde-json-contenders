@@ -98,7 +98,12 @@ pub fn exports(data: &Data) -> Vec<Export> {
             })],
         ),
     ];
-    let (summary, differences) = conformance(data);
+    let Conformance {
+        summary,
+        differences,
+        measures,
+        notes,
+    } = conformance(data);
     out.push(export(
         "conformance-sections.csv",
         "conformance: cases and disagreements per section, every build (`conformance/*/*.json`)",
@@ -109,14 +114,53 @@ pub fn exports(data: &Data) -> Vec<Export> {
         "conformance: each recorded difference (a section records its first 50; the counts above are complete)",
         &differences,
     ));
+    out.push(export(
+        "conformance-data.csv",
+        "conformance: every figure a section measured beyond its cases (float rounding tallies, borrow probes, line and column reporting, ...), one row per figure",
+        &measures,
+    ));
+    out.push(export(
+        "conformance-notes.csv",
+        "conformance: every note a section recorded",
+        &notes,
+    ));
     out
 }
 
+/// The conformance reports, flattened.
+struct Conformance {
+    summary: Vec<Value>,
+    differences: Vec<Value>,
+    measures: Vec<Value>,
+    notes: Vec<Value>,
+}
+
+/// Each leaf of `v` under `path` (objects joined with `.`; an array is a
+/// leaf, written as its JSON).
+fn leaves(path: &str, v: &Value, out: &mut Vec<(String, Value)>) {
+    match v {
+        Value::Object(o) => {
+            for (k, child) in o {
+                let p = if path.is_empty() {
+                    k.clone()
+                } else {
+                    format!("{path}.{k}")
+                };
+                leaves(&p, child, out);
+            }
+        }
+        Value::Null => {}
+        leaf => out.push((path.to_owned(), leaf.clone())),
+    }
+}
+
 /// Conformance reports flattened: one row per build, backend and section,
-/// and one per recorded difference.
-fn conformance(data: &Data) -> (Vec<Value>, Vec<Value>) {
+/// one per recorded difference, one per measured figure, and one per note.
+fn conformance(data: &Data) -> Conformance {
     let mut summary = Vec::new();
     let mut differences = Vec::new();
+    let mut measures = Vec::new();
+    let mut notes = Vec::new();
     for ((variant, set), report) in &data.host.conformance {
         let Some(backends) = report["backends"].as_object() else {
             continue;
@@ -138,10 +182,28 @@ fn conformance(data: &Data) -> (Vec<Value>, Vec<Value>) {
                         "detail": d["detail"],
                     }));
                 }
+                let mut figures = Vec::new();
+                leaves("", &s["data"], &mut figures);
+                for (figure, value) in figures {
+                    measures.push(serde_json::json!({
+                        "variant": variant, "set": set, "backend": backend, "section": section,
+                        "figure": figure, "value": value,
+                    }));
+                }
+                for note in s["notes"].as_array().into_iter().flatten() {
+                    notes.push(serde_json::json!({
+                        "variant": variant, "set": set, "backend": backend, "section": section, "note": note,
+                    }));
+                }
             }
         }
     }
-    (summary, differences)
+    Conformance {
+        summary,
+        differences,
+        measures,
+        notes,
+    }
 }
 
 /// `rows` as CSV: the columns every row has between them, sorted, with the

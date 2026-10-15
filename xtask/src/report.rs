@@ -270,11 +270,21 @@ fn holds(section: &str, title: &str, quoted: &str) -> Result<(), String> {
 }
 
 /// Whether `cell` holds `quoted` as a whole figure: equal, or present with
-/// no digit, point, comma or sign directly around it.
+/// no digit, point, comma or sign directly before it, and nothing after it
+/// that would make it a longer number or give it a unit it does not quote
+/// ("2.10" is not the "2.10 M" in a cell).
 fn whole(cell: &str, quoted: &str) -> bool {
     let joins = |c: Option<char>| c.is_some_and(|c| c.is_ascii_digit() || matches!(c, '.' | ',' | '+' | '-' | '−'));
-    cell.match_indices(quoted)
-        .any(|(i, _)| !joins(cell[..i].chars().next_back()) && !joins(cell[i + quoted.len()..].chars().next()))
+    let unit = |rest: &str| {
+        let rest = rest.trim_start_matches(' ');
+        rest.chars()
+            .next()
+            .is_some_and(|c| c.is_alphanumeric() || matches!(c, '%' | '×' | 'µ'))
+    };
+    cell.match_indices(quoted).any(|(i, _)| {
+        let rest = &cell[i + quoted.len()..];
+        !joins(cell[..i].chars().next_back()) && !joins(rest.chars().next()) && !unit(rest)
+    })
 }
 
 /// Figures written in the README's Findings without a link to the report row
@@ -311,41 +321,69 @@ fn bare_figures(readme: &str) -> Vec<String> {
         at = link.end;
     }
     text.push_str(&body[at..]);
-    let mut prose = String::new();
+    if text.contains("<a ") || text.contains("<span") || text.contains("<b>") {
+        failures.push("Findings holds HTML; quote figures as Markdown links".to_owned());
+    }
+    // Words, each marked as inside inline code (or a fence) or not. A dash
+    // or a slash splits words, so "fewer—16 %" and "1/3" yield their
+    // numbers.
+    let mut words: Vec<(String, bool)> = Vec::new();
     let mut code = false;
+    let mut word = String::new();
     for c in text.chars() {
-        if c == '`' {
-            code = !code;
-            prose.push(' ');
-        } else if !code {
-            prose.push(c);
+        let split = c.is_whitespace() || matches!(c, '—' | '–' | '/' | '`');
+        if split {
+            if !word.is_empty() {
+                words.push((std::mem::take(&mut word), code));
+            }
+            if c == '`' {
+                code = !code;
+            }
+        } else {
+            word.push(c);
         }
     }
-    let mut rule_list = false;
+    if !word.is_empty() {
+        words.push((word, code));
+    }
     let mut previous = String::new();
-    for word in prose.split_whitespace() {
+    let mut previous_rule = false;
+    let mut before_previous_rule = false;
+    for (word, code) in words {
         let token = word.trim_matches(|c: char| {
             matches!(
                 c,
-                ',' | ';' | ':' | '.' | '(' | ')' | '"' | '*' | '[' | ']' | '!' | '?' | '\''
+                ',' | ';' | ':' | '.' | '(' | ')' | '"' | '*' | '_' | '[' | ']' | '!' | '?' | '\''
             )
         });
-        let lower = token.to_lowercase();
-        let body = token.trim_start_matches(['~', '≈', '±', '+', '-', '−', '<', '>', '≤', '≥']);
-        let figure = body.chars().next().is_some_and(|c| c.is_ascii_digit());
-        // "rule 1", "rules 1, 2 and 4": a number after "rule", or after a
-        // rule number with at most an "and" or "or" between.
-        rule_list = if figure {
-            rule_list || matches!(previous.as_str(), "rule" | "rules")
+        // In code, a name (`nested-129`, `v3`) is not a figure, but a
+        // number is. In prose, so is any word holding a digit that does
+        // not begin as a name does, with a letter.
+        let figure = if code {
+            token.chars().next().is_some_and(char::is_numeric)
         } else {
-            rule_list && matches!(lower.as_str(), "and" | "or")
+            token.chars().any(char::is_numeric) && !token.chars().next().is_some_and(char::is_alphabetic)
         };
-        if figure && !rule_list {
+        // A rule's number: one of 1 to 4 right after "rule" or "rules", or
+        // after one such and a comma, "and" or "or".
+        let rule = !code
+            && matches!(token, "1" | "2" | "3" | "4")
+            && (matches!(previous.as_str(), "rule" | "rules")
+                || (previous_rule && previous.ends_with(','))
+                || (before_previous_rule && matches!(previous.as_str(), "and" | "or")));
+        if figure && !rule {
             failures.push(format!(
                 "Findings quotes {token} without a link to the report row it comes from"
             ));
         }
-        previous = lower;
+        before_previous_rule = previous_rule;
+        previous_rule = rule;
+        // Kept with its trailing comma, which continues a list of rules.
+        previous = if code {
+            String::new()
+        } else {
+            word.trim_start_matches(['(', '*', '_', '"']).to_lowercase()
+        };
     }
     failures
 }
@@ -432,12 +470,37 @@ mod tests {
         use super::bare_figures;
         let ok = "## Findings\n\nUnder rules 1 and 4, at `v3` and `x86-64`, [sic] sonic-rs takes [0.84×](report/README.md#x \"y | z\").\n";
         assert!(bare_figures(ok).is_empty(), "{:?}", bare_figures(ok));
-        for bad in ["0.84x", "~16", "1.2k", "10–20", "≈0.8×", "1/3", "rule 1 at 16 %"] {
+        for bad in [
+            "0.84x",
+            "~16",
+            "1.2k",
+            "10–20",
+            "≈0.8×",
+            "1/3",
+            "rule 1 at 16 %",
+            "`16 %`",
+            "_0.84×_",
+            "fewer—16 %",
+            "rule 4: 30 %",
+            "rule 4's 10 %",
+            "rule 1 and 16 %",
+            "<a href=\"x\">0.84×</a>",
+            "１６ %",
+        ] {
             let text = format!("## Findings\n\n[sic] it is {bad} faster.\n");
             assert!(!bare_figures(&text).is_empty(), "{bad} passed");
         }
         let elsewhere = "## Findings\n\nIt is [0.84×](https://example.com) faster.\n";
         assert_eq!(bare_figures(elsewhere).len(), 1);
+    }
+
+    #[test]
+    fn a_figure_without_its_unit_is_not_the_cell() {
+        assert!(!super::whole("2.10 M", "2.10"));
+        assert!(super::whole("2.10 M", "2.10 M"));
+        assert!(super::whole("0.84× (0.90× at v3)", "0.84×"));
+        let ok = "## Findings\n\nUnder rules 1, 2 and 4 it holds.\n";
+        assert!(super::bare_figures(ok).is_empty(), "{:?}", super::bare_figures(ok));
     }
 
     #[test]

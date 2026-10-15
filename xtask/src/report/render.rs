@@ -34,7 +34,13 @@ fn mark(o: &Outcome) -> &'static str {
     }
 }
 
+/// One table row. A `|` or a line break inside a cell would end it, so
+/// they are escaped.
 fn row(cells: &[String]) -> String {
+    let cells: Vec<String> = cells
+        .iter()
+        .map(|c| c.replace('|', "\\|").replace(['\n', '\r'], " "))
+        .collect();
     format!("| {} |\n", cells.join(" | "))
 }
 
@@ -368,8 +374,14 @@ fn cpu_block(data: &Data, title: &str, workloads: &[&str], op: &str, points: &[P
                 notes.note("serde_json", w, op, r);
                 absent(r).to_owned()
             };
+            // The ratio of the medians, and the band the rule applies: the
+            // widest gap in the medians or in any one round.
             let aa = if p.timed() {
-                ratio(cpu(data, *p, "serde_json#aa", w, op), base)
+                format!(
+                    "{} (±{})",
+                    ratio(cpu(data, *p, "serde_json#aa", w, op), base),
+                    verdict::aa_band(data, *p, w, op).map_or("—".into(), |b| format!("{:.1} %", b * 100.0))
+                )
             } else {
                 "exact".to_owned()
             };
@@ -399,7 +411,7 @@ fn points() -> [Point; 4] {
 
 fn kynos_cpu(out: &mut String, data: &Data) {
     section(out, "kynos-decode", "CPU per operation at the Kynos shapes: decode");
-    out.push_str("serde_json is the absolute figure; every other column is a ratio to it (below 1 is faster). Owned decode of one shared frame, and `to_vec` encode: what a server does. The rule reads `native (cycles)`, hardware cycles, with the A/A column (serde_json's second copy) as its noise floor; `v3 (est. cycles)` is callgrind's deterministic count, which corroborates it. The instruction rows are the same builds counted as instructions.\n\n");
+    out.push_str("serde_json is the absolute figure; every other column is a ratio to it (below 1 is faster). Owned decode of one shared frame, and `to_vec` encode: what a server does. The rule reads `native (cycles)`, hardware cycles, with the A/A column (serde_json's second copy: the ratio of the medians, and in brackets the band the rule applies, the widest gap in the medians or any one round) as its noise floor; `v3 (est. cycles)` is callgrind's deterministic count, which corroborates it. The instruction rows are the same builds counted as instructions.\n\n");
     out.push_str(&cpu_block(data, "", KYNOS, "decode", &points(), &all_entries()));
     section(out, "kynos-encode", "CPU per operation at the Kynos shapes: encode");
     out.push_str(&cpu_block(data, "", KYNOS, "encode", &points(), &encoders()));
@@ -538,7 +550,14 @@ fn arrival(out: &mut String, data: &Data) {
     out.push_str("Decode at the Kynos shapes, relative to the same backend's owned decode of a shared frame, in hardware cycles at `native` and callgrind's estimated cycles at `v3`. In-place parsers pay a copy when the frame is shared; borrowing saves the string allocations.\n\n");
     for p in [X86_NATIVE, X86_V3] {
         for w in KYNOS {
-            let _ = writeln!(out, "**{w}, {}**\n", p.label());
+            // Each table has its own anchor: their rows repeat one another's
+            // labels, so a quoted figure names the table by it.
+            let _ = writeln!(
+                out,
+                "<a id=\"arrival-{w}-{}\"></a>\n\n**{w}, {}**\n",
+                p.variant,
+                p.label()
+            );
             out.push_str(&header(&[
                 "Entry point",
                 "owned, shared (abs.)",
@@ -567,7 +586,7 @@ fn encode_into(out: &mut String, data: &Data) {
     section(out, "encode-into", "Encoding into a reused buffer");
     out.push_str("`to_vec` into a fresh `Vec`, and `to_writer` into a reused `Vec` that already has capacity, relative to the same backend's `to_vec`, in hardware cycles at `native` and callgrind's estimated cycles at `v3`.\n\n");
     for p in [X86_NATIVE, X86_V3] {
-        let _ = writeln!(out, "**{}**\n", p.label());
+        let _ = writeln!(out, "<a id=\"encode-into-{}\"></a>\n\n**{}**\n", p.variant, p.label());
         let mut cols = vec!["Entry point".to_owned()];
         for w in KYNOS {
             cols.push(format!("{w} `to_vec` (abs.)"));

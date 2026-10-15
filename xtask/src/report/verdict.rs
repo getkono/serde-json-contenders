@@ -151,9 +151,18 @@ pub struct Point {
     /// `callgrind-ir` (instructions callgrind counted) are reported beside
     /// them.
     pub source: &'static str,
+    /// Whether a timed axis is weighed with the A/A band (or ε alone, to ask
+    /// whether only the band of `solo` timing hides a win).
+    pub band: bool,
 }
 
 impl Point {
+    /// The same point, with timed figures weighed at ε alone.
+    #[must_use]
+    pub fn without_band(self) -> Self {
+        Self { band: false, ..self }
+    }
+
     pub fn label(&self) -> String {
         format!(
             "{} ({})",
@@ -201,12 +210,14 @@ impl Point {
 pub const X86_NATIVE: Point = Point {
     variant: "native",
     source: "hw",
+    band: true,
 };
 /// The deterministic corroboration: callgrind's estimated cycles at
 /// x86-64-v3 (valgrind cannot run the AVX-512 `native` build).
 pub const X86_V3: Point = Point {
     variant: "v3",
     source: "callgrind",
+    band: true,
 };
 
 /// CPU per operation at a point.
@@ -321,7 +332,7 @@ impl Axis {
 /// The CPU axis tolerance at a point: ε, or the A/A band where wider; `None`
 /// without a control.
 pub fn cpu_tolerance(data: &Data, p: Point, workload: &str, op: &str) -> Option<f64> {
-    aa_band(data, p, workload, op).map(|b| EPSILON.max(b))
+    aa_band(data, p, workload, op).map(|b| if p.band { EPSILON.max(b) } else { EPSILON })
 }
 
 /// The cycles axis of `backend` at a point. Without an A/A control the
@@ -361,16 +372,6 @@ fn axes(data: &Data, p: Point, e: &Entry, workload: &str, encode: bool) -> Vec<A
     v
 }
 
-/// Whether the deterministic counts agree that `x` costs no more than `y`
-/// (within ε): what excuses `x` being timed slower as noise. An axis
-/// without counts has nothing to contradict.
-fn count_agrees(x: &Axis, y: &Axis) -> bool {
-    match (x.count, y.count) {
-        (Count::At(a), Count::At(b)) => a <= b * (1.0 + EPSILON),
-        _ => true,
-    }
-}
-
 /// Whether the deterministic counts point the same way as a timed win of
 /// `x` over `y`: `x`'s count is lower. A count no lower leaves a timed win
 /// unexplained by the code, so it is not taken as one.
@@ -390,9 +391,10 @@ fn count_missing(x: &Axis, y: &Axis) -> bool {
 /// Whether `a` dominates `b`: no more than the axis's tolerance worse on any
 /// axis, and more than it better on at least one. On a cycles axis the two
 /// entries' own counts at v3 must agree with each advantage: `a` being
-/// faster counts only if its count is lower than `b`'s, and `a` being
-/// slower holds it back unless its count is more than ε below `b`'s. Noise
-/// can make a timed figure look like a win; it cannot move a count. An axis
+/// faster counts only if its count is lower than `b`'s. Noise can make a
+/// timed figure look like a win; it cannot move a count. A timed loss
+/// beyond the tolerance always holds `a` back, whatever the counts say: the
+/// counts are of another build, and cannot excuse a measured loss. An axis
 /// `b` was measured on and `a` was not (a rejected input, a failed cell), or
 /// a timed axis without both counts, is one `a` cannot be shown no worse
 /// on, so `a` does not dominate.
@@ -403,7 +405,7 @@ pub fn dominates(a: &[Axis], b: &[Axis]) -> bool {
             (None, Some(_)) => return false,
             (Some(_), Some(_)) if count_missing(x, y) => return false,
             (Some(av), Some(bv)) => {
-                if av > bv * (1.0 + x.tol) && count_agrees(y, x) {
+                if av > bv * (1.0 + x.tol) {
                     return false;
                 }
                 if av < bv * (1.0 - x.tol) && count_lower(x, y) {
@@ -465,7 +467,32 @@ pub struct Verdict {
     pub entry: Entry,
     pub rules: [Outcome; 4],
     pub recommended: Outcome,
-    pub exists: (bool, String),
+    pub exists: Exists,
+}
+
+/// Why `e`'s cycles at `workload` cannot be weighed against `pool`: a cell
+/// with no A/A control, or an entry timed there (`e`, serde_json, or any of
+/// the pool it is weighed against) with no count at v3 to corroborate it.
+/// An entry without a count can neither dominate nor be dominated, so one
+/// missing anywhere in the pool leaves the frontier undecided.
+fn unweighable(data: &Data, e: &Entry, workload: &str, pool: &[&Entry]) -> Vec<String> {
+    let ops: &[&str] = if e.encodes { &["decode", "encode"] } else { &["decode"] };
+    let mut gaps = Vec::new();
+    for op in ops {
+        if aa_band(data, X86_NATIVE, workload, op).is_none() {
+            gaps.push(format!("no A/A control for {workload} {op}"));
+            continue;
+        }
+        let others = pool.iter().filter(|x| *op == "decode" || x.encodes).map(|x| x.backend);
+        for b in [e.backend, "serde_json"].into_iter().chain(others) {
+            if cpu(data, X86_NATIVE, b, workload, op).is_some() && cpu(data, X86_V3, b, workload, op).is_none() {
+                gaps.push(format!("no v3 count for {b} {workload} {op}"));
+            }
+        }
+    }
+    gaps.sort();
+    gaps.dedup();
+    gaps
 }
 
 fn rule1(data: &Data, e: &Entry, pool: &[&Entry]) -> Outcome {
@@ -479,30 +506,19 @@ fn rule1(data: &Data, e: &Entry, pool: &[&Entry]) -> Outcome {
         return Outcome::Pending("hardware cycles not yet recorded".into());
     }
     let ops: &[&str] = if e.encodes { &["decode", "encode"] } else { &["decode"] };
-    let uncontrolled: Vec<String> = KYNOS
-        .iter()
-        .flat_map(|w| ops.iter().map(move |op| (*w, *op)))
-        .filter(|(w, op)| aa_band(data, X86_NATIVE, w, op).is_none())
-        .map(|(w, op)| format!("{w} {op}"))
-        .collect();
-    if !uncontrolled.is_empty() {
+    let serde_json_counted = KYNOS.iter().all(|w| {
+        ops.iter()
+            .all(|op| cpu(data, X86_NATIVE, "serde_json", w, op).is_some())
+    });
+    let gaps: Vec<String> = KYNOS.iter().flat_map(|w| unweighable(data, e, w, pool)).collect();
+    if !gaps.is_empty() || !serde_json_counted {
         return Outcome::Pending(format!(
-            "no A/A control for {}, so cycles there cannot be weighed",
-            uncontrolled.join(", ")
-        ));
-    }
-    let uncounted: Vec<String> = KYNOS
-        .iter()
-        .flat_map(|w| ops.iter().map(move |op| (*w, *op)))
-        .filter(|(w, op)| {
-            cpu(data, X86_V3, e.backend, w, op).is_none() || cpu(data, X86_V3, "serde_json", w, op).is_none()
-        })
-        .map(|(w, op)| format!("{w} {op}"))
-        .collect();
-    if !uncounted.is_empty() {
-        return Outcome::Pending(format!(
-            "no v3 count for {}, so cycles there cannot be corroborated",
-            uncounted.join(", ")
+            "cycles cannot be weighed or corroborated: {}",
+            if gaps.is_empty() {
+                "serde_json not timed at every Kynos cell".to_owned()
+            } else {
+                gaps.join(", ")
+            }
         ));
     }
     let best = KYNOS
@@ -520,6 +536,18 @@ fn rule1(data: &Data, e: &Entry, pool: &[&Entry]) -> Outcome {
                     "provisional pass: {win} ({trust}); awaits a quiet-host rerun"
                 )),
             }
+        }
+        // On `solo` timing a wide A/A band can hide a real win: that is no
+        // failure until a quiet host has measured it.
+        None if hw_trust(data) != "canonical"
+            && KYNOS
+                .iter()
+                .any(|w| frontier_win(data, X86_NATIVE.without_band(), e, w, pool).is_some()) =>
+        {
+            Outcome::Pending(format!(
+                "no win beyond the A/A band of {} timing, but one beyond ε alone; awaits a quiet-host rerun",
+                hw_trust(data)
+            ))
         }
         None => Outcome::Fail(
             "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape"
@@ -753,11 +781,33 @@ pub fn e2e_gain(rows: &[Value], backend: &str, route: &str) -> Option<Gain> {
     let aa = find("serde_json#aa");
     let sj_rps = sj["rps"].as_f64()?;
     let sj_p99 = sj["p99_ms"].as_f64();
+    // The band is the widest gap between serde_json and its A/A copy, in the
+    // medians or in any one rep (the two run in the same rep, so each rep's
+    // pair is one sample of the noise).
+    let band = |median: Option<f64>, run: &str, field: &str| -> Option<f64> {
+        let reps = |r: &Value| -> Vec<Option<f64>> {
+            r["reps"]
+                .as_array()
+                .map(|v| v.iter().map(|x| x[run][field].as_f64()).collect())
+                .unwrap_or_default()
+        };
+        let a = aa?;
+        let per_rep = reps(sj)
+            .into_iter()
+            .zip(reps(a))
+            .filter_map(|(x, y)| Some((y? / x.filter(|x| *x > 0.0)? - 1.0).abs()))
+            .fold(0.0, f64::max);
+        Some(
+            (a[if run == "closed" { "rps" } else { "p99_ms" }].as_f64()? / median? - 1.0)
+                .abs()
+                .max(per_rep),
+        )
+    };
     Some(Gain {
         rps: me["rps"].as_f64()? / sj_rps - 1.0,
         p99: me["p99_ms"].as_f64().zip(sj_p99).map(|(m, s)| m / s - 1.0),
-        aa_rps: aa.and_then(|a| Some((a["rps"].as_f64()? / sj_rps - 1.0).abs())),
-        aa_p99: aa.and_then(|a| Some((a["p99_ms"].as_f64()? / sj_p99? - 1.0).abs())),
+        aa_rps: band(Some(sj_rps), "closed", "rps"),
+        aa_p99: band(sj_p99, "open", "p99_ms"),
     })
 }
 
@@ -812,7 +862,13 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
         // not proportional to the cost of a request (a cheaper request also
         // shortens every queue behind it), so it has no such bound; it counts
         // only where the count itself predicts a material gain.
-        if g.rps > predicted + EPSILON.max(aa_rps) || (pass_p99 && !pass_rps && predicted <= EPSILON) {
+        // Nor can a material predicted gain show as a throughput loss beyond
+        // the noise: the count and the timing then disagree on direction.
+        let slack = EPSILON.max(aa_rps);
+        if g.rps > predicted + slack
+            || (predicted > EPSILON && g.rps < -slack)
+            || (pass_p99 && !pass_rps && predicted <= EPSILON)
+        {
             inconsistent.push(format!(
                 "{route}: {:+.0} % rps and p99 {} measured, {:+.0} % rps predicted",
                 g.rps * 100.0,
@@ -848,12 +904,21 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
 /// is (A/A band, counts pointing the same way, and a timed win marked
 /// provisional unless taken on a quiet host), and a CPU win is stated with
 /// its v3 count beside it.
-fn exists(data: &Data, e: &Entry, pool: &[&Entry]) -> (bool, String) {
+fn exists(data: &Data, e: &Entry, pool: &[&Entry]) -> Exists {
     if e.backend == "serde_json" {
-        return (true, "the baseline".into());
+        return Exists::new(true, "the baseline".into(), false);
     }
+    let solo = hw_trust(data) != "canonical";
     let mut best: Option<(f64, String)> = None;
+    let mut unweighed = Vec::new();
+    let mut hidden = false;
     for w in payloads::ALL {
+        // Only workloads whose cycles can be weighed and corroborated count.
+        if cpu(data, X86_NATIVE, e.backend, w, "decode").is_some() && !unweighable(data, e, w, pool).is_empty() {
+            unweighed.push(*w);
+            continue;
+        }
+        hidden |= solo && frontier_win(data, X86_NATIVE.without_band(), e, w, pool).is_some();
         if let Some((axis, r)) = frontier_win(data, X86_NATIVE, e, w, pool)
             && best.as_ref().is_none_or(|(b, _)| r < *b)
         {
@@ -866,25 +931,52 @@ fn exists(data: &Data, e: &Entry, pool: &[&Entry]) -> (bool, String) {
                 (true, Some(m), Some(t)) if t > 0.0 => format!(" ({:.2}× at {})", m / t, X86_V3.label()),
                 _ => String::new(),
             };
-            let trust = match hw_trust(data) {
-                "canonical" => String::new(),
-                trust => format!(", provisional ({trust})"),
-            };
             best = Some((
                 r,
                 format!(
-                    "{w} {axis} {r:.2}× serde_json at {}{count}{trust}",
+                    "{w} {axis} {r:.2}× serde_json at {}{count}",
                     X86_NATIVE.win_label(&axis)
                 ),
             ));
         }
     }
     let note = super::notes::merit(data, e.backend);
+    let trust = hw_trust(data);
+    let best = best.map(|(_, b)| if solo { format!("{b}, provisional ({trust})") } else { b });
     match (best, note) {
-        (Some((_, b)), Some(n)) => (true, format!("{b}. {n}")),
-        (Some((_, b)), None) => (true, b),
-        (None, Some(n)) => (true, n),
-        (None, None) => (false, "no measured reason to choose it over serde_json".into()),
+        (Some(b), Some(n)) => Exists::new(true, format!("{b}. {n}"), solo),
+        (Some(b), None) => Exists::new(true, b, solo),
+        // A merit stands on counts or conformance, not on timing.
+        (None, Some(n)) => Exists::new(true, n, false),
+        (None, None) if hidden || !unweighed.is_empty() => Exists::new(
+            false,
+            format!(
+                "no measured reason yet{}{}",
+                if hidden {
+                    format!("; a win beyond ε alone is inside the A/A band of {trust} timing")
+                } else {
+                    String::new()
+                },
+                if unweighed.is_empty() {
+                    String::new()
+                } else {
+                    format!("; cycles not weighable at {}", unweighed.join(", "))
+                }
+            ),
+            true,
+        ),
+        (None, None) => Exists::new(false, "no measured reason to choose it over serde_json".into(), solo),
+    }
+}
+
+/// Whether an entry deserves to exist, why, and whether that rests on
+/// `solo` timing or undecided cells, so a quiet-host rerun could change it.
+#[derive(Debug, Clone)]
+pub struct Exists(pub bool, pub String, pub bool);
+
+impl Exists {
+    fn new(yes: bool, why: String, provisional: bool) -> Self {
+        Self(yes, why, provisional)
     }
 }
 
@@ -938,6 +1030,7 @@ pub fn to_json(verdicts: &[Verdict]) -> Value {
             "reason": v.recommended.detail(),
             "rules": v.rules.iter().map(|r| json!({ "outcome": r.word(), "detail": r.detail() })).collect::<Vec<_>>(),
             "deserves_to_exist": v.exists.0,
+            "exists_provisional": v.exists.2,
             "exists_evidence": v.exists.1,
         })).collect::<Vec<_>>(),
     })
@@ -1088,6 +1181,76 @@ pub(super) mod tests {
         let verdicts = super::judge(&data);
         let simd = verdicts.iter().find(|v| v.entry.backend == simd().backend).unwrap();
         assert!(matches!(simd.rules[0], Outcome::Pending(_)), "{:?}", simd.rules[0]);
+    }
+
+    /// sonic-rs dominates simd-json, but has no count at v3: whether it
+    /// does cannot be corroborated, so simd-json's rule 1 waits rather than
+    /// passing for want of a challenger.
+    #[test]
+    fn a_challenger_without_counts_leaves_rule1_pending() {
+        let mut data = measured(
+            &[
+                ("serde_json", 100.0, 100.0),
+                ("serde_json#aa", 101.0, 100.0),
+                ("simd-json", 80.0, 90.0),
+                ("sonic-rs", 50.0, 50.0),
+            ],
+            "canonical",
+        );
+        data.callgrind.rows.retain(|k, _| k.backend != "sonic-rs");
+        let verdicts = super::judge(&data);
+        let simd = verdicts.iter().find(|v| v.entry.backend == simd().backend).unwrap();
+        assert!(matches!(simd.rules[0], Outcome::Pending(_)), "{:?}", simd.rules[0]);
+    }
+
+    /// On `solo` timing, a win the counts confirm but a 40 % A/A band hides
+    /// is not a failure: a quiet host decides it.
+    #[test]
+    fn a_win_only_solo_noise_hides_is_pending() {
+        let data = measured(
+            &[
+                ("serde_json", 100.0, 100.0),
+                ("serde_json#aa", 140.0, 100.0),
+                ("simd-json", 70.0, 80.0),
+            ],
+            "solo",
+        );
+        let verdicts = super::judge(&data);
+        let simd = verdicts.iter().find(|v| v.entry.backend == simd().backend).unwrap();
+        assert!(matches!(simd.rules[0], Outcome::Pending(_)), "{:?}", simd.rules[0]);
+        assert!(simd.exists.2, "{:?}", simd.exists);
+    }
+
+    /// A timed loss far beyond the band is a loss, whatever the count of
+    /// another build says: twice the cycles at half the heap is a trade-off,
+    /// not dominance.
+    #[test]
+    fn a_large_timed_loss_is_never_excused() {
+        let a = [
+            super::Axis {
+                value: Some(200.0),
+                tol: 0.05,
+                count: super::Count::At(90.0),
+            },
+            super::Axis {
+                value: Some(50.0),
+                tol: 0.05,
+                count: super::Count::Untimed,
+            },
+        ];
+        let b = [
+            super::Axis {
+                value: Some(100.0),
+                tol: 0.05,
+                count: super::Count::At(100.0),
+            },
+            super::Axis {
+                value: Some(100.0),
+                tol: 0.05,
+                count: super::Count::Untimed,
+            },
+        ];
+        assert!(!super::dominates(&a, &b));
     }
 
     /// The A/A band is the widest gap in any round, not only the medians'.

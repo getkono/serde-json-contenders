@@ -709,8 +709,11 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
     if !failures.is_empty() {
         return Outcome::Fail(failures.join("; "));
     }
-    if runs == 0 {
-        return Outcome::Pending("conformance not yet run".into());
+    // Every variant, and once more with `arbitrary_precision`: a run that
+    // errored or never ran leaves a SIMD path unchecked.
+    let expected = crate::matrix::variants().len() + 1;
+    if runs < expected {
+        return Outcome::Pending(format!("{runs} of {expected} conformance runs recorded"));
     }
     let expected = crate::fuzzing::configs(set).len() * crate::fuzzing::FUZZ_TARGETS.len();
     let finished = fuzz.iter().filter(|r| r["finished"] != false).count();
@@ -1075,8 +1078,8 @@ pub fn to_json(verdicts: &[Verdict]) -> Value {
         "entries": verdicts.iter().map(|v| json!({
             "backend": v.entry.backend,
             "crate": v.entry.krate,
-            "recommended": v.recommended.word(),
-            "reason": v.recommended.detail(),
+            "recommended": if v.entry.backend == "serde_json" { "baseline" } else { v.recommended.word() },
+            "reason": if v.entry.backend == "serde_json" { "the baseline every entry is weighed against" } else { v.recommended.detail() },
             "rules": v.rules.iter().map(|r| json!({ "outcome": r.word(), "detail": r.detail() })).collect::<Vec<_>>(),
             "deserves_to_exist": v.exists.0,
             "exists_provisional": v.exists.2,
@@ -1390,6 +1393,36 @@ pub(super) mod tests {
             super::rule2(&data, e)
         );
         assert!(matches!(super::rule2(&data, &ENTRIES[0]), Outcome::Pass(_)));
+    }
+
+    /// A conformance run that errored leaves a variant unchecked: rule 2
+    /// waits, and the report calls the run incomplete.
+    #[test]
+    fn an_errored_conformance_run_is_not_a_pass() {
+        let mut data = Data::default();
+        let e = ENTRIES.iter().find(|e| e.backend == "jiter").unwrap();
+        for v in ["portable", "v3"] {
+            data.host.conformance.insert(
+                (v.into(), e.set.into()),
+                json!({ "backends": { "jiter": { "gate": "pass" } } }),
+            );
+        }
+        data.host.conformance.insert(
+            ("native".into(), e.set.into()),
+            json!({ "error": "conform exited non-zero" }),
+        );
+        assert!(
+            matches!(super::rule2(&data, e), Outcome::Pending(_)),
+            "{:?}",
+            super::rule2(&data, e)
+        );
+        assert!(
+            crate::report::data::incomplete(&data)
+                .iter()
+                .any(|g| g.contains("conformance/native/jiter.json: the suite did not finish")),
+            "{:?}",
+            crate::report::data::incomplete(&data)
+        );
     }
 
     #[test]

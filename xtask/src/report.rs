@@ -357,6 +357,13 @@ fn is_figure(token: &str, code: bool) -> bool {
     if is_name_number(token) {
         return false;
     }
+    // "x1.19" is a multiplier, not a name.
+    if token
+        .strip_prefix(['x', 'X'])
+        .is_some_and(|rest| rest.starts_with(|c: char| c.is_ascii_digit()) && rest.contains('.'))
+    {
+        return true;
+    }
     if token
         .split(|c: char| !c.is_alphanumeric() && !matches!(c, '-' | '_' | '.' | '#' | '^' | '\'' | '’'))
         .skip(1)
@@ -606,6 +613,7 @@ mod tests {
             "sonic-rs(0.84×)",
             "json-small@0.84×",
             "speedup×1.19",
+            "decodes x1.19 faster",
         ] {
             let text = format!("## Findings\n\n[sic] it is {bad} faster.\n");
             assert!(!bare_figures(&text).is_empty(), "{bad} passed");

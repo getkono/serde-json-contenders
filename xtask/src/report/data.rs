@@ -163,6 +163,39 @@ impl Loader {
     }
 }
 
+/// Every conformance run, at every variant and with `arbitrary_precision` at
+/// portable, finished and reported every backend of its set: one that
+/// errored left a SIMD path unchecked.
+fn conformance_gaps(data: &Data) -> Vec<String> {
+    let host = &data.host;
+    let mut gaps = Vec::new();
+    for variant in crate::matrix::variants() {
+        for set in crate::matrix::SETS {
+            let mut names = vec![set.name.to_owned()];
+            if variant.name == "portable" {
+                names.push(format!("{}+arbitrary-precision", set.name));
+            }
+            for name in names {
+                let file = format!("conformance/{}/{name}.json", variant.name);
+                let Some(report) = host.conformance.get(&(variant.name.to_owned(), name.clone())) else {
+                    continue; // missing or skipped: the loader has said so
+                };
+                if let Some(e) = report["error"].as_str() {
+                    gaps.push(format!("{file}: the suite did not finish ({e})"));
+                    continue;
+                }
+                for b in set.backends.iter().filter(|b| !b.starts_with("serde_json")) {
+                    let label = crate::matrix::label(set, b);
+                    if report["backends"][label.as_str()].is_null() {
+                        gaps.push(format!("{file}: no result for {label}"));
+                    }
+                }
+            }
+        }
+    }
+    gaps
+}
+
 /// Every file under `dir`, as paths relative to it.
 fn files_under(dir: &std::path::Path, prefix: &str) -> Result<Vec<String>> {
     let mut out = Vec::new();
@@ -444,6 +477,7 @@ pub fn incomplete(data: &Data) -> Vec<String> {
             f[0]
         ));
     }
+    gaps.extend(conformance_gaps(data));
     // Rule 3 reads the hand review of open issues; a crate missing from it
     // would pass unreviewed.
     let mut unreviewed: Vec<&str> = super::verdict::ENTRIES

@@ -161,10 +161,23 @@ fn conformance(data: &Data) -> Conformance {
     let mut measures = Vec::new();
     let mut notes = Vec::new();
     for ((variant, set), report) in &data.host.conformance {
+        if let Some(e) = report["error"].as_str() {
+            notes.push(serde_json::json!({
+                "variant": variant, "set": set, "section": "run", "note": format!("the suite did not finish: {e}"),
+            }));
+        }
         let Some(backends) = report["backends"].as_object() else {
             continue;
         };
         for (backend, b) in backends {
+            // Every gating failure, a crashed suite's ("process") included,
+            // which has no section of its own.
+            for f in b["gating_failures"].as_array().into_iter().flatten() {
+                notes.push(serde_json::json!({
+                    "variant": variant, "set": set, "backend": backend, "section": f["section"],
+                    "note": format!("gating failure: {f}"),
+                }));
+            }
             let Some(sections) = b["sections"].as_object() else {
                 continue;
             };
@@ -189,17 +202,6 @@ fn conformance(data: &Data) -> Conformance {
                     measures.push(serde_json::json!({
                         "variant": variant, "set": set, "backend": backend, "section": section,
                         "figure": figure, "value": value,
-                    }));
-                }
-                for f in b["gating_failures"]
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .filter(|f| f["section"] == *section)
-                {
-                    notes.push(serde_json::json!({
-                        "variant": variant, "set": set, "backend": backend, "section": section,
-                        "note": format!("gating failure: {}", f),
                     }));
                 }
                 for note in s["notes"].as_array().into_iter().flatten() {

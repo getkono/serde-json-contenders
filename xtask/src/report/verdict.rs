@@ -24,8 +24,8 @@ pub struct Entry {
     pub backend: &'static str,
     pub krate: &'static str,
     pub set: &'static str,
-    /// Can be recommended for adoption (borrowed decode from a slice and a
-    /// `to_vec`-style encoder, or decode-only by design).
+    /// Can be recommended for adoption: it borrows strings from the body
+    /// (and encodes `to_vec`-style, or is decode-only by design).
     pub eligible: bool,
     pub encodes: bool,
 }
@@ -676,12 +676,15 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
     let miri = data.miri.iter().find(|r| r["set"] == set);
     failures.extend(miri.and_then(miri_failure));
     // serde_json is what the suite compares against, so it has no
-    // disagreements of its own; Miri still runs on it.
+    // disagreements of its own; Miri still runs on it, and the reference
+    // passes only once it has.
     if e.backend.starts_with("serde_json") {
-        return if failures.is_empty() {
-            Outcome::Pass("reference".into())
-        } else {
+        return if !failures.is_empty() {
             Outcome::Fail(failures.join("; "))
+        } else if miri.is_none() {
+            Outcome::Pending("the reference; Miri has not run".into())
+        } else {
+            Outcome::Pass("reference".into())
         };
     }
     // Conformance cases and Miri are always stated in full; fuzz divergences
@@ -990,7 +993,16 @@ fn exists(data: &Data, e: &Entry, pool: &[&Entry]) -> Exists {
             ),
             true,
         ),
-        (None, None) => Exists::new(false, "no measured reason to choose it over serde_json".into(), solo),
+        (None, None) => Exists::new(
+            false,
+            match super::notes::contradicted(data, e.backend) {
+                Some(h) => {
+                    format!("no measured reason to choose it over serde_json; its stated merit ({h}) does not hold")
+                }
+                None => "no measured reason to choose it over serde_json".into(),
+            },
+            solo,
+        ),
     }
 }
 

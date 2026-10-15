@@ -308,7 +308,12 @@ fn verdict_table(out: &mut String, verdicts: &[Verdict]) {
             format!("`{}`", v.entry.backend),
             v.entry.krate.to_owned(),
             add,
-            format!("{} — {}", if v.exists.0 { "yes" } else { "no" }, v.exists.1),
+            format!(
+                "{}{} — {}",
+                if v.exists.0 { "yes" } else { "no" },
+                if v.exists.2 { " (provisional)" } else { "" },
+                v.exists.1
+            ),
             v.recommended.detail().to_owned(),
         ]));
     }

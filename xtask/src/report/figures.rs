@@ -6,9 +6,10 @@
 //! identity, which its label carries: twelve entries are far more than a
 //! scatter's colors can keep apart. Blue marks the two-axis frontier among
 //! every measured entry, drawn with the same dominance the verdict uses; an
-//! orange ring marks an entry on rule 1's own frontier at that workload (all
-//! six axes (four for a decode-only entry), among the eligible entries that have not failed conformance); gray is
-//! everything else.
+//! orange ring marks an entry on the frontier the verdict reads at that
+//! workload (all six axes, four for a decode-only entry): rule 1's at a
+//! Kynos workload, "deserves to exist"'s at any other; gray is everything
+//! else.
 
 use std::fmt::Write as _;
 
@@ -17,7 +18,7 @@ use super::verdict::{self, Axis, ENTRIES, Entry, X86_NATIVE, heap};
 use crate::matrix::KYNOS;
 
 /// The legend, as Markdown under the figures' heading.
-pub const LEGEND: &str = "Each point is an entry point, labelled. The x-axis is hardware cycles at `native` (what rule 1 reads); the y-axis is the trade-off named in the title. Lower and further left is better on both. **Blue**, joined by a step line: the frontier of the two axes shown, among every measured entry: no other entry is better on one without being worse on the other, by more than ε = 5 % or, on cycles, the A/A band, and a cycles advantage callgrind's count contradicts does not count. **Orange ring**: on rule 1's frontier at this workload, which weighs all six axes (the four decode-side ones for a decode-only entry) among the eligible entries that have not failed conformance. **Hollow**: the entry fails conformance. The gray crosshair is serde_json. Axes are logarithmic where the figures span 10× or more. Each SVG carries the figures as hover titles.";
+pub const LEGEND: &str = "Each point is an entry point, labelled. The x-axis is hardware cycles at `native` (what rule 1 reads); the y-axis is the trade-off named in the title. Lower and further left is better on both. **Blue**, joined by a step line: the frontier of the two axes shown, among every measured entry: no other entry is better on one without being worse on the other, by more than ε = 5 % or, on cycles, the A/A band, and a cycles advantage callgrind's count contradicts does not count. **Orange ring**: on the frontier the verdict reads at this workload, which weighs all six axes (the four decode-side ones for a decode-only entry): at a Kynos workload rule 1's, among the eligible entries that have not failed conformance; at any other, the *deserves to exist* frontier, among every entry that has not failed conformance. **Hollow**: the entry fails conformance. The gray crosshair is serde_json. Axes are logarithmic where the figures span 10× or more. Each SVG carries the figures as hover titles.";
 
 /// One generated figure.
 #[derive(Debug, Clone)]
@@ -93,7 +94,10 @@ pub fn figures(data: &Data, conforming: &[&Entry]) -> (Vec<Figure>, Vec<String>)
         .iter()
         .filter(|w| !KYNOS.contains(w) && !w.starts_with("sweep-"))
     {
-        if let Some(f) = figure(data, conforming, &pool, "workloads", w, "decode", Trade::Heap) {
+        // Off the Kynos workloads only "deserves to exist" reads a frontier,
+        // and it draws its own among every entry that has not failed
+        // conformance.
+        if let Some(f) = figure(data, conforming, conforming, "workloads", w, "decode", Trade::Heap) {
             out.push(f);
         }
     }

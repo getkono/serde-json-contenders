@@ -6,7 +6,8 @@
 # The prose is hand-written; the numbers are not. Each `{name}` in a merit is
 # filled in by `cargo xtask report` from the query of the same name under
 # `figures`, so a rerun cannot leave a stale number here, and a query the
-# results cannot answer fails the report. Allocation figures are x86-64
+# results cannot answer fails the report. A merit that asserts a comparison
+# states it under `holds`, and is not claimed where the results contradict it. Allocation figures are x86-64
 # `native` decodes of twitter-like into borrowed types from a unique buffer.
 
 ["serde_json+float_roundtrip"]
@@ -19,11 +20,13 @@ merit = "Lazy path lookups without a full parse (`get`, `get_many`, `LazyValue`)
 merit = "Borrowing decode of escaped strings, unescaped in place: {allocs} allocations against serde_json's {base} for twitter-like into borrowed types from a unique buffer. A tape API (`to_tape`) traverses without building values."
 figures.allocs = { table = "alloc", backend = "simd-json", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "allocations" }
 figures.base = { table = "alloc", backend = "serde_json", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "allocations" }
+holds = "allocs < base"
 
 [simd-json-buffers]
 merit = "Reusing `Buffers` across calls cuts the bytes plain `from_slice` allocates: {mine} against {plain} for twitter-like into borrowed types from a unique buffer."
 figures.mine = { table = "alloc", backend = "simd-json-buffers", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "bytes", format = "bytes" }
 figures.plain = { table = "alloc", backend = "simd-json", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "bytes", format = "bytes" }
+holds = "mine < plain"
 
 [flexon-rt]
 merit = "`from_mut_slice` borrows escaped strings in place; JSON-pointer access. Its latest release (0.4.9) does not compile on stable Rust."
@@ -34,6 +37,7 @@ figures.allocs = { table = "alloc", backend = "flexon-rt-mut", workload = "twitt
 figures.bytes = { table = "alloc", backend = "flexon-rt-mut", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "bytes", format = "bytes" }
 figures.base_allocs = { table = "alloc", backend = "flexon-rt", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "allocations" }
 figures.base_bytes = { table = "alloc", backend = "flexon-rt", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "bytes", format = "bytes" }
+holds = "allocs < base_allocs and bytes < base_bytes"
 
 [flexon-ct]
 merit = "The compile-time SIMD configuration of flexon; same API as `flexon-rt`."
@@ -44,6 +48,7 @@ figures.allocs = { table = "alloc", backend = "flexon-ct-mut", workload = "twitt
 figures.bytes = { table = "alloc", backend = "flexon-ct-mut", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "bytes", format = "bytes" }
 figures.base_allocs = { table = "alloc", backend = "flexon-ct", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "allocations" }
 figures.base_bytes = { table = "alloc", backend = "flexon-ct", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "bytes", format = "bytes" }
+holds = "allocs < base_allocs and bytes < base_bytes"
 
 [jiter]
 merit = "Partial mode parses truncated documents (built for streamed model output); decode only."

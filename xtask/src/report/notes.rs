@@ -5,14 +5,61 @@
 //! `merit` names an entry of that backend's `figures` table, a query into a
 //! result file, and the report substitutes what the file holds. A figure the
 //! results cannot answer fails the report instead of printing a stale number.
+//! A note whose prose asserts a comparison ("cuts the bytes") states it as
+//! `holds = "mine < plain"` (comparisons joined by ` and `); where the
+//! results contradict it, the merit is not claimed.
 
 use super::data::{Data, Key};
 
-/// The merit text for `backend`, figures filled in; `None` without a note.
+/// The merit text for `backend`, figures filled in; `None` without a note,
+/// when a figure is missing, or when the results contradict what it holds.
 pub fn merit(data: &Data, backend: &str) -> Option<String> {
     let note = data.notes.get(backend)?;
     let text = note.get("merit")?.as_str()?;
-    Some(fill(data, text, note.get("figures").and_then(toml::Value::as_table)).unwrap_or_else(|e| e))
+    let figures = note.get("figures").and_then(toml::Value::as_table);
+    if let Some(holds) = note.get("holds").and_then(toml::Value::as_str)
+        && !matches!(holds_in(data, holds, figures), Ok(true))
+    {
+        return None;
+    }
+    fill(data, text, figures).ok()
+}
+
+/// Whether every comparison in `holds` is true of the figures.
+fn holds_in(data: &Data, holds: &str, figures: Option<&toml::Table>) -> Result<bool, String> {
+    let value = |name: &str| -> Result<f64, String> {
+        let query = figures
+            .and_then(|f| f.get(name))
+            .and_then(toml::Value::as_table)
+            .ok_or_else(|| format!("no figure named {name}"))?;
+        raw(data, query).ok_or_else(|| format!("figure {name} is not in the results"))
+    };
+    for clause in holds.split(" and ") {
+        let parts: Vec<&str> = clause.split_whitespace().collect();
+        let [a, op, b] = parts.as_slice() else {
+            return Err(format!("cannot read {clause:?}"));
+        };
+        let (a, b) = (value(a)?, value(b)?);
+        let true_ = match *op {
+            "<" => a < b,
+            "<=" => a <= b,
+            ">" => a > b,
+            ">=" => a >= b,
+            _ => return Err(format!("unknown comparison {op}")),
+        };
+        if !true_ {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+/// The comparison `backend`'s note states, if the results contradict it.
+pub fn contradicted(data: &Data, backend: &str) -> Option<String> {
+    let note = data.notes.get(backend)?;
+    let holds = note.get("holds")?.as_str()?;
+    let figures = note.get("figures").and_then(toml::Value::as_table);
+    matches!(holds_in(data, holds, figures), Ok(false)).then(|| holds.to_owned())
 }
 
 /// Every note whose figures the results cannot answer.
@@ -21,7 +68,10 @@ pub fn check(data: &Data) -> Vec<String> {
         .iter()
         .filter_map(|(backend, note)| {
             let text = note.get("merit")?.as_str()?;
-            fill(data, text, note.get("figures").and_then(toml::Value::as_table))
+            let figures = note.get("figures").and_then(toml::Value::as_table);
+            let holds = note.get("holds").and_then(toml::Value::as_str);
+            fill(data, text, figures)
+                .and_then(|_| holds.map_or(Ok(true), |h| holds_in(data, h, figures)))
                 .err()
                 .map(|e| format!("notes.toml [{backend}]: {e}"))
         })
@@ -53,6 +103,15 @@ fn fill(data: &Data, text: &str, figures: Option<&toml::Table>) -> Result<String
 /// keyed like every per-operation row; `variant` defaults to `native`) or
 /// `footprint` (a set's row). `format` is `count` (default) or `bytes`.
 fn figure(data: &Data, q: &toml::Table) -> Option<String> {
+    let value = raw(data, q)?;
+    Some(match q.get("format").and_then(toml::Value::as_str).unwrap_or("count") {
+        "bytes" => bytes(value),
+        _ => count(value),
+    })
+}
+
+/// One figure's value, unformatted.
+fn raw(data: &Data, q: &toml::Table) -> Option<f64> {
     let s = |k: &str| q.get(k).and_then(toml::Value::as_str);
     let field = s("field")?;
     let value = match s("table")? {
@@ -76,10 +135,7 @@ fn figure(data: &Data, q: &toml::Table) -> Option<String> {
         }
         _ => return None,
     };
-    Some(match s("format").unwrap_or("count") {
-        "bytes" => bytes(value),
-        _ => count(value),
-    })
+    Some(value)
 }
 
 /// A count with thousands separators, rounded to a whole number.
@@ -156,6 +212,41 @@ figures.n = { table = "alloc", backend = "simd-json", workload = "citm-like", op
 "#,
         );
         assert_eq!(check(&d), ["notes.toml [simd-json]: figure n is not in the results"]);
+    }
+
+    /// A merit that says it cuts allocations is not claimed where the
+    /// results show it does not.
+    #[test]
+    fn a_merit_the_results_contradict_is_not_claimed() {
+        let note = |holds: &str| {
+            format!(
+                r#"
+[simd-json]
+merit = "{{n}} allocations, under {{u}}."
+holds = "{holds}"
+figures.n = {{ table = "alloc", backend = "simd-json", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "allocations" }}
+figures.u = {{ table = "footprint", set = "hifijson", field = "unsafe_blocks" }}
+"#
+            )
+        };
+        let d = data(&note("n < u"));
+        assert_eq!(merit(&d, "simd-json"), None);
+        assert_eq!(super::contradicted(&d, "simd-json").as_deref(), Some("n < u"));
+        assert!(check(&d).is_empty());
+        let d = data(&note("n > u"));
+        assert_eq!(merit(&d, "simd-json").as_deref(), Some("1,175 allocations, under 0."));
+    }
+
+    #[test]
+    fn a_missing_figure_is_no_merit() {
+        let d = data(
+            r#"
+[simd-json]
+merit = "{n} allocations"
+figures.n = { table = "alloc", backend = "simd-json", workload = "citm-like", op = "decode", field = "allocations" }
+"#,
+        );
+        assert_eq!(merit(&d, "simd-json"), None);
     }
 
     #[test]

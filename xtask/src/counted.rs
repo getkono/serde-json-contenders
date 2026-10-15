@@ -329,7 +329,21 @@ fn check_reproduced(committed: &Value, fresh: &[Value], tolerance: f64) -> Resul
         .collect();
     let mut compared = 0;
     let mut off = Vec::new();
+    // A committed verdict the rerun does not reproduce (a wrong or rejected
+    // cell that now counts, or the reverse) is a difference too.
+    let verdicts: std::collections::HashMap<String, &Value> = committed["rows"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|r| (key(r), &r["verdict"]))
+        .collect();
     for row in fresh {
+        if let Some(was) = verdicts.get(&key(row))
+            && **was != row["verdict"]
+        {
+            off.push(format!("{}: verdict {was} -> {}", key(row), row["verdict"]));
+            continue;
+        }
         let Some(old) = old.get(&key(row)) else {
             continue;
         };

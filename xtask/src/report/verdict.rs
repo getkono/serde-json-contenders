@@ -597,6 +597,13 @@ fn wrong_results(data: &Data, backend: &str) -> Vec<String> {
         .flat_map(|t| t.rows.iter())
         .filter(|(k, r)| k.backend == backend && r["verdict"] == "wrong")
         .map(|(k, _)| format!("wrong result on {} {} {} {}", k.workload, k.op, k.form, k.arrival))
+        .chain(
+            data.e2e_count
+                .iter()
+                .chain(&data.host.e2e_time)
+                .filter(|r| r["backend"] == backend && r["verdict"] == "wrong")
+                .map(|r| format!("wrong answer end to end on {}", r["route"].as_str().unwrap_or("?"))),
+        )
         .collect();
     wrong.sort();
     wrong.dedup();

@@ -22,6 +22,7 @@ async fn serde_json_and_floor_answer_every_route_with_serde_json_bytes() {
         for &route in Route::ALL {
             loopback::verify(backend, route)
                 .await
+                .unwrap_or_else(|why| panic!("{backend}: {why}"))
                 .unwrap_or_else(|why| panic!("{backend}: {why}"));
         }
     }

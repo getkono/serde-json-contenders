@@ -178,8 +178,10 @@ impl Loopback {
 /// backends), equal as `serde_json::Value` otherwise, numbers compared by
 /// value (an encoder may write `1.0` as `1`).
 ///
-/// Must run inside a tokio runtime; the connections are spawned on it.
-pub async fn verify(backend: &str, route: Route) -> Result<(), String> {
+/// Must run inside a tokio runtime; the connections are spawned on it. The
+/// outer error is a failure to serve at all; the inner one is the backend's
+/// wrong answer, a result.
+pub async fn verify(backend: &str, route: Route) -> Result<Result<(), String>, String> {
     let handler = handler(backend).ok_or_else(|| format!("backend {backend} is not compiled into this build"))?;
     let exact = handler.encoder() == <codecs::backend::serde_json::SerdeJson as codecs::Backend>::NAME;
     let mut loopback = Loopback::connect(handler).await.map_err(|error| error.to_string())?;
@@ -188,20 +190,23 @@ pub async fn verify(backend: &str, route: Route) -> Result<(), String> {
         .await
         .map_err(|error| error.to_string())?;
     if status != route.status() {
-        return Err(format!(
+        return Ok(Err(format!(
             "{}: status {status}, expected {}",
             route.name(),
             route.status()
-        ));
+        )));
     }
     let expected = expected_for(route);
     let equal = if exact || expected.is_empty() {
         body == expected
     } else {
-        let parse = |bytes: &[u8]| serde_json::from_slice::<Value>(bytes).map_err(|error| error.to_string());
-        same(&parse(&body)?, &parse(&expected)?)
+        let expected: Value = serde_json::from_slice(&expected).map_err(|error| error.to_string())?;
+        match serde_json::from_slice::<Value>(&body) {
+            Ok(body) => same(&body, &expected),
+            Err(error) => return Ok(Err(format!("{}: body is not JSON: {error}", route.name()))),
+        }
     };
-    if equal {
+    Ok(if equal {
         Ok(())
     } else {
         Err(format!(
@@ -210,7 +215,7 @@ pub async fn verify(backend: &str, route: Route) -> Result<(), String> {
             body.len(),
             expected.len()
         ))
-    }
+    })
 }
 
 /// `Value` equality with numbers compared by value.

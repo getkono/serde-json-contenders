@@ -68,6 +68,11 @@ pub fn count(args: &[String]) -> Result<()> {
                             .arg(&exe)
                             .args([backend, route.0, &requests.to_string()]);
                         match capture(&mut cmd) {
+                            Ok((false, stdout, _)) if stdout.contains("\"verdict\":\"wrong\"") => {
+                                let v: Value = stdout.lines().rev().find_map(|l| serde_json::from_str(l).ok()).unwrap_or(Value::Null);
+                                row["verdict"] = json!("wrong");
+                                row["detail"] = v["detail"].clone();
+                            }
                             Ok((true, _, _)) => match std::fs::read_to_string(&out).map_err(anyhow::Error::from).and_then(|t| parse_callgrind(&t)) {
                                 Ok(e) => {
                                     row["ir"] = json!(e.ir as f64 / f64::from(requests));
@@ -204,11 +209,16 @@ fn oha(route: &(&str, &str, &str, Option<&str>), port: u16, seconds: u64, rate: 
         .as_object()
         .map_or(0, |e| e.keys().filter(|k| *k != "aborted due to deadline").count());
     let rps = v["summary"]["requestsPerSec"].as_f64();
-    let error = (!only_expected || v["summary"]["successRate"].as_f64() != Some(1.0) || errors > 0)
-        .then(|| format!("responses other than {expected} or failed requests: status {codes}, {errors} error kinds"));
+    // Every request answered, but not with the route's status: the backend
+    // answered wrongly, which is a result (rule 2 reads it), not a failed
+    // run. Failed requests are a failed run.
+    let answered = v["summary"]["successRate"].as_f64() == Some(1.0) && errors == 0;
+    let verdict = (answered && !only_expected).then_some("wrong");
+    let error = (!answered).then(|| format!("failed requests: status {codes}, {errors} error kinds"));
     let saturated = matches!((rate, rps), (Some(offered), Some(achieved)) if achieved < offered * 0.99);
     Ok(json!({
         "error": error,
+        "verdict": verdict,
         "saturated": saturated,
         "rps": v["summary"]["requestsPerSec"],
         "success_rate": v["summary"]["successRate"],
@@ -220,8 +230,18 @@ fn oha(route: &(&str, &str, &str, Option<&str>), port: u16, seconds: u64, rate: 
 }
 
 /// The medians and spreads of a backend's reps. One saturated open-loop rep
-/// and the backend has no p99 at the rate.
+/// and the backend has no p99 at the rate; a wrong answer in any rep, and no
+/// throughput or latency of it is a figure.
 fn summarize(reps: &[Value]) -> Value {
+    if let Some(r) = reps
+        .iter()
+        .find(|r| r["closed"]["verdict"] == "wrong" || r["open"]["verdict"] == "wrong")
+    {
+        return json!({
+            "verdict": "wrong",
+            "detail": format!("answered other than the route's status: {}", r["closed"]["status_codes"]),
+        });
+    }
     let saturated = reps.iter().any(|r| r["open"]["saturated"] == true);
     let sorted = |f: &dyn Fn(&Value) -> Option<f64>| {
         let mut v: Vec<f64> = reps.iter().filter_map(f).collect();

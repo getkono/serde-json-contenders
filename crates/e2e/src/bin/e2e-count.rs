@@ -53,8 +53,26 @@ fn main() -> ExitCode {
         }
     };
     let body = body_for(route);
+    // A wrong answer is the backend's, and a result: reported as such, not
+    // as a failure of the run.
+    let verified = match runtime.block_on(verify(backend, route)) {
+        Ok(verified) => verified,
+        Err(error) => {
+            println!(
+                "{}",
+                json!({ "backend": backend, "route": route.name(), "ok": false, "error": error })
+            );
+            return ExitCode::FAILURE;
+        }
+    };
+    if let Err(detail) = verified {
+        println!(
+            "{}",
+            json!({ "backend": backend, "route": route.name(), "verdict": "wrong", "detail": detail })
+        );
+        return ExitCode::from(2);
+    }
     let outcome = runtime.block_on(async {
-        verify(backend, route).await?;
         let mut loopback = Loopback::connect(handler).await.map_err(|error| error.to_string())?;
         loopback.exchange(route, &body).await?;
         Ok::<_, String>(loopback)

@@ -227,6 +227,17 @@ fn pinned_cell(cmd: &mut Command, siblings: &[String]) -> Value {
         }
         return result;
     }
+    // A cell that measures nothing (the backend rejects the input, or
+    // answers wrongly) needs no quiet sibling to say so.
+    let result = capture(cmd).map_or(Value::Null, |(_, out, _)| {
+        out.lines()
+            .rev()
+            .find_map(|l| serde_json::from_str(l).ok())
+            .unwrap_or(Value::Null)
+    });
+    if matches!(result["verdict"].as_str(), Some("rejected" | "unsupported" | "wrong")) {
+        return result;
+    }
     json!({ "error": format!("the SMT sibling stayed busy (up to {:.0} %) around every try", busiest * 100.0) })
 }
 

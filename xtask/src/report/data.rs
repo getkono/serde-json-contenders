@@ -617,7 +617,8 @@ fn end_to_end(rows: &[Value], name: &str, variants: &[&str], aa: bool) -> Option
                         let row = rows
                             .iter()
                             .find(|r| r["variant"] == *v && r["backend"] == b.as_str() && r["route"] == route.0);
-                        if row.is_none_or(|r| r["error"].is_string()) {
+                        // A wrong answer is a result, which rule 2 reads.
+                        if row.is_none_or(|r| r["error"].is_string() && r["verdict"] != "wrong") {
                             lacking.push(format!("{v} {b} {}", route.0));
                         }
                     }

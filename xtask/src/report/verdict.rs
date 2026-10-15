@@ -475,7 +475,7 @@ pub struct Verdict {
 /// the pool it is weighed against) with no count at v3 to corroborate it.
 /// An entry without a count can neither dominate nor be dominated, so one
 /// missing anywhere in the pool leaves the frontier undecided.
-fn unweighable(data: &Data, e: &Entry, workload: &str, pool: &[&Entry]) -> Vec<String> {
+pub fn unweighable(data: &Data, e: &Entry, workload: &str, pool: &[&Entry]) -> Vec<String> {
     let ops: &[&str] = if e.encodes && !crate::matrix::DECODE_ONLY.contains(&workload) {
         &["decode", "encode"]
     } else {
@@ -681,8 +681,8 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
     if e.backend.starts_with("serde_json") {
         return if !failures.is_empty() {
             Outcome::Fail(failures.join("; "))
-        } else if miri.is_none() {
-            Outcome::Pending("the reference; Miri has not run".into())
+        } else if matches!(miri.and_then(|m| m["outcome"].as_str()), None | Some("error")) {
+            Outcome::Pending("the reference; Miri did not run".into())
         } else {
             Outcome::Pass("reference".into())
         };
@@ -972,14 +972,16 @@ fn exists(data: &Data, e: &Entry, pool: &[&Entry]) -> Exists {
     let trust = hw_trust(data);
     let best = best.map(|(_, b)| if solo { format!("{b}, provisional ({trust})") } else { b });
     match (best, note) {
-        (Some(b), Some(n)) => Exists::new(true, format!("{b}. {n}"), solo),
+        // A merit stands whatever the timing, so the "yes" is not
+        // provisional even where the timed clause beside it is.
+        (Some(b), Some(n)) => Exists::new(true, format!("{b}. {n}"), false),
         (Some(b), None) => Exists::new(true, b, solo),
         // A merit stands on counts or conformance, not on timing.
         (None, Some(n)) => Exists::new(true, n, false),
         (None, None) if hidden || !unweighed.is_empty() => Exists::new(
             false,
             format!(
-                "no measured reason yet{}{}",
+                "no measured reason yet{}{}{}",
                 if hidden {
                     format!("; a win beyond ε alone is inside the A/A band of {trust} timing")
                 } else {
@@ -989,7 +991,9 @@ fn exists(data: &Data, e: &Entry, pool: &[&Entry]) -> Exists {
                     String::new()
                 } else {
                     format!("; cycles not weighable at {}", unweighed.join(", "))
-                }
+                },
+                super::notes::contradicted(data, e.backend)
+                    .map_or(String::new(), |h| format!("; its stated merit ({h}) does not hold"))
             ),
             true,
         ),
@@ -1343,6 +1347,19 @@ pub(super) mod tests {
                 .push(json!({ "variant": "v3", "backend": b, "route": "json-large-post", "est_cycles": c }));
         }
         super::rule4(&data, simd())
+    }
+
+    /// The reference passes rule 2 only once Miri has run on it: a Miri
+    /// that failed to run is no evidence.
+    #[test]
+    fn the_reference_waits_for_miri() {
+        let mut data = Data::default();
+        let reference = &ENTRIES[0];
+        assert!(matches!(super::rule2(&data, reference), Outcome::Pending(_)));
+        data.miri.push(json!({ "set": reference.set, "outcome": "error" }));
+        assert!(matches!(super::rule2(&data, reference), Outcome::Pending(_)));
+        data.miri[0]["outcome"] = json!("clean");
+        assert!(matches!(super::rule2(&data, reference), Outcome::Pass(_)));
     }
 
     #[test]

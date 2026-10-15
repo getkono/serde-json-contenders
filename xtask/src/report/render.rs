@@ -436,19 +436,25 @@ fn pareto(out: &mut String, figures: &[super::figures::Figure]) {
             let _ = writeln!(out, "<a id=\"pareto-{}\"></a>\n\n### {}\n", f.group, f.group_title);
         }
         let _ = writeln!(out, "![{}](figures/{})\n", f.title, f.file);
+        if !f.uncounted.is_empty() {
+            let _ = writeln!(
+                out,
+                "Frontier undecided: no count at `v3` for {}.\n",
+                f.uncounted.join(", ")
+            );
+            continue;
+        }
+        let list = |v: &[String]| if v.is_empty() { "none".to_owned() } else { v.join(", ") };
         let _ = writeln!(
             out,
-            "Two-axis frontier: {}. On rule 1's frontier at this workload: {}.\n",
-            if f.frontier.is_empty() {
-                "none".to_owned()
+            "Two-axis frontier: {}. On {} frontier at this workload: {}.\n",
+            list(&f.frontier),
+            if f.group == "kynos" {
+                "rule 1's"
             } else {
-                f.frontier.join(", ")
+                "the *deserves to exist*"
             },
-            if f.rule1.is_empty() {
-                "none".to_owned()
-            } else {
-                f.rule1.join(", ")
-            }
+            list(&f.rule1)
         );
     }
 }

@@ -348,15 +348,21 @@ fn is_name_number(token: &str) -> bool {
 /// is not, but a number (`16`, `~0.8`) is. In prose, any word holding a
 /// digit that does not begin as a name does (with a letter), as a footnote
 /// marker (`^1`) or as an issue (`#123`) is. Anywhere, a figure joined to a
-/// name (`p99=12`, `cycles:1633`, `≈0.8`) is one.
+/// name (`p99=12`, `cycles:1633`, `p99<12`) is one. A name with a digit
+/// in it that does not begin with a letter (`7800X3D`, `99th`) reads as a
+/// figure too: Findings refers to such things in words, or links them.
 fn is_figure(token: &str, code: bool) -> bool {
     if is_name_number(token) {
         return false;
     }
-    if token.split(['=', ':', '≈']).skip(1).any(|rest| {
-        rest.trim_start_matches(['~', '+', '-', '−'])
-            .starts_with(|c: char| c.is_numeric())
-    }) {
+    if token
+        .split(['=', ':', '≈', '<', '>', '≤', '≥', '~'])
+        .skip(1)
+        .any(|rest| {
+            rest.trim_start_matches(['~', '+', '-', '−'])
+                .starts_with(|c: char| c.is_numeric())
+        })
+    {
         return true;
     }
     let first = token.chars().next();
@@ -465,15 +471,7 @@ fn bare_figures(readme: &str) -> Vec<String> {
         let lower = token.to_lowercase();
         let list_item = first && !code && word.ends_with('.') && token.chars().all(|c| c.is_ascii_digit());
         let rule = !code && rules && !unit_follows && matches!(token, "1" | "2" | "3" | "4");
-        // A standard's number ("RFC 8259") names it.
-        // A number right after a capitalised name ("RFC 8259", "Zen 4")
-        // names a thing, unless a unit follows it.
-        let standard = !unit_follows
-            && token.chars().all(|c| c.is_ascii_digit())
-            && i.checked_sub(1)
-                .and_then(|j| words.get(j))
-                .is_some_and(|(w, _, _)| trim(w).starts_with(char::is_uppercase));
-        if is_figure(token, code) && !rule && !list_item && !standard {
+        if is_figure(token, code) && !rule && !list_item {
             failures.push(format!(
                 "Findings quotes {token} without a link to the report row it comes from"
             ));
@@ -599,6 +597,10 @@ mod tests {
             "passes rule 1, 4 ms faster",
             "rule 1 and 2 M cycles fewer",
             "Zen 4 % faster",
+            "Only 3 entries pass rule 1.",
+            "Across 12 workloads it never loses.",
+            "p99<12 ms",
+            "RFC 8259",
         ] {
             let text = format!("## Findings\n\n[sic] it is {bad} faster.\n");
             assert!(!bare_figures(&text).is_empty(), "{bad} passed");
@@ -619,7 +621,7 @@ mod tests {
         assert!(super::whole("fails 4 of 4 conformance runs", "4"));
         assert!(super::whole("serde_json's 4,584 for twitter-like", "4,584"));
         assert!(!super::whole("2.93 MB", "2.93 M"));
-        let refs = "## Findings\n\nSee [#123](https://github.com/x/y/issues/123) and RFC 8259, on Zen 4 with serde_json 1.0.154 on 2026-10-15, a 64-bit build, and `Zen 4`.\n";
+        let refs = "## Findings\n\nSee [#123](https://github.com/x/y/issues/123), with serde_json 1.0.154 on 2026-10-15, a 64-bit build.\n";
         assert!(super::bare_figures(refs).is_empty(), "{:?}", super::bare_figures(refs));
         let ok = "## Findings\n\nUnder rules 1, 2 and 4 it holds.\n\n1. First, rule 1's test and rules 1–4 and rules 1 to 4.\n2. On `Zen`, see [sonic-rs#123](https://github.com/x) and [^1].\n";
         assert!(super::bare_figures(ok).is_empty(), "{:?}", super::bare_figures(ok));

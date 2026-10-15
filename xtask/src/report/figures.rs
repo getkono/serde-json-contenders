@@ -29,8 +29,12 @@ pub struct Figure {
     pub title: String,
     /// The entries on the two-axis frontier, by name.
     pub frontier: Vec<String>,
-    /// The entries on rule 1's frontier at this workload, by name.
+    /// The entries on the frontier the verdict reads at this workload (rule
+    /// 1's at a Kynos workload, "deserves to exist"'s at any other), by name.
     pub rule1: Vec<String>,
+    /// The entries timed here without a count at v3, which leave the
+    /// frontier undecided.
+    pub uncounted: Vec<String>,
     pub svg: String,
 }
 
@@ -165,7 +169,25 @@ fn figure(
     if pts.len() < 2 {
         return None;
     }
-    let front = frontier(&pts);
+    // An entry timed here without a count at v3 can be neither dominated nor
+    // dominate, so the frontier is undecided until it is counted: none is
+    // drawn, and no entry ringed.
+    let uncounted: Vec<String> = pts
+        .iter()
+        .filter(|p| matches!(p.axes[0].count, verdict::Count::Missing))
+        .map(|p| format!("`{}`", p.name))
+        .collect();
+    let mut pts = pts;
+    if !uncounted.is_empty() {
+        for p in &mut pts {
+            p.ring = false;
+        }
+    }
+    let front = if uncounted.is_empty() {
+        frontier(&pts)
+    } else {
+        Vec::new()
+    };
     let title = format!(
         "{workload} {op}: cycles at native against {}",
         trade.label(op).replace('`', "")
@@ -184,6 +206,7 @@ fn figure(
         title,
         frontier: front.iter().map(|&i| format!("`{}`", pts[i].name)).collect(),
         rule1: pts.iter().filter(|p| p.ring).map(|p| format!("`{}`", p.name)).collect(),
+        uncounted,
         svg,
     })
 }

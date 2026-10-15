@@ -313,9 +313,10 @@ fn rounds(
                 row["discarded"] = json!(results.iter().filter_map(|r| r["discarded"].as_u64()).sum::<u64>());
             } else if results
                 .iter()
-                .all(|r| matches!(r["verdict"].as_str(), Some("rejected" | "unsupported")))
+                .all(|r| matches!(r["verdict"].as_str(), Some("rejected" | "unsupported" | "wrong")))
             {
-                // Not measured, by the backend's own answer: recorded as such.
+                // Not measured, by the backend's own answer (a rejection, or a
+                // wrong result, which rule 2 reads): recorded as such.
             } else {
                 row["error"] = json!("a round failed or was refused; see rounds");
             }

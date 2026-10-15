@@ -191,7 +191,8 @@ impl Handler for Floor {
     fn handle(&self, route: Route, body: Bytes) -> Response<Full<Bytes>> {
         match route {
             Route::EchoPost => {
-                std::hint::black_box(checksum(&body));
+                // As many bytes as a codec build checksums: the payload.
+                std::hint::black_box(checksum(&body[..body.len().min(payloads::kynos::ECHO_PAYLOAD)]));
                 json(body)
             }
             Route::JsonLargeGet => json(self.large.clone()),

@@ -71,7 +71,10 @@ fn compare<T: Serialize + std::fmt::Debug>(
             );
         }
         (Err(r), Err(c)) => {
-            if serde_json::from_slice::<serde::de::IgnoredAny>(data).is_ok() {
+            // Well-formed in full: UTF-8, and a value serde_json (with
+            // `float_roundtrip`) builds, so no lone surrogate or number out of
+            // range. Skipping alone checks only the grammar.
+            if std::str::from_utf8(data).is_ok() && serde_json::from_slice::<serde_json::Value>(data).is_ok() {
                 let r = if r.is_data() { 422 } else { 400 };
                 assert_eq!(r, c.status(), "{form}: status differs: {c}");
             }

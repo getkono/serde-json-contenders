@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 
+use payloads::Workload;
 use serde_json::Value;
 
 /// A result, judged.
@@ -113,6 +114,33 @@ fn walk(got: &Value, expected: &Value, tally: &mut Tally, path: &mut String) -> 
         }
         (g, e) if g == e => Ok(()),
         _ => Err(format!("{path}: {got} != {expected}")),
+    }
+}
+
+/// Judge an encoder's output for workload `W` against its canonical
+/// encoding, in three steps:
+///
+/// 1. the same bytes are exact;
+/// 2. otherwise the output is decoded by serde_json into `W::Owned` and
+///    compared with [`compare`], so each number is read at its field's type:
+///    an `f32` written widened (`2.38303598756323e-24` for serde_json's
+///    `2.383036e-24`) reads back as the same `f32` and is exact;
+/// 3. only where serde_json refuses on its recursion limit (the nested
+///    workloads) is the output compared structurally, by [`compare_json`].
+///
+/// Step 2 reads what the type declares, so a member the type does not have
+/// would be skipped; a `Serialize` of `W::Owned` has no way to write one.
+pub fn judge_encoding<W: Workload>(got: &[u8], canonical: &[u8]) -> Verdict {
+    if got == canonical {
+        return Verdict::Exact;
+    }
+    match serde_json::from_slice::<W::Owned>(got) {
+        Ok(typed) => match (serde_json::to_value(&typed), serde_json::to_value(W::value())) {
+            (Ok(got), Ok(expected)) => compare(&got, &expected),
+            (Err(e), _) | (_, Err(e)) => Verdict::Wrong(format!("not representable as a value: {e}")),
+        },
+        Err(e) if e.to_string().starts_with("recursion limit exceeded") => compare_json(got, canonical),
+        Err(e) => Verdict::Wrong(format!("output does not decode as {}: {e}", W::NAME)),
     }
 }
 
@@ -668,6 +696,60 @@ mod tests {
             compare_json(br#"{"b":1}"#, br#"{"a":1}"#),
             Verdict::Wrong("$.a: missing".to_owned())
         );
+    }
+
+    use payloads::families::{F32s, Nested};
+
+    /// `values` written as simd-json writes `f32`s: widened to `f64` first.
+    fn widened(values: &[f32]) -> Vec<u8> {
+        let texts: Vec<String> = values.iter().map(|&f| format!("{:?}", f64::from(f))).collect();
+        format!("[{}]", texts.join(",")).into_bytes()
+    }
+
+    #[test]
+    fn f32s_written_widened_are_exact() {
+        let canonical = F32s::bytes();
+        let output = widened(&F32s::value());
+        assert_ne!(output, canonical);
+        // As f64s the two texts are millions of ulps apart.
+        assert!(matches!(compare_json(&output, &canonical), Verdict::Wrong(_)));
+        assert_eq!(judge_encoding::<F32s>(&output, &canonical), Verdict::Exact);
+    }
+
+    #[test]
+    fn a_different_f32_is_wrong() {
+        let mut values = F32s::value();
+        values[3] = f32::from_bits(values[3].to_bits() + 1);
+        let verdict = judge_encoding::<F32s>(&widened(&values), &F32s::bytes());
+        assert!(
+            matches!(&verdict, Verdict::Wrong(path) if path.starts_with("$[3]")),
+            "{verdict:?}"
+        );
+    }
+
+    #[test]
+    fn past_serde_jsons_depth_limit_the_comparison_is_structural() {
+        let canonical = Nested::<129>::bytes();
+        let spaced = String::from_utf8(canonical.clone()).expect("UTF-8").replace(':', ": ");
+        assert_eq!(
+            judge_encoding::<Nested<129>>(spaced.as_bytes(), &canonical),
+            Verdict::Exact
+        );
+        let other = String::from_utf8(canonical.clone())
+            .expect("UTF-8")
+            .replace("\"depth\":128", "\"depth\":7");
+        assert!(matches!(
+            judge_encoding::<Nested<129>>(other.as_bytes(), &canonical),
+            Verdict::Wrong(_)
+        ));
+    }
+
+    #[test]
+    fn output_of_another_shape_is_wrong() {
+        assert!(matches!(
+            judge_encoding::<F32s>(b"{\"a\":1}", &F32s::bytes()),
+            Verdict::Wrong(m) if m.starts_with("output does not decode as f32s")
+        ));
     }
 
     #[test]

@@ -101,7 +101,7 @@ Every workload is a typed Rust struct, never an untyped tree. Each has an owned 
 | --- | --- | --- |
 | Kynos shapes (decision rule) | `json-small` (91 B `Item`), `echo-post` (1 076 B `Echo`, a 1 KiB ASCII payload), `json-large` (64 KiB `Catalog`, 705 items) | byte-identical to kynos-bench's golden bodies, asserted by digest |
 | Size sweep | `Vec<Item>` at exactly 64 B, 256 B, 1 KiB, 4 KiB, 16 KiB, 64 KiB, 256 KiB, 1 MiB | where SIMD setup starts paying for itself |
-| Families (about 16 KiB unless the variable is size or depth) | `ints` (every digit count, 1–19 signed and 1–20 unsigned), `ints-extremes` (each digit count's boundaries, `i64::MIN`, `i64::MAX`, `u64::MAX`), `floats` (uniform over finite `f64` bit patterns), `f32s` (the same over `f32`), `escapes` (about 25 % escaped bytes), `unicode` (raw CJK, Hangul, Cyrillic, Greek, emoji), `long-string` (one 256 KiB ASCII string with nothing to escape), `nested-{100,127,129,10000}` (object depth either side of serde_json's limit of 128), `wide-1000` (a 1 000-key map), `array-small` (a long `Vec<Point>`), `enums` (64 KiB of records holding one externally, internally, adjacently tagged and untagged enum each), `pretty-json-large` (`json-large`'s value, pretty-printed) | one variable at a time |
+| Families (about 16 KiB, unless the variable is size or depth, or the value is another workload's: `pretty-json-large` is 122 KiB) | `ints` (every digit count, 1–19 signed and 1–20 unsigned), `ints-extremes` (each digit count's boundaries, `i64::MIN`, `i64::MAX`, `u64::MAX`), `floats` (uniform over finite `f64` bit patterns), `f32s` (the same over `f32`), `escapes` (about 25 % escaped bytes), `unicode` (raw CJK, Hangul, Cyrillic, Greek, emoji), `long-string` (one 256 KiB ASCII string with nothing to escape), `nested-{100,127,129,10000}` (object depth either side of serde_json's limit of 128), `wide-1000` (a 1 000-key map), `array-small` (a long `Vec<Point>`), `enums` (64 KiB of records holding one externally, internally, adjacently tagged and untagged enum each), `pretty-json-large` (`json-large`'s value, pretty-printed) | one variable at a time |
 | Real-world schemas | `twitter-like` (800 KiB, non-ASCII written as `\u` escapes), `citm-like` (480 KiB, integer- and key-heavy), `canada-like` (2.1 MiB of full-precision floats) | the schemas of the three documents most JSON benchmarks use; the originals carry no licence that permits redistribution, so they are regenerated, not copied |
 | Real-world variants | `raw-utf8` (`twitter-like` with its non-ASCII written raw), `pretty-twitter-like` (`twitter-like` pretty-printed), `skip-unknown` (`twitter-like`'s bytes into a struct that declares 8 of each status's 37 keys, so the rest must be skipped) | how a document is written, and how much of it the handler wants |
 
@@ -135,7 +135,7 @@ The differential suite is `crates/conformance`. It compares every backend with s
 
 Beyond the differential suite:
 
-- **Fuzzing**: differential fuzzing (cargo-fuzz, `nightly-2026-09-25`, AddressSanitizer) covers arbitrary bytes into `Value`, arbitrary bytes into an attribute-heavy struct, and arbitrary values round-tripped through both encoders. Every target runs for 30 minutes per backend and build configuration on two libFuzzer workers, and continues past each divergence, so the whole 30 minutes is fuzzed and nothing behind the first finding is missed. Each run records how many inputs crashed, the smallest of them, its assertion, and any memory error the sanitizer reported. A divergence fails rule 2 (conformance); a sanitizer report fails rule 3 (soundness).
+- **Fuzzing**: differential fuzzing (cargo-fuzz, `nightly-2026-09-25`, AddressSanitizer), at `v3` for every candidate and also at `portable` for sonic-rs, whose fallback scanner is a separate implementation. `v3` runs the SIMD paths `native` takes on the measured host: no backend has an AVX-512 path, and `doctor` checks which path each build takes. It covers arbitrary bytes into `Value`, arbitrary bytes into an attribute-heavy struct, and arbitrary values round-tripped through both encoders. Every target runs for 30 minutes per backend and build configuration on two libFuzzer workers, and continues past each divergence, so the whole 30 minutes is fuzzed and nothing behind the first finding is missed. Each run records how many inputs crashed, the smallest of them, its assertion, and any memory error the sanitizer reported. A divergence fails rule 2 (conformance); a sanitizer report fails rule 3 (soundness).
 - **Miri**: runs a subset of the suite wherever the backend's intrinsics allow it.
 
 A backend that disagrees silently with serde_json on anything that gates fails. Two rules decide what counts as a disagreement:
@@ -149,7 +149,7 @@ Each adapter maps its crate's errors to 400/422 as faithfully as that crate's er
 
 `crates/e2e` is a hyper 1.x server that reads each body the way a hyper-based framework does (`collect().to_bytes()`) and uses one backend per build. Its routes are `POST /echo`, `GET /json/large`, `POST /json/large` (whose 64 KiB body arrives in several frames) and `GET /json/small`. A *floor* build serves the same routes with no JSON: it returns pre-encoded bytes and discards request bodies.
 
-- **Counted**: callgrind per request over an in-memory connection, at `v3`. The codec's share of a request is (backend − floor) ÷ backend. That share bounds what swapping the codec can gain end to end. A timed gain larger than the count predicts is treated as a measurement error, not a result.
+- **Counted**: callgrind per request over an in-memory connection, at `portable` and `v3`; the rule reads `v3`. The codec's share of a request is (backend − floor) ÷ backend. That share bounds what swapping the codec can gain end to end. A timed gain larger than the count predicts is treated as a measurement error, not a result.
 - **Timed**: loopback, with the server on cores 0–3 and oha 1.16.0 on cores 8–15. Closed-loop throughput is measured at 64 connections, then open-loop p99 at 70 % of serde_json's throughput (with coordinated-omission correction). Each measurement is 30 s, the backends run 5 times in shuffled order, and serde_json runs twice as an A/A control.
 
 ### Timed measurements and trust
@@ -201,10 +201,10 @@ The results stand only after these checks:
 
 1. **The harness is correct.** The unit and integration tests (`mise run test`).
 2. **The results are one measurement of the committed code.** Every result file is stamped with a fingerprint of the measured code: a hash of every tracked file at the commit, excluding the report, this README, CI and the results. The report refuses a file stamped with another fingerprint or from a dirty checkout. It also refuses a per-operation table missing a row of the matrix, and a note whose figure the results cannot answer. A partial rerun after a change to measured code is therefore caught, not mixed in.
-3. **The counts reproduce.** callgrind has no noise, so a recount on the host that took the committed counts, from an empty `target/`, must return every count unchanged: `cargo xtask count --check --tolerance 0`. That holds only because every counted process runs with the same environment, nothing but a fixed `PATH`: the environment sits on the process's stack, and its length alone moves some counts by up to about 0.08 %. On another x86-64 host, CI's `count --check` holds the Kynos shapes to 0.5 %, which covers differences in libc and kernel.
+3. **The counts reproduce.** callgrind has no noise, so a recount on the host that took the committed counts, from an empty `target/`, must return every count unchanged. `mise run count:check` recounts the whole matrix at zero tolerance and records the result in `results/callgrind/recount.json`, and the report refuses results without a recount of every committed count. That holds only because every counted process runs with the same environment, nothing but a fixed `PATH`: the environment sits on the process's stack, and its length alone moves some counts (struson's json-small decode by 12 instructions; `xtask/src/counted.rs`). On another x86-64 host, CI's `count --check` holds the Kynos shapes to 0.5 %, which covers differences in libc and kernel.
 4. **The harness can fail.** A faulty backend is caught exactly where it is faulty, and nowhere else:
    - An `n_` file accepted, a wrong shape answered 400, and floats one bit off each fail conformance in their own section. Floats written in a different format appear in `encode_diff` as a difference that does not gate (`crates/conformance/tests/harness.rs`).
-   - An adapter that copies its input once more shows exactly one more allocation, of the input's size, and that much more peak. Under callgrind it costs the copy's instructions (`crates/cell/src/sensitivity.rs`). The callgrind half needs valgrind, so it runs in the container rather than in `mise run test`: `cargo xtask image`, then `podman run --rm -v "$PWD:/work" serde-json-contenders:valgrind cargo test -p cell --locked -- --ignored sensitivity`.
+   - An adapter that copies its input once more shows exactly one more allocation, of the input's size, and that much more peak. Under callgrind it costs the copy's instructions (`crates/cell/src/sensitivity.rs`). The callgrind half needs valgrind, so it runs in the container rather than in `mise run test`: `mise run sensitivity`, which `mise run all` runs before measuring.
    - An adapter that does less work than it should, the kind of variant an optimizer could delete, is refused by the result check in every mode and never measured.
    - A cycles "win" inside the A/A band, or one the count contradicts, is not a win (`xtask/src/report/verdict.rs` tests).
 5. **The commentary matches the report.** Every number quoted under [Findings](#findings) links to the report row it comes from, and `cargo xtask report --check` fails if that row does not hold it.
@@ -212,13 +212,15 @@ The results stand only after these checks:
 
 Deviations:
 
-- End-to-end counts are not exactly reproducible: two recounts from an empty `target/` differ by up to 0.015 % per request. That is far inside what any rule reads (the codec share and the timed prediction), but it is not the exact agreement the operation counts have.
+- End-to-end counts are not exactly reproducible from an empty `target/`, so the zero-tolerance recount covers the per-operation counts only. The end-to-end counts feed only the codec share and rule 4's prediction.
+- A stage that was not measured must be declared, with its reason, in `results/skipped.toml`; the report states every such reason under Limitations.
 
 ### Reproduce
 
 ```sh
-mise install              # toolchain, nextest, convco, oha
-mise run all              # every measurement, on one commit, then the report (hours)
+mise install              # toolchain, nextest, convco, oha, hk, cargo-fuzz
+mise run all              # every measurement and check, on one commit, then the report (hours)
+SJC_TRUST=canonical mise run all   # the same on a quieted host: timing that can decide
 cargo xtask report        # regenerate report/ from results/
 cargo xtask report --check
 ```

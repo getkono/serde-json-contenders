@@ -13,7 +13,7 @@ use serde_json::{Value, json};
 
 use crate::build::{Place, bin, build};
 use crate::counted::{Cell, Filter, merge_rows};
-use crate::matrix::{KYNOS, SHAPES, Shape, TIMED_SHAPES, variant};
+use crate::matrix::{KYNOS, Shape, TIMED_SHAPES, hw_shapes, variant};
 use crate::util::{capture, root, shuffle};
 
 /// Rounds per cell unless `--rounds` says otherwise; the report states any
@@ -21,11 +21,24 @@ use crate::util::{capture, root, shuffle};
 pub const ROUNDS: u64 = 3;
 
 /// The workloads timed by default: the decision shapes, the sweep, and the
-/// real-world documents. Families are counted, not timed.
-fn default_workloads() -> Vec<String> {
+/// real-world documents and their variants. Families are counted, not timed.
+pub fn default_workloads() -> Vec<String> {
+    struct Group;
+    impl payloads::Visit for Group {
+        type Output = payloads::Group;
+        fn visit<W: payloads::Workload>(self) -> payloads::Group {
+            W::GROUP
+        }
+    }
     payloads::ALL
         .iter()
-        .filter(|w| KYNOS.contains(w) || w.starts_with("sweep-") || w.ends_with("-like"))
+        .filter(|w| {
+            KYNOS.contains(w)
+                || matches!(
+                    payloads::dispatch(w, Group),
+                    Some(payloads::Group::Sweep | payloads::Group::World)
+                )
+        })
         .map(|w| (*w).to_owned())
         .collect()
 }
@@ -46,7 +59,7 @@ pub fn time(args: &[String]) -> Result<()> {
     if filter.variants.is_none() {
         filter.variants = Some(vec!["native".into()]);
     }
-    rounds(args, &filter, "time", TIMED_SHAPES, "ns_median", "ns")
+    rounds(args, &filter, "time", &|_| TIMED_SHAPES, "ns_median", "ns")
 }
 
 /// `xtask hw`: hardware cycle and instruction counters at `native`, every
@@ -59,7 +72,16 @@ pub fn hw(args: &[String]) -> Result<()> {
     if filter.variants.is_none() {
         filter.variants = Some(vec!["native".into()]);
     }
-    rounds(args, &filter, "hw", SHAPES, "cycles", "cycles")
+    rounds(args, &filter, "hw", &hw_shapes, "cycles", "cycles")
+}
+
+/// The trust class a run claims: `--trust`, else `SJC_TRUST` (so `mise run
+/// all` can pass it to every timed task), else `solo`.
+pub fn trust(args: &[String]) -> String {
+    flag(args, "--trust")
+        .map(str::to_owned)
+        .or_else(|| std::env::var("SJC_TRUST").ok())
+        .unwrap_or_else(|| "solo".into())
 }
 
 /// The 1-minute load average above which a run cannot be `canonical`.
@@ -103,10 +125,17 @@ fn siblings(core: &str) -> String {
 /// an order shuffled per round, with serde_json twice per round as the A/A
 /// control. `field` is the per-round figure the cell reports; the row's
 /// `out` is the median over rounds.
-fn rounds(args: &[String], filter: &Filter, mode: &str, shapes: &[Shape], field: &str, out: &str) -> Result<()> {
+fn rounds(
+    args: &[String],
+    filter: &Filter,
+    mode: &str,
+    shapes: &dyn Fn(&str) -> &'static [Shape],
+    field: &str,
+    out: &str,
+) -> Result<()> {
     let rounds: u64 = flag(args, "--rounds").and_then(|v| v.parse().ok()).unwrap_or(ROUNDS);
     let core = flag(args, "--core").unwrap_or("2").to_owned();
-    let trust = flag(args, "--trust").unwrap_or("solo").to_owned();
+    let trust = trust(args);
     check_trust(&trust)?;
     let sibling = siblings(&core);
     let mut rows = Vec::new();
@@ -115,7 +144,7 @@ fn rounds(args: &[String], filter: &Filter, mode: &str, shapes: &[Shape], field:
         let mut cells: Vec<(Cell, String, std::path::PathBuf)> = Vec::new();
         for set in filter.sets() {
             let release = build(Place::Host, "cell", set, &variant)?;
-            for cell in filter.cells(set, shapes) {
+            for cell in filter.cells_by(set, shapes) {
                 let copies: &[&str] = if set.name == "baseline" { &["", "#aa"] } else { &[""] };
                 for copy in copies {
                     cells.push((cell.clone(), (*copy).to_owned(), bin(&release, "cell")));

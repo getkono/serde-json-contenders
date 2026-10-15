@@ -202,3 +202,21 @@ pub const TIMED_SHAPES: &[Shape] = &[SHAPES[0], SHAPES[4]];
 
 /// The workloads the decision rule is evaluated on.
 pub const KYNOS: &[&str] = &["json-small", "echo-post", "json-large"];
+
+/// The variants callgrind counts on the measured host. valgrind cannot run
+/// AVX-512, so its `native` build is not counted; the report expects exactly
+/// these, whatever CPU it runs on.
+pub const COUNTED_VARIANTS: &[&str] = &["portable", "v3"];
+
+/// The shapes hardware cycles are taken at for `workload`: the server's own
+/// decode and encode everywhere, and every shape at the Kynos shapes, whose
+/// arrival and reused-buffer tables read them. Nothing measured goes
+/// unreported.
+#[must_use]
+pub fn hw_shapes(workload: &str) -> &'static [Shape] {
+    if KYNOS.contains(&workload) {
+        SHAPES
+    } else {
+        TIMED_SHAPES
+    }
+}

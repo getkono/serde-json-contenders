@@ -49,14 +49,14 @@ figures.base_bytes = { table = "alloc", backend = "flexon-ct", workload = "twitt
 merit = "Partial mode parses truncated documents (built for streamed model output); decode only."
 
 [hifijson]
-merit = "No `unsafe`: {blocks} unsafe blocks, {fns} functions and {impls} impls across its {crates} runtime crate(s). Lexes any byte iterator (`IterLexer`), so input need not be in memory; numbers kept as text."
+merit = "{blocks} `unsafe` blocks, {fns} `unsafe` functions and {impls} `unsafe` impls across its {crates} runtime crate(s). Lexes any byte iterator (`IterLexer`), so input need not be in memory; numbers kept as text."
 figures.blocks = { table = "footprint", set = "hifijson", field = "unsafe_blocks" }
 figures.fns = { table = "footprint", set = "hifijson", field = "unsafe_fns" }
 figures.impls = { table = "footprint", set = "hifijson", field = "unsafe_impls" }
 figures.crates = { table = "footprint", set = "hifijson", field = "runtime_crates_added" }
 
 [struson]
-merit = "No `unsafe`: {blocks} unsafe blocks, {fns} functions and {impls} impls across its {crates} runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors."
+merit = "{blocks} `unsafe` blocks, {fns} `unsafe` functions and {impls} `unsafe` impls across its {crates} runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors."
 figures.blocks = { table = "footprint", set = "struson", field = "unsafe_blocks" }
 figures.fns = { table = "footprint", set = "struson", field = "unsafe_fns" }
 figures.impls = { table = "footprint", set = "struson", field = "unsafe_impls" }

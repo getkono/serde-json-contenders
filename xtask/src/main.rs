@@ -1,7 +1,7 @@
 //! Every task this repository runs, behind `cargo xtask <task>`.
 //!
 //! Each task writes provenance-stamped JSON under `results/`; `report` is the
-//! only writer of the README's results, and it reads nothing else.
+//! only writer of `report/`, and it reads nothing but `results/`.
 
 mod build;
 mod container;
@@ -26,6 +26,7 @@ cargo xtask <task> [--sets a,b] [--variants v,w] [--workloads x,y] [--jobs N]
   image         build the valgrind container image
   doctor        verify every build compiled and runs its claimed SIMD paths
   count         callgrind instructions and estimated cycles (container)
+                [--check [--tolerance PCT] [--record]]
   alloc         allocations per operation
   hw            hardware cycles and instructions at native [--rounds 3] [--core 2] [--trust solo|canonical]
   time          timed sampling [--rounds 3] [--core 2] [--trust solo|canonical]

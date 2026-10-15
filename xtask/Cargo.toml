@@ -1,6 +1,6 @@
 [package]
 name = "xtask"
-description = "Builds the matrix, runs every measurement, and writes the results and the README."
+description = "Builds the matrix, runs every measurement, and writes the results and the report."
 version.workspace = true
 edition.workspace = true
 license.workspace = true

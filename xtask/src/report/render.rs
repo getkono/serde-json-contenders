@@ -198,9 +198,10 @@ fn limitations(data: &Data) -> Vec<String> {
         ),
         ("End-to-end timing", class(&mut host.e2e_time.iter()), &Value::Null),
     ] {
-        if !classes.is_empty() && classes.iter().all(|c| c == "solo") {
+        if classes.iter().any(|c| c != "canonical") {
             notes.push(format!(
-                "{name} is `solo` class: taken on a shared machine{}, not a quieted one. Its A/A band says how much of a difference is noise.",
+                "{name} is {}`solo` class: taken on a shared machine{}, not a quieted one. Its A/A band says how much of a difference is noise.",
+                if classes.iter().any(|c| c == "canonical") { "partly " } else { "" },
                 load(prov).map_or_else(String::new, |l| format!(
                     " (1, 5 and 15 minute load average {l} as it finished; governor {})",
                     prov["governor"].as_str().unwrap_or("?")
@@ -309,7 +310,7 @@ fn rules_table(out: &mut String, verdicts: &[Verdict]) {
         "3 Soundness",
         "4 End to end",
     ]));
-    for v in verdicts.iter().filter(|v| !v.entry.backend.starts_with("serde_json")) {
+    for v in verdicts.iter().filter(|v| v.entry.backend != "serde_json") {
         let cell = |o: &Outcome| format!("{} {}", mark(o), o.detail());
         out.push_str(&row(&[
             format!("`{}`", v.entry.backend),
@@ -410,9 +411,20 @@ fn pareto(out: &mut String, figures: &[super::figures::Figure]) {
             let _ = writeln!(out, "<a id=\"pareto-{}\"></a>\n\n### {}\n", f.group, f.group_title);
         }
         let _ = writeln!(out, "![{}](figures/{})\n", f.title, f.file);
-        if !f.frontier.is_empty() {
-            let _ = writeln!(out, "Frontier: {}.\n", f.frontier.join(", "));
-        }
+        let _ = writeln!(
+            out,
+            "Two-axis frontier: {}. On rule 1's frontier at this workload: {}.\n",
+            if f.frontier.is_empty() {
+                "none".to_owned()
+            } else {
+                f.frontier.join(", ")
+            },
+            if f.rule1.is_empty() {
+                "none".to_owned()
+            } else {
+                f.rule1.join(", ")
+            }
+        );
     }
 }
 
@@ -856,8 +868,8 @@ fn end_to_end(out: &mut String, data: &Data) {
         section(out, "e2e-timed", "End to end: timed");
         let _ = writeln!(
             out,
-            "Trust class `{}`. Closed-loop throughput at 64 connections, and p99 open-loop at 70 % of serde_json's throughput; median of reps, relative to serde_json.\n",
-            host.e2e_trust.as_deref().unwrap_or("?")
+            "Trust class `{}`. Closed-loop throughput at 64 connections (positive is more requests), and p99 latency open-loop at 70 % of serde_json's throughput (negative is faster); median of reps, relative to serde_json.\n",
+            verdict::weakest(host.e2e_time.iter())
         );
         out.push_str(&header(&[
             "Route",
@@ -869,17 +881,18 @@ fn end_to_end(out: &mut String, data: &Data) {
         ]));
         for (route, ..) in crate::endtoend::ROUTES {
             for e in ENTRIES.iter().skip(1) {
-                let Some((rps, p99, aa_rps, aa_p99)) = verdict::e2e_gain(&host.e2e_time, e.backend, route) else {
+                let Some(g) = verdict::e2e_gain(&host.e2e_time, e.backend, route) else {
                     continue;
                 };
+                let band = |b: Option<f64>| b.map_or("no control".to_owned(), |b| format!("±{:.1} %", b * 100.0));
                 let predicted = verdict::e2e_predicted(data, e.backend, route)
                     .map_or("—".into(), |p| format!("{:+.1} %", p * 100.0));
                 out.push_str(&row(&[
                     (*route).to_owned(),
                     format!("`{}`", e.backend),
-                    format!("{:+.1} %", rps * 100.0),
-                    format!("{:+.1} %", -p99 * 100.0),
-                    format!("±{:.1} %, ±{:.1} %", aa_rps * 100.0, aa_p99 * 100.0),
+                    format!("{:+.1} %", g.rps * 100.0),
+                    format!("{:+.1} %", g.p99 * 100.0),
+                    format!("{}, {}", band(g.aa_rps), band(g.aa_p99)),
                     predicted,
                 ]));
             }
@@ -893,14 +906,7 @@ fn timed(out: &mut String, data: &Data) {
     if host.time.is_empty() {
         return;
     }
-    let trust = host
-        .time
-        .rows
-        .values()
-        .next()
-        .and_then(|r| r["trust"].as_str())
-        .unwrap_or("?")
-        .to_owned();
+    let trust = verdict::weakest(host.time.rows.values());
     section(out, "timed", "Wall-clock time per operation");
     let _ = writeln!(
         out,
@@ -953,6 +959,14 @@ fn provenance(out: &mut String, data: &Data, stale: &[String]) {
             None => "not run".to_owned(),
         }
     );
+    let r = &data.recount;
+    if !r.is_null() {
+        let _ = writeln!(
+            out,
+            "Recount: {} of the {} committed callgrind counts came back from an empty `target/` at tolerance {}.\n",
+            r["compared"], r["committed"], r["tolerance"]
+        );
+    }
     out.push_str(&header(&["Source", "Commit", "Fingerprint", "Recorded", "Conditions"]));
     for s in collapse(&data.sources) {
         let p = &s.provenance;

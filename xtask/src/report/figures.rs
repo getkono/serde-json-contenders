@@ -4,18 +4,20 @@
 //! `native`, the axis the rule reads) against heap bytes, `.text` added, or
 //! clean release compile time. Color carries a point's role, never its
 //! identity, which its label carries: twelve entries are far more than a
-//! scatter's colors can keep apart. Blue marks the frontier among every
-//! measured entry; orange outlines the frontier among the entries rule 1
-//! weighs (eligible, and not failing conformance); gray is everything else.
+//! scatter's colors can keep apart. Blue marks the two-axis frontier among
+//! every measured entry, drawn with the same dominance the verdict uses; an
+//! orange ring marks an entry on rule 1's own frontier at that workload (all
+//! six axes, among the eligible entries that pass conformance); gray is
+//! everything else.
 
 use std::fmt::Write as _;
 
 use super::data::Data;
-use super::verdict::{self, ENTRIES, EPSILON, Entry, X86_NATIVE, cpu, heap};
+use super::verdict::{self, Axis, ENTRIES, Entry, X86_NATIVE, heap};
 use crate::matrix::KYNOS;
 
 /// The legend, as Markdown under the figures' heading.
-pub const LEGEND: &str = "Each point is an entry point, labelled. The x-axis is hardware cycles at `native` (what rule 1 reads); the y-axis is the trade-off named in the title. Lower and further left is better on both. **Blue**, joined by a step line: the frontier among every measured entry (no other entry is better on one axis without being worse on the other, by more than ε = 5 % or, on cycles, the A/A band). **Orange ring and dashed line**: the frontier among the entries rule 1 weighs, the eligible ones that pass conformance. **Hollow**: the entry fails conformance. The gray crosshair is serde_json. Axes are logarithmic where the figures span more than 10×. Each SVG carries the figures as hover titles.";
+pub const LEGEND: &str = "Each point is an entry point, labelled. The x-axis is hardware cycles at `native` (what rule 1 reads); the y-axis is the trade-off named in the title. Lower and further left is better on both. **Blue**, joined by a step line: the frontier of the two axes shown, among every measured entry: no other entry is better on one without being worse on the other, by more than ε = 5 % or, on cycles, the A/A band, and a cycles advantage callgrind's count contradicts does not count. **Orange ring**: on rule 1's frontier at this workload, which weighs all six axes among the eligible entries that pass conformance. **Hollow**: the entry fails conformance. The gray crosshair is serde_json. Axes are logarithmic where the figures span more than 10×. Each SVG carries the figures as hover titles.";
 
 /// One generated figure.
 #[derive(Debug, Clone)]
@@ -24,8 +26,10 @@ pub struct Figure {
     pub group_title: String,
     pub file: String,
     pub title: String,
-    /// The entries on the all-entries frontier, by name.
+    /// The entries on the two-axis frontier, by name.
     pub frontier: Vec<String>,
+    /// The entries on rule 1's frontier at this workload, by name.
+    pub rule1: Vec<String>,
     pub svg: String,
 }
 
@@ -66,22 +70,21 @@ impl Trade {
     }
 }
 
-struct Pt {
-    name: &'static str,
-    x: f64,
-    y: f64,
-    conforms: bool,
-    weighed: bool,
-}
-
-/// Every figure the report embeds, in report order.
-pub fn figures(data: &Data, conforming: &[&Entry]) -> Vec<Figure> {
+/// Every figure the report embeds, in report order, and the Kynos figures the
+/// results could not draw (which the report refuses).
+pub fn figures(data: &Data, conforming: &[&Entry]) -> (Vec<Figure>, Vec<String>) {
+    let pool: Vec<&Entry> = conforming.iter().copied().filter(|e| e.eligible).collect();
     let mut out = Vec::new();
+    let mut missing = Vec::new();
     for w in KYNOS {
         for op in ["decode", "encode"] {
             for trade in [Trade::Heap, Trade::Text, Trade::Compile] {
-                if let Some(f) = figure(data, conforming, "kynos", w, op, trade) {
-                    out.push(f);
+                match figure(data, conforming, &pool, "kynos", w, op, trade) {
+                    Some(f) => out.push(f),
+                    None => missing.push(format!(
+                        "figure {w}-{op}-{}: too few measured entries, or no A/A control",
+                        trade.name()
+                    )),
                 }
             }
         }
@@ -90,25 +93,30 @@ pub fn figures(data: &Data, conforming: &[&Entry]) -> Vec<Figure> {
         .iter()
         .filter(|w| !KYNOS.contains(w) && !w.starts_with("sweep-"))
     {
-        if let Some(f) = figure(data, conforming, "workloads", w, "decode", Trade::Heap) {
+        if let Some(f) = figure(data, conforming, &pool, "workloads", w, "decode", Trade::Heap) {
             out.push(f);
         }
     }
-    out
+    (out, missing)
 }
 
-/// The entries of `pts` (by index) no other entry dominates, on two axes
-/// with tolerances `tx` and `ty`.
-fn frontier(pts: &[&Pt], tx: f64, ty: f64) -> Vec<usize> {
+struct Pt {
+    name: &'static str,
+    x: f64,
+    y: f64,
+    axes: [Axis; 2],
+    conforms: bool,
+    /// On rule 1's frontier at this workload.
+    ring: bool,
+}
+
+/// The entries of `pts` (by index) no other entry dominates on the two axes.
+fn frontier(pts: &[Pt]) -> Vec<usize> {
     (0..pts.len())
         .filter(|&i| {
-            let p = pts[i];
-            !pts.iter().enumerate().any(|(j, q)| {
-                j != i
-                    && q.x <= p.x * (1.0 + tx)
-                    && q.y <= p.y * (1.0 + ty)
-                    && (q.x < p.x * (1.0 - tx) || q.y < p.y * (1.0 - ty))
-            })
+            !pts.iter()
+                .enumerate()
+                .any(|(j, q)| j != i && verdict::dominates(&q.axes, &pts[i].axes))
         })
         .collect()
 }
@@ -116,52 +124,51 @@ fn frontier(pts: &[&Pt], tx: f64, ty: f64) -> Vec<usize> {
 fn figure(
     data: &Data,
     conforming: &[&Entry],
+    pool: &[&Entry],
     group: &'static str,
     workload: &str,
     op: &str,
     trade: Trade,
 ) -> Option<Figure> {
-    let entries: Vec<&Entry> = ENTRIES.iter().filter(|e| op == "decode" || e.encodes).collect();
-    let pts: Vec<Pt> = entries
+    // Without a control the cycles cannot be weighed, so there is no frontier
+    // to draw.
+    verdict::cpu_tolerance(data, X86_NATIVE, workload, op)?;
+    let pts: Vec<Pt> = ENTRIES
         .iter()
+        .filter(|e| op == "decode" || e.encodes)
         .filter_map(|e| {
-            let x = cpu(data, X86_NATIVE, e.backend, workload, op)?;
+            let cycles = verdict::cpu_axis(data, X86_NATIVE, e.backend, workload, op);
+            let x = cycles.value?;
             let y = trade.value(data, e, workload, op)?;
-            let conforms = conforming.iter().any(|c| c.backend == e.backend);
             Some(Pt {
                 name: e.backend,
                 x,
                 y,
-                conforms,
-                weighed: conforms && e.eligible,
+                axes: [
+                    cycles,
+                    Axis {
+                        value: Some(y),
+                        tol: verdict::EPSILON,
+                        may_win: true,
+                    },
+                ],
+                conforms: conforming.iter().any(|c| c.backend == e.backend),
+                ring: pool.iter().any(|c| c.backend == e.backend)
+                    && verdict::on_frontier(data, X86_NATIVE, e, workload, pool),
             })
         })
         .collect();
     if pts.len() < 2 {
         return None;
     }
-    let tx = verdict::cpu_tolerance(data, X86_NATIVE, workload, op);
-    let all: Vec<&Pt> = pts.iter().collect();
-    let front = frontier(&all, tx, EPSILON);
-    let weighed: Vec<&Pt> = pts.iter().filter(|p| p.weighed).collect();
-    let weighed_front: Vec<&str> = frontier(&weighed, tx, EPSILON)
-        .into_iter()
-        .map(|i| weighed[i].name)
-        .collect();
+    let front = frontier(&pts);
     let title = format!(
         "{workload} {op}: cycles at native against {}",
         trade.label(op).replace('`', "")
     );
     let file = format!("{workload}-{op}-{}.svg", trade.name());
     let base = pts.iter().find(|p| p.name == "serde_json").map(|p| (p.x, p.y));
-    let svg = draw(
-        &title,
-        &trade.label(op).replace('`', ""),
-        &pts,
-        &front,
-        &weighed_front,
-        base,
-    );
+    let svg = draw(&title, &trade.label(op).replace('`', ""), &pts, &front, base);
     Some(Figure {
         group,
         group_title: if group == "kynos" {
@@ -172,6 +179,7 @@ fn figure(
         file,
         title,
         frontier: front.iter().map(|&i| format!("`{}`", pts[i].name)).collect(),
+        rule1: pts.iter().filter(|p| p.ring).map(|p| format!("`{}`", p.name)).collect(),
         svg,
     })
 }
@@ -249,17 +257,20 @@ impl Scale {
 }
 
 fn short(v: f64) -> String {
-    match v.abs() {
-        a if a >= 1e9 => format!("{:.3}G", v / 1e9),
-        a if a >= 1e6 => format!("{:.3}M", v / 1e6),
-        a if a >= 1e3 => format!("{:.3}k", v / 1e3),
-        a if a >= 10.0 || a == 0.0 => format!("{v:.0}"),
-        _ => format!("{v:.2}"),
-    }
-    .replace(".000", "")
-    .trim_end_matches('0')
-    .trim_end_matches('.')
-    .to_owned()
+    let (scaled, unit) = match v.abs() {
+        a if a >= 1e9 => (v / 1e9, "G"),
+        a if a >= 1e6 => (v / 1e6, "M"),
+        a if a >= 1e3 => (v / 1e3, "k"),
+        _ => (v, ""),
+    };
+    let digits = if scaled.abs() >= 100.0 || (unit.is_empty() && scaled.abs() >= 10.0) {
+        format!("{scaled:.0}")
+    } else {
+        // Only a fractional part loses its trailing zeros.
+        let s = format!("{scaled:.2}");
+        s.trim_end_matches('0').trim_end_matches('.').to_owned()
+    };
+    format!("{digits}{unit}")
 }
 
 fn esc(s: &str) -> String {
@@ -269,15 +280,15 @@ fn esc(s: &str) -> String {
 const STYLE: &str = "<style>
 .bg{fill:#fcfcfb}.ink{fill:#0b0b0b}.ink2{fill:#52514e}.grid{stroke:#e4e3df;stroke-width:1}
 .axis{stroke:#8a8984;stroke-width:1}.ref{stroke:#8a8984;stroke-width:1;stroke-dasharray:3 3}
-.front{stroke:#2a78d6;stroke-width:2;fill:none}.weighed{stroke:#eb6834;stroke-width:2;fill:none;stroke-dasharray:6 4}
+.front{stroke:#2a78d6;stroke-width:2;fill:none}
 .on{fill:#2a78d6;stroke:#fcfcfb;stroke-width:2}.off{fill:#8a8984;stroke:#fcfcfb;stroke-width:2}
 .on.hollow{fill:#fcfcfb;stroke:#2a78d6}.off.hollow{fill:#fcfcfb;stroke:#8a8984}
 .ring{fill:none;stroke:#eb6834;stroke-width:2}
-text{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;font-size:12px}
+text{font-family:system-ui,'Segoe UI',sans-serif;font-size:12px}
 .title{font-size:14px;font-weight:600}
 @media (prefers-color-scheme:dark){
 .bg{fill:#1a1a19}.ink{fill:#f0efec}.ink2{fill:#c3c2b7}.grid{stroke:#2e2e2c}.axis,.ref{stroke:#7a7974}
-.front{stroke:#3987e5}.weighed{stroke:#d95926}.on{fill:#3987e5;stroke:#1a1a19}.off{fill:#7a7974;stroke:#1a1a19}
+.front{stroke:#3987e5}.on{fill:#3987e5;stroke:#1a1a19}.off{fill:#7a7974;stroke:#1a1a19}
 .on.hollow{fill:#1a1a19;stroke:#3987e5}.off.hollow{fill:#1a1a19;stroke:#7a7974}.ring{stroke:#d95926}}
 </style>";
 
@@ -382,7 +393,7 @@ fn steps(sx: &Scale, sy: &Scale, mut pts: Vec<(f64, f64)>) -> String {
     d
 }
 
-fn draw(title: &str, ylabel: &str, pts: &[Pt], front: &[usize], weighed: &[&str], base: Option<(f64, f64)>) -> String {
+fn draw(title: &str, ylabel: &str, pts: &[Pt], front: &[usize], base: Option<(f64, f64)>) -> String {
     let sx = Scale::new(pts.iter().map(|p| p.x), LEFT, W - RIGHT);
     let sy = Scale::new(pts.iter().map(|p| p.y), H - BOTTOM, TOP);
     let mut s = String::new();
@@ -396,16 +407,8 @@ fn draw(title: &str, ylabel: &str, pts: &[Pt], front: &[usize], weighed: &[&str]
     if front_pts.len() > 1 {
         let _ = writeln!(s, "<path class=\"front\" d=\"{}\"/>", steps(&sx, &sy, front_pts));
     }
-    let weighed_pts: Vec<(f64, f64)> = pts
-        .iter()
-        .filter(|p| weighed.contains(&p.name))
-        .map(|p| (p.x, p.y))
-        .collect();
-    if weighed_pts.len() > 1 {
-        let _ = writeln!(s, "<path class=\"weighed\" d=\"{}\"/>", steps(&sx, &sy, weighed_pts));
-    }
-    // Labels go right of their point and step down past any label already
-    // placed there; a leader joins a displaced label to its point.
+    // Labels go beside their point, at the nearest free height; a leader
+    // joins a displaced label to its point.
     let mut order: Vec<usize> = (0..pts.len()).collect();
     order.sort_by(|a, b| sy.at(pts[*a].y).total_cmp(&sy.at(pts[*b].y)));
     // Every point is an obstacle too: a box around the marker, in the same
@@ -428,7 +431,7 @@ fn draw(title: &str, ylabel: &str, pts: &[Pt], front: &[usize], weighed: &[&str]
             short(p.y),
             if p.conforms { "" } else { " (fails conformance)" }
         );
-        if weighed.contains(&p.name) {
+        if p.ring {
             let _ = writeln!(s, "<circle class=\"ring\" cx=\"{x:.1}\" cy=\"{y:.1}\" r=\"9\"/>");
         }
         let (lx, ly) = place(&placed, x, y, p.name.len() as f64 * 6.6);
@@ -457,38 +460,70 @@ fn draw(title: &str, ylabel: &str, pts: &[Pt], front: &[usize], weighed: &[&str]
 
 #[cfg(test)]
 mod tests {
-    use super::{Pt, frontier};
+    use super::{Pt, frontier, short};
+    use crate::report::verdict::{Axis, EPSILON};
 
-    fn pt(name: &'static str, x: f64, y: f64) -> Pt {
+    fn pt(name: &'static str, x: f64, y: f64, tx: f64) -> Pt {
+        let axis = |v: f64, tol: f64| Axis {
+            value: Some(v),
+            tol,
+            may_win: true,
+        };
         Pt {
             name,
             x,
             y,
+            axes: [axis(x, tx), axis(y, EPSILON)],
             conforms: true,
-            weighed: true,
+            ring: false,
         }
+    }
+
+    fn names(pts: &[Pt]) -> Vec<&str> {
+        frontier(pts).into_iter().map(|i| pts[i].name).collect()
     }
 
     #[test]
     fn the_frontier_keeps_trade_offs_and_drops_the_dominated() {
         let pts = [
-            pt("fast-fat", 50.0, 200.0),
-            pt("slow-lean", 100.0, 100.0),
-            pt("worse", 110.0, 210.0),
-            pt("tie", 102.0, 101.0),
+            pt("fast-fat", 50.0, 200.0, 0.05),
+            pt("slow-lean", 100.0, 100.0, 0.05),
+            pt("worse", 110.0, 210.0, 0.05),
+            pt("tie", 102.0, 101.0, 0.05),
         ];
-        let refs: Vec<&Pt> = pts.iter().collect();
-        let f: Vec<&str> = frontier(&refs, 0.05, 0.05).into_iter().map(|i| pts[i].name).collect();
-        assert_eq!(f, ["fast-fat", "slow-lean", "tie"]);
+        assert_eq!(names(&pts), ["fast-fat", "slow-lean", "tie"]);
     }
 
     /// Within the A/A band nothing is better, so a wide band keeps a point a
     /// narrow one drops.
     #[test]
     fn a_wide_band_keeps_what_noise_cannot_separate() {
-        let pts = [pt("a", 100.0, 100.0), pt("b", 85.0, 100.0)];
-        let refs: Vec<&Pt> = pts.iter().collect();
-        assert_eq!(frontier(&refs, 0.05, 0.05), [1]);
-        assert_eq!(frontier(&refs, 0.20, 0.05), [0, 1]);
+        assert_eq!(names(&[pt("a", 100.0, 100.0, 0.05), pt("b", 85.0, 100.0, 0.05)]), ["b"]);
+        assert_eq!(
+            names(&[pt("a", 100.0, 100.0, 0.20), pt("b", 85.0, 100.0, 0.20)]),
+            ["a", "b"]
+        );
+    }
+
+    /// A cycles advantage the count contradicts cannot push anyone off.
+    #[test]
+    fn an_uncorroborated_advantage_dominates_nobody() {
+        let mut b = pt("b", 50.0, 100.0, 0.05);
+        b.axes[0].may_win = false;
+        assert_eq!(names(&[pt("a", 100.0, 100.0, 0.05), b]), ["a", "b"]);
+    }
+
+    #[test]
+    fn tick_labels_keep_their_zeros() {
+        assert_eq!(short(0.0), "0");
+        assert_eq!(short(10.0), "10");
+        assert_eq!(short(150.0), "150");
+        assert_eq!(short(200.0), "200");
+        assert_eq!(short(1500.0), "1.5k");
+        assert_eq!(short(20_000.0), "20k");
+        assert_eq!(short(250_000.0), "250k");
+        assert_eq!(short(2_000_000.0), "2M");
+        assert_eq!(short(7.5), "7.5");
+        assert_eq!(short(0.25), "0.25");
     }
 }

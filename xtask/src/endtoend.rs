@@ -20,7 +20,7 @@ pub const ROUTES: &[(&str, &str, &str, Option<&str>)] = &[
 ];
 
 /// Backends a set serves end to end; the baseline also serves the floor.
-fn backends(set: &crate::matrix::Set) -> Vec<&'static str> {
+pub fn backends(set: &crate::matrix::Set) -> Vec<&'static str> {
     let mut b: Vec<&'static str> = set.backends.to_vec();
     if set.name == "baseline" {
         b.push("floor");
@@ -29,7 +29,7 @@ fn backends(set: &crate::matrix::Set) -> Vec<&'static str> {
 }
 
 /// Routes a backend can serve: decode-only backends only the decode route.
-fn routes_for(backend: &str) -> Vec<&'static (&'static str, &'static str, &'static str, Option<&'static str>)> {
+pub fn routes_for(backend: &str) -> Vec<&'static (&'static str, &'static str, &'static str, Option<&'static str>)> {
     let decode_only = matches!(backend, "jiter" | "hifijson");
     ROUTES
         .iter()
@@ -197,12 +197,9 @@ pub fn time(args: &[String]) -> Result<()> {
     };
     let reps = flag("--reps").unwrap_or(REPS);
     let seconds = flag("--seconds").unwrap_or(SECONDS);
-    let trust = args
-        .iter()
-        .position(|a| a == "--trust")
-        .and_then(|i| args.get(i + 1))
-        .map_or("solo", String::as_str);
-    crate::timed::check_trust(trust)?;
+    let trust = crate::timed::trust(args);
+    crate::timed::check_trust(&trust)?;
+    let trust = trust.as_str();
     let bodies = root().join("target/e2e-bodies");
     std::fs::create_dir_all(&bodies)?;
     std::fs::write(

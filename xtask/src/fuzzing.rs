@@ -21,6 +21,25 @@ pub const SECONDS: u64 = 1800;
 /// Fuzz targets, one binary per backend feature.
 pub const FUZZ_TARGETS: &[&str] = &["decode_value", "decode_struct", "roundtrip"];
 
+/// The build configurations each set is fuzzed at: `v3`, whose SIMD paths
+/// are the ones `native` takes on the measured host (no backend has an
+/// AVX-512 path; `doctor` checks which path each build runs), and for
+/// sonic-rs, whose fallback scanner is a separate implementation, `portable`
+/// as well. Baseline sets are not fuzzed: serde_json is the reference.
+#[must_use]
+pub fn configs(set: &str) -> &'static [(&'static str, &'static str)] {
+    if set == "sonic-rs" {
+        &[
+            ("v3", "-C target-cpu=x86-64-v3 -C target-feature=+pclmulqdq"),
+            ("portable", "-C target-cpu=x86-64"),
+        ]
+    } else if set.starts_with("baseline") {
+        &[]
+    } else {
+        &[("v3", "-C target-cpu=x86-64-v3 -C target-feature=+pclmulqdq")]
+    }
+}
+
 /// `xtask fuzz [--seconds N] [--forks F] [--parallel P]`: every target
 /// against every candidate and build configuration, each for N seconds of
 /// wall time (default 1800) on F libFuzzer workers (default 2), P runs at
@@ -54,14 +73,7 @@ pub fn fuzz(args: &[String]) -> Result<()> {
         .unwrap_or_default();
     let mut jobs: Vec<crate::util::Job<'_, serde_json::Value>> = Vec::new();
     for set in filter.sets().into_iter().filter(|s| !s.name.starts_with("baseline")) {
-        let configs: &[(&str, &str)] = if set.name == "sonic-rs" {
-            &[
-                ("v3", "-C target-cpu=x86-64-v3 -C target-feature=+pclmulqdq"),
-                ("portable", "-C target-cpu=x86-64"),
-            ]
-        } else {
-            &[("v3", "-C target-cpu=x86-64-v3 -C target-feature=+pclmulqdq")]
-        };
+        let configs = configs(set.name);
         for &(config, flags) in configs {
             for &target in FUZZ_TARGETS {
                 let fuzz = fuzz.clone();
@@ -114,7 +126,7 @@ pub fn fuzz(args: &[String]) -> Result<()> {
                     let (finished, tail) = finished_run(&stderr);
                     json!({
                         "set": set.name, "config": config, "target": target, "seconds": seconds, "forks": forks, "seed": 1,
-                        "divergence_found": !finished || found.divergence, "executions": executed, "crash_count": found.crash_count,
+                        "finished": finished, "divergence_found": found.divergence, "executions": executed, "crash_count": found.crash_count,
                         "assertion": found.assertion,
                         "crash_input_hex": crashes.first().and_then(|(path, _)| std::fs::read(path).ok()).map(|b| hex(&b)),
                         "sanitizer_report": found.sanitizer_report, "crash_tail": tail,

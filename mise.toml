@@ -35,6 +35,10 @@ for f in "" float-roundtrip sonic-rs simd-json flexon-rt flexon-ct jiter hifijso
   echo "clippy: features=[$f]"
   cargo clippy --workspace --all-targets --locked --features "$f" -- -D warnings
 done
+for f in sonic-rs simd-json flexon-rt flexon-ct jiter hifijson struson; do
+  echo "fuzz check: features=[$f]"
+  cargo check --manifest-path fuzz/Cargo.toml --locked --features "$f"
+done
 """
 
 [tasks.test]
@@ -60,6 +64,17 @@ run = "cargo xtask conformance --variants portable"
 [tasks.count]
 description = "callgrind counts (in the container)"
 run = "cargo xtask count"
+
+[tasks."count:check"]
+description = "Recount every committed count from an empty target/ at zero tolerance, and record that it reproduced"
+run = "rm -rf target/matrix/container target/callgrind && cargo xtask count --check --tolerance 0 --record"
+
+[tasks.sensitivity]
+description = "The harness-can-fail checks under callgrind, in the container"
+run = """
+cargo xtask image
+podman run --rm --security-opt label=disable -v "$PWD:/work" serde-json-contenders:valgrind cargo test -p cell --locked -- --ignored sensitivity
+"""
 
 [tasks.alloc]
 description = "Allocations per operation"
@@ -127,11 +142,14 @@ rustup toolchain install nightly-2026-09-25 --profile minimal --component miri,r
 [tasks.all]
 # Every result file the report reads, in one run on one commit: the report
 # refuses results measured on other code, so a partial rerun after a change
-# to measured code is caught rather than mixed in.
-description = "Every measurement, then the report (x86-64 Linux; hours)"
+# to measured code is caught rather than mixed in. Set SJC_TRUST=canonical
+# on a quieted host; the timed tasks refuse it on a busy one.
+description = "Every measurement and verification, then the report (x86-64 Linux; hours)"
 run = """
 set -e
 mise run toolchains
+mise run test
+mise run sensitivity
 cargo xtask doctor
 cargo xtask conformance
 cargo xtask alloc
@@ -139,6 +157,7 @@ cargo xtask size
 cargo xtask msrv
 cargo xtask compile-time
 cargo xtask count
+mise run count:check
 cargo xtask e2e-count
 cargo xtask footprint
 cargo xtask miri

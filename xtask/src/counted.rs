@@ -163,16 +163,20 @@ impl Filter {
     }
 
     pub fn cells(&self, set: &'static Set, shapes: &[Shape]) -> Vec<Cell> {
+        self.cells_by(set, |_| shapes)
+    }
+
+    /// [`Self::cells`], with the shapes chosen per workload.
+    pub fn cells_by<'s>(&self, set: &'static Set, shapes_of: impl Fn(&str) -> &'s [Shape]) -> Vec<Cell> {
         let workloads: Vec<&'static str> = payloads::ALL
             .iter()
             .copied()
             .filter(|w| self.workloads.as_ref().is_none_or(|f| f.iter().any(|n| n == w)))
             .collect();
-        let shapes = self.shapes.as_deref().unwrap_or(shapes);
         let mut cells = Vec::new();
         for backend in set.backends {
             for workload in &workloads {
-                for shape in shapes {
+                for shape in self.shapes.as_deref().unwrap_or_else(|| shapes_of(workload)) {
                     cells.push(Cell {
                         set,
                         backend,
@@ -247,6 +251,20 @@ pub fn count(args: &[String]) -> Result<()> {
             "count --check: {compared} counts reproduce within {} %",
             tolerance * 100.0
         );
+        // `--record` keeps the evidence: the report requires a recount of
+        // every committed count, at zero tolerance, on the same code.
+        if args.iter().any(|a| a == "--record") {
+            let counted = committed["rows"]
+                .as_array()
+                .map_or(0, |r| r.iter().filter(|r| r["ir"].is_number()).count());
+            crate::util::write_json(
+                &root().join("results/callgrind/recount.json"),
+                &json!({
+                    "schema": 1, "kind": "recount", "provenance": crate::provenance::stamp(),
+                    "compared": compared, "committed": counted, "tolerance": tolerance,
+                }),
+            )?;
+        }
         return Ok(());
     }
     merge_rows(&path, &rows, "callgrind")
@@ -425,8 +443,15 @@ pub fn merge_rows(path: &std::path::Path, rows: &[Value], kind: &str) -> Result<
 }
 
 /// `xtask alloc`: allocation counts on the host, every variant.
+///
+/// Only at `native` unless `--variants` says otherwise: allocation counts do
+/// not depend on the target CPU, and the report reads `native`.
 pub fn alloc(args: &[String]) -> Result<()> {
-    host_mode(args, "alloc", SHAPES, &crate::provenance::host_slug(), None)
+    let mut args = args.to_vec();
+    if !args.iter().any(|a| a == "--variants") {
+        args.extend(["--variants".to_owned(), "native".to_owned()]);
+    }
+    host_mode(&args, "alloc", SHAPES, &crate::provenance::host_slug(), None)
 }
 
 fn host_mode(args: &[String], mode: &str, shapes: &[Shape], host: &str, threads: Option<usize>) -> Result<()> {

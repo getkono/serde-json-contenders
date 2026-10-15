@@ -222,18 +222,18 @@ pub fn cpu(data: &Data, p: Point, backend: &str, workload: &str, op: &str) -> Op
 
 /// How far serde_json's A/A copy lands from serde_json at this cell, as a
 /// fraction: the noise a timed difference must clear. Zero for counts, which
-/// have none.
-pub fn aa_band(data: &Data, p: Point, workload: &str, op: &str) -> f64 {
+/// have none; `None` for a timed cell whose control is missing, which cannot
+/// be told from noise at all.
+pub fn aa_band(data: &Data, p: Point, workload: &str, op: &str) -> Option<f64> {
     if !p.timed() {
-        return 0.0;
+        return Some(0.0);
     }
     match (
         cpu(data, p, "serde_json", workload, op),
         cpu(data, p, "serde_json#aa", workload, op),
     ) {
-        (Some(a), Some(b)) if a > 0.0 => (b / a - 1.0).abs(),
-        // A timed figure with no control cannot be told from noise.
-        _ => f64::INFINITY,
+        (Some(a), Some(b)) if a > 0.0 => Some((b / a - 1.0).abs()),
+        _ => None,
     }
 }
 
@@ -263,50 +263,100 @@ pub fn compile(data: &Data, set: &str) -> Option<f64> {
     set_row(&data.primary()?.compile, set, None)?["release_s"].as_f64()
 }
 
-/// One axis: the figure, if measured, and the fraction within which two
-/// figures on it are not different (ε, or the A/A band where wider).
-pub type Axis = (Option<f64>, f64);
+/// One axis of an entry: its figure, if measured; the fraction within which
+/// two figures on it are not different (ε, or the A/A band where wider); and
+/// whether being better on it counts (a cycles advantage the deterministic
+/// count contradicts does not).
+#[derive(Debug, Clone, Copy)]
+pub struct Axis {
+    pub value: Option<f64>,
+    pub tol: f64,
+    pub may_win: bool,
+}
 
-/// The CPU axis tolerance at a point: ε, or the A/A band where wider.
-pub fn cpu_tolerance(data: &Data, p: Point, workload: &str, op: &str) -> f64 {
-    EPSILON.max(aa_band(data, p, workload, op))
+impl Axis {
+    fn plain(value: Option<f64>) -> Self {
+        Self {
+            value,
+            tol: EPSILON,
+            may_win: true,
+        }
+    }
+}
+
+/// The CPU axis tolerance at a point: ε, or the A/A band where wider; `None`
+/// without a control.
+pub fn cpu_tolerance(data: &Data, p: Point, workload: &str, op: &str) -> Option<f64> {
+    aa_band(data, p, workload, op).map(|b| EPSILON.max(b))
+}
+
+/// The cycles axis of `backend` at a point. Without an A/A control the
+/// figure cannot be weighed, so it is treated as unmeasured.
+pub fn cpu_axis(data: &Data, p: Point, backend: &str, workload: &str, op: &str) -> Axis {
+    match cpu_tolerance(data, p, workload, op) {
+        Some(tol) => Axis {
+            value: cpu(data, p, backend, workload, op),
+            tol,
+            may_win: corroborated(data, p, backend, workload, op),
+        },
+        None => Axis {
+            value: None,
+            tol: EPSILON,
+            may_win: false,
+        },
+    }
 }
 
 /// The axis vector at a point for one workload.
 fn axes(data: &Data, p: Point, e: &Entry, workload: &str, encode: bool) -> Vec<Axis> {
     let mut v = vec![
-        (
-            cpu(data, p, e.backend, workload, "decode"),
-            cpu_tolerance(data, p, workload, "decode"),
-        ),
-        (heap(data, p.variant, e.backend, workload, "decode"), EPSILON),
+        cpu_axis(data, p, e.backend, workload, "decode"),
+        Axis::plain(heap(data, p.variant, e.backend, workload, "decode")),
     ];
     if encode {
-        v.push((
-            cpu(data, p, e.backend, workload, "encode"),
-            cpu_tolerance(data, p, workload, "encode"),
-        ));
-        v.push((heap(data, p.variant, e.backend, workload, "encode"), EPSILON));
+        v.push(cpu_axis(data, p, e.backend, workload, "encode"));
+        v.push(Axis::plain(heap(data, p.variant, e.backend, workload, "encode")));
     }
-    v.push((text(data, e.set, p.variant, encode), EPSILON));
-    v.push((compile(data, e.set), EPSILON));
+    v.push(Axis::plain(text(data, e.set, p.variant, encode)));
+    v.push(Axis::plain(compile(data, e.set)));
     v
 }
 
-/// Whether `a` dominates `b`, over axes both have: no more than the axis's
-/// tolerance worse on any, and more than it better on at least one.
+/// Whether `a` dominates `b`: no more than the axis's tolerance worse on any
+/// axis, and more than it better on at least one where being better counts.
+/// An axis `b` was measured on and `a` was not (a rejected input, a failed
+/// cell) is one `a` cannot be shown no worse on, so `a` does not dominate.
 pub fn dominates(a: &[Axis], b: &[Axis]) -> bool {
     let mut better = false;
-    for ((a, tol), (b, _)) in a.iter().zip(b) {
-        let (Some(a), Some(b)) = (a, b) else { continue };
-        if *a > b * (1.0 + tol) {
-            return false;
-        }
-        if *a < b * (1.0 - tol) {
-            better = true;
+    for (x, y) in a.iter().zip(b) {
+        match (x.value, y.value) {
+            (None, Some(_)) => return false,
+            (Some(av), Some(bv)) => {
+                if av > bv * (1.0 + x.tol) {
+                    return false;
+                }
+                if av < bv * (1.0 - x.tol) && x.may_win {
+                    better = true;
+                }
+            }
+            _ => {}
         }
     }
     better
+}
+
+/// Whether `e` is non-dominated at `p` for `workload` among `pool`: what
+/// rule 1's frontier means, without the further demand of a material win
+/// over serde_json.
+pub fn on_frontier(data: &Data, p: Point, e: &Entry, workload: &str, pool: &[&Entry]) -> bool {
+    let encode = e.encodes;
+    let mine = axes(data, p, e, workload, encode);
+    mine[0].value.is_some()
+        && !pool.iter().any(|other| {
+            other.backend != e.backend
+                && (!encode || other.encodes)
+                && dominates(&axes(data, p, other, workload, encode), &mine)
+        })
 }
 
 /// Whether a CPU win at a timed point is borne out by the deterministic
@@ -329,42 +379,28 @@ pub fn corroborated(data: &Data, p: Point, backend: &str, workload: &str, op: &s
 /// Whether `e` is on the frontier at `p` for `workload` among `pool`, and
 /// the best material win over serde_json on a CPU or heap axis if so.
 pub fn frontier_win(data: &Data, p: Point, e: &Entry, workload: &str, pool: &[&Entry]) -> Option<(String, f64)> {
+    if !on_frontier(data, p, e, workload, pool) {
+        return None;
+    }
     // An encoder is weighed on encode axes too, and only against encoders; a
     // decode-only entry is weighed on decode axes against everyone.
     let encode = e.encodes;
     let mine = axes(data, p, e, workload, encode);
-    // A decode figure is required to say anything at all.
-    mine[0].0?;
-    for other in pool {
-        if other.backend != e.backend
-            && (!encode || other.encodes)
-            && dominates(&axes(data, p, other, workload, encode), &mine)
-        {
-            return None;
-        }
-    }
-    let base = ENTRIES[0];
-    let names: &[(&str, Option<&str>)] = if encode {
-        &[
-            ("decode CPU", Some("decode")),
-            ("decode heap", None),
-            ("encode CPU", Some("encode")),
-            ("encode heap", None),
-        ]
+    let theirs = axes(data, p, &ENTRIES[0], workload, encode);
+    let names: &[&str] = if encode {
+        &["decode CPU", "decode heap", "encode CPU", "encode heap"]
     } else {
-        &[("decode CPU", Some("decode")), ("decode heap", None)]
+        &["decode CPU", "decode heap"]
     };
-    let theirs = axes(data, p, &base, workload, encode);
     names
         .iter()
         .enumerate()
-        .filter_map(|(i, (name, cpu_op))| {
-            let ((Some(m), tol), (Some(t), _)) = (mine[i], theirs[i]) else {
+        .filter_map(|(i, name)| {
+            let (m, t) = (mine[i], theirs[i]);
+            let (Some(mv), Some(tv)) = (m.value, t.value) else {
                 return None;
             };
-            let material = t > 0.0 && m < t * (1.0 - tol);
-            let real = cpu_op.is_none_or(|op| corroborated(data, p, e.backend, workload, op));
-            (material && real).then(|| ((*name).to_owned(), m / t))
+            (tv > 0.0 && mv < tv * (1.0 - m.tol) && m.may_win).then(|| ((*name).to_owned(), mv / tv))
         })
         .min_by(|a, b| a.1.total_cmp(&b.1))
 }
@@ -388,22 +424,32 @@ fn rule1(data: &Data, e: &Entry, pool: &[&Entry]) -> Outcome {
     if !measured {
         return Outcome::Pending("hardware cycles not yet recorded".into());
     }
+    let ops: &[&str] = if e.encodes { &["decode", "encode"] } else { &["decode"] };
+    let uncontrolled: Vec<String> = KYNOS
+        .iter()
+        .flat_map(|w| ops.iter().map(move |op| (*w, *op)))
+        .filter(|(w, op)| aa_band(data, X86_NATIVE, w, op).is_none())
+        .map(|(w, op)| format!("{w} {op}"))
+        .collect();
+    if !uncontrolled.is_empty() {
+        return Outcome::Pending(format!(
+            "no A/A control for {}, so cycles there cannot be weighed",
+            uncontrolled.join(", ")
+        ));
+    }
     let best = KYNOS
         .iter()
         .filter_map(|w| frontier_win(data, X86_NATIVE, e, w, pool).map(|(axis, r)| (*w, axis, r)))
         .min_by(|a, b| a.2.total_cmp(&b.2));
     match best {
+        // Frontier membership rests on cycles even when the win is heap, so
+        // the trust class of the cycles governs every win.
         Some((w, axis, r)) => {
             let win = format!("{w} {axis} {r:.2}× at {}", X86_NATIVE.win_label(&axis));
-            // Allocation counts are not timed, so their trust class is moot.
-            if axis.ends_with("heap") {
-                return Outcome::Pass(win);
-            }
             match hw_trust(data) {
-                Some("canonical") => Outcome::Pass(win),
+                "canonical" => Outcome::Pass(win),
                 trust => Outcome::Pending(format!(
-                    "provisional pass: {win} ({}); awaits a quiet-host rerun",
-                    trust.unwrap_or("?")
+                    "provisional pass: {win} ({trust}); awaits a quiet-host rerun"
                 )),
             }
         }
@@ -414,9 +460,19 @@ fn rule1(data: &Data, e: &Entry, pool: &[&Entry]) -> Outcome {
     }
 }
 
-/// The trust class the hardware counters were taken under.
-pub fn hw_trust(data: &Data) -> Option<&str> {
-    data.host.hw.rows.values().next().and_then(|r| r["trust"].as_str())
+/// The trust class the hardware counters were taken under: `canonical` only
+/// if every cell was.
+pub fn hw_trust(data: &Data) -> &'static str {
+    weakest(data.host.hw.rows.values())
+}
+
+/// `canonical` if every row says so, else `solo`.
+pub fn weakest<'a>(mut rows: impl Iterator<Item = &'a Value>) -> &'static str {
+    if rows.all(|r| r["trust"] == "canonical") {
+        "canonical"
+    } else {
+        "solo"
+    }
 }
 
 fn rule2(data: &Data, e: &Entry) -> Outcome {
@@ -480,8 +536,14 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
             |w| format!("Miri reports undefined behavior ({w})"),
         ));
     }
+    // serde_json is what the suite compares against, so it has no
+    // disagreements of its own; Miri still runs on it.
     if e.backend.starts_with("serde_json") {
-        return Outcome::Pass("reference".into());
+        return if failures.is_empty() {
+            Outcome::Pass("reference".into())
+        } else {
+            Outcome::Fail(failures.join("; "))
+        };
     }
     // Conformance cases and Miri are always stated in full; fuzz divergences
     // fill what room is left of three entries and the rest are counted.
@@ -500,14 +562,26 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
     if runs == 0 {
         return Outcome::Pending("conformance not yet run".into());
     }
-    if fuzz.is_empty() || miri.is_none() {
-        return Outcome::Pending(format!("{runs} conformance runs agree; fuzzing or Miri not yet run"));
+    let expected = crate::fuzzing::configs(set).len() * crate::fuzzing::FUZZ_TARGETS.len();
+    let finished = fuzz.iter().filter(|r| r["finished"] != false).count();
+    if finished < expected {
+        return Outcome::Pending(format!(
+            "{runs} conformance runs agree; {finished} of {expected} fuzz runs finished"
+        ));
     }
-    Outcome::Pass(format!(
-        "{runs} conformance runs, {} fuzz targets, Miri {}",
-        fuzz.len(),
-        miri.map_or("?", |m| m["outcome"].as_str().unwrap_or("?"))
-    ))
+    match miri.and_then(|m| m["outcome"].as_str()) {
+        None | Some("error") => Outcome::Pending(format!(
+            "{runs} conformance runs and {finished} fuzz runs agree; Miri did not run"
+        )),
+        Some(outcome) => Outcome::Pass(format!(
+            "{runs} conformance runs, {finished} fuzz runs, Miri {}",
+            if outcome == "unsupported" {
+                "cannot run this backend's intrinsics"
+            } else {
+                outcome
+            }
+        )),
+    }
 }
 
 fn rule3(data: &Data, e: &Entry) -> Outcome {
@@ -561,20 +635,34 @@ fn rule3(data: &Data, e: &Entry) -> Outcome {
     }
 }
 
-/// End-to-end gain over serde_json for one host and route.
-pub fn e2e_gain(rows: &[Value], backend: &str, route: &str) -> Option<(f64, f64, f64, f64)> {
-    let find = |b: &str| rows.iter().find(|r| r["backend"] == b && r["route"] == route);
+/// One route's end-to-end timing against serde_json's.
+#[derive(Debug, Clone, Copy)]
+pub struct Gain {
+    /// Throughput change; positive is more requests per second.
+    pub rps: f64,
+    /// p99 latency change; negative is faster.
+    pub p99: f64,
+    /// serde_json's A/A copy against serde_json, as absolute fractions; `None`
+    /// when the control is missing.
+    pub aa_rps: Option<f64>,
+    pub aa_p99: Option<f64>,
+}
+
+/// End-to-end timing of `backend` on `route` at `native`, against serde_json.
+pub fn e2e_gain(rows: &[Value], backend: &str, route: &str) -> Option<Gain> {
+    let find = |b: &str| {
+        rows.iter()
+            .find(|r| r["backend"] == b && r["route"] == route && r["variant"] == X86_NATIVE.variant)
+    };
     let (me, sj) = (find(backend)?, find("serde_json")?);
     let aa = find("serde_json#aa");
-    let rps = me["rps"].as_f64()? / sj["rps"].as_f64()? - 1.0;
-    let p99 = 1.0 - me["p99_ms"].as_f64().unwrap_or(f64::NAN) / sj["p99_ms"].as_f64().unwrap_or(f64::NAN);
-    let aa_rps = aa
-        .and_then(|a| Some((a["rps"].as_f64()? / sj["rps"].as_f64()? - 1.0).abs()))
-        .unwrap_or(0.0);
-    let aa_p99 = aa
-        .and_then(|a| Some((1.0 - a["p99_ms"].as_f64()? / sj["p99_ms"].as_f64()?).abs()))
-        .unwrap_or(0.0);
-    Some((rps, p99, aa_rps, aa_p99))
+    let (sj_rps, sj_p99) = (sj["rps"].as_f64()?, sj["p99_ms"].as_f64()?);
+    Some(Gain {
+        rps: me["rps"].as_f64()? / sj_rps - 1.0,
+        p99: me["p99_ms"].as_f64()? / sj_p99 - 1.0,
+        aa_rps: aa.and_then(|a| Some((a["rps"].as_f64()? / sj_rps - 1.0).abs())),
+        aa_p99: aa.and_then(|a| Some((a["p99_ms"].as_f64()? / sj_p99 - 1.0).abs())),
+    })
 }
 
 /// The throughput gain the counted per-request cost predicts, CPU-bound.
@@ -597,45 +685,53 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
     } else {
         &["json-large-post"]
     };
+    let rows = &data.host.e2e_time;
     let mut seen = false;
+    let mut unweighable = Vec::new();
     let mut best: Option<String> = None;
     let mut inconsistent = Vec::new();
-    {
-        let host = &data.host;
-        for route in routes {
-            let Some((rps, p99, aa_rps, aa_p99)) = e2e_gain(&host.e2e_time, e.backend, route) else {
-                continue;
-            };
-            seen = true;
-            let predicted = e2e_predicted(data, e.backend, route);
-            let pass_rps = rps >= E2E_GAIN && rps > aa_rps;
-            let pass_p99 = p99 >= E2E_GAIN && p99 > aa_p99;
-            if pass_rps || pass_p99 {
-                if predicted.is_some_and(|pr| rps > pr + EPSILON.max(aa_rps)) {
-                    inconsistent.push(format!(
-                        "{} {route}: +{:.0} % measured, +{:.0} % predicted",
-                        host.slug,
-                        rps * 100.0,
-                        predicted.unwrap_or(0.0) * 100.0
-                    ));
-                    continue;
-                }
-                let trust = host.e2e_trust.clone().unwrap_or_default();
-                best.get_or_insert(format!(
-                    "{route} {:+.0} % rps, {:+.0} % p99 on {} ({trust})",
-                    rps * 100.0,
-                    p99 * 100.0,
-                    host.slug
-                ));
-            }
+    for route in routes {
+        let Some(g) = e2e_gain(rows, e.backend, route) else {
+            continue;
+        };
+        seen = true;
+        let predicted = e2e_predicted(data, e.backend, route);
+        let (Some(aa_rps), Some(aa_p99), Some(predicted)) = (g.aa_rps, g.aa_p99, predicted) else {
+            unweighable.push((*route).to_owned());
+            continue;
+        };
+        let pass_rps = g.rps >= E2E_GAIN && g.rps > aa_rps;
+        let pass_p99 = -g.p99 >= E2E_GAIN && -g.p99 > aa_p99;
+        if !(pass_rps || pass_p99) {
+            continue;
         }
+        // The count bounds what the codec can give: more throughput than it
+        // predicts, or a faster p99 from a codec the count says is no
+        // cheaper, is a measurement error, not a result.
+        if g.rps > predicted + EPSILON.max(aa_rps) || (pass_p99 && !pass_rps && predicted <= 0.0) {
+            inconsistent.push(format!(
+                "{route}: {:+.0} % rps and p99 {:+.0} % measured, {:+.0} % rps predicted",
+                g.rps * 100.0,
+                g.p99 * 100.0,
+                predicted * 100.0
+            ));
+            continue;
+        }
+        best.get_or_insert(format!(
+            "{route} {:+.0} % rps, p99 {:+.0} %",
+            g.rps * 100.0,
+            g.p99 * 100.0
+        ));
     }
+    let trust = weakest(rows.iter());
     match (seen, best) {
         (false, _) => Outcome::Pending("end-to-end timing not yet recorded".into()),
-        (true, Some(b)) if b.contains("(solo)") => {
-            Outcome::Pending(format!("provisional pass: {b}; awaits a quiet-host rerun"))
-        }
-        (true, Some(b)) => Outcome::Pass(b),
+        (true, Some(b)) if trust == "canonical" => Outcome::Pass(b),
+        (true, Some(b)) => Outcome::Pending(format!("provisional pass: {b} ({trust}); awaits a quiet-host rerun")),
+        (true, None) if !unweighable.is_empty() => Outcome::Pending(format!(
+            "no A/A control or counted prediction for {}",
+            unweighable.join(", ")
+        )),
         (true, None) if !inconsistent.is_empty() => Outcome::Fail(format!(
             "gains inconsistent with counted codec share: {}",
             inconsistent.join("; ")
@@ -766,20 +862,24 @@ pub(super) mod tests {
         }
     }
 
-    /// Hardware cycles at native and callgrind counts at v3 for json-small
-    /// decode, per backend: `(backend, cycles, est_cycles)`.
+    /// Hardware cycles at native and callgrind counts at v3, the same at every
+    /// Kynos shape and operation, per backend: `(backend, cycles,
+    /// est_cycles)`.
     pub(in crate::report) fn measured(cells: &[(&str, f64, f64)], trust: &str) -> Data {
         let mut data = Data::default();
         data.host.slug = "x86_64-linux-amd-x".into();
         for (backend, cycles, est) in cells {
-            data.host.hw.rows.insert(
-                Key::new("native", backend, "json-small", "decode"),
-                json!({ "cycles": cycles, "trust": trust }),
-            );
-            data.callgrind.rows.insert(
-                Key::new("v3", backend, "json-small", "decode"),
-                json!({ "est_cycles": est }),
-            );
+            for w in crate::matrix::KYNOS {
+                for op in ["decode", "encode"] {
+                    data.host.hw.rows.insert(
+                        Key::new("native", backend, w, op),
+                        json!({ "cycles": cycles, "trust": trust }),
+                    );
+                    data.callgrind
+                        .rows
+                        .insert(Key::new("v3", backend, w, op), json!({ "est_cycles": est }));
+                }
+            }
         }
         data
     }
@@ -897,7 +997,7 @@ pub(super) mod tests {
                 ("serde_json#aa", 100.0, 100.0),
                 ("simd-json", 100.0, 100.0),
             ],
-            "solo",
+            "canonical",
         );
         for (backend, bytes) in [("serde_json", 100.0), ("simd-json", 50.0)] {
             data.host.alloc.rows.insert(

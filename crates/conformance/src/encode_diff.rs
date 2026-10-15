@@ -6,9 +6,11 @@
 //! [`crate::exact`] finds semantically equal, or bytes serde_json decodes into
 //! the workload's type as the same value (an `f32` written widened to `f64`
 //! is the same `f32`): a non-gating difference, listed with the first
-//! differing offset. Anything else gates, as does failing to
-//! encode. Decode side: the canonical bytes decoded owned and borrowed,
-//! through both arrivals, must agree with serde_json, except where serde_json
+//! differing offset. Anything else gates, as does failing to encode. A
+//! workload whose bytes must be refused (`reject-*`) has no encode side.
+//! Decode side: the canonical bytes decoded owned and borrowed, through both
+//! arrivals, must agree with serde_json (for `reject-*`, refuse with its
+//! status), except where serde_json
 //! refuses on its recursion limit (that policy is `depth`'s to report) or
 //! where the backend's value matches the source text exactly and serde_json's
 //! does not (serde_json's default float parser is not correctly rounded).
@@ -107,7 +109,9 @@ impl<B: Backend> payloads::Visit for Visit<'_, B> {
     fn visit<W: Workload>(self) {
         let section = self.section;
         let value = W::value();
-        if B::ENCODES {
+        // A body that must be refused encodes no value; its value is the one
+        // it was damaged from, whose encode another workload checks.
+        if B::ENCODES && W::EXPECT == payloads::Expect::Value {
             match SerdeJson::encode(&value) {
                 Ok(reference) => {
                     compare_encoding(

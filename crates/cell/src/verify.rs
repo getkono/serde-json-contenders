@@ -2,7 +2,9 @@
 
 use std::collections::BTreeMap;
 
-use payloads::Workload;
+use codecs::{Class, Failure};
+use payloads::{Expect, Workload};
+use serde::Serialize;
 use serde_json::Value;
 
 /// A result, judged.
@@ -80,6 +82,32 @@ impl Tally {
             },
         }
     }
+}
+
+/// Judge a decode of workload `W`'s bytes against what `W` expects.
+///
+/// For [`Expect::Value`], a value is compared with [`Workload::value`] and a
+/// refusal is `Rejected`. For [`Expect::Reject`], the refusal *is* the
+/// result: refused with the expected status is exact; accepted, or refused
+/// with another status, is wrong, with the status given in the detail, so a
+/// backend that would answer a client wrongly is never measured. A backend
+/// without the operation (`Unsupported`) is `Rejected` either way: it
+/// answered nothing, rightly or wrongly.
+pub fn judge_decode<W: Workload, T: Serialize>(result: Result<T, Failure>) -> Verdict {
+    match (W::EXPECT, result) {
+        (_, Err(failure)) if failure.class == Class::Unsupported => Verdict::Rejected(failure.to_string()),
+        (Expect::Value, Ok(value)) => compare(&to_value(&value), &to_value(&W::value())),
+        (Expect::Value, Err(failure)) => Verdict::Rejected(failure.to_string()),
+        (Expect::Reject(status), Ok(_)) => Verdict::Wrong(format!("accepted; expected a refusal with status {status}")),
+        (Expect::Reject(status), Err(failure)) if failure.status() == status => Verdict::Exact,
+        (Expect::Reject(status), Err(failure)) => {
+            Verdict::Wrong(format!("answered {}, expected {status}: {failure}", failure.status()))
+        }
+    }
+}
+
+fn to_value<T: Serialize>(value: &T) -> Value {
+    serde_json::to_value(value).unwrap_or_else(|e| unreachable!("a decoded value re-serializes: {e}"))
 }
 
 /// Compare `got` with `expected`.
@@ -598,6 +626,54 @@ mod tests {
     #[test]
     fn a_missing_key_is_wrong() {
         assert!(matches!(compare(&json!({"a": 1}), &json!({"b": 1})), Verdict::Wrong(_)));
+    }
+
+    use codecs::{Class, Failure};
+    use payloads::kynos::{Catalog, JsonLarge};
+    use payloads::reject::{RejectShape, RejectTruncated};
+
+    #[test]
+    fn a_rejection_is_judged_by_its_status() {
+        let data = || Err::<Catalog, _>(Failure::new(Class::Data, "invalid type"));
+        let eof = || Err::<Catalog, _>(Failure::new(Class::Eof, "EOF while parsing"));
+        let syntax = || Err::<Catalog, _>(Failure::new(Class::Syntax, "expected value"));
+        assert_eq!(judge_decode::<RejectShape, _>(data()), Verdict::Exact);
+        assert_eq!(judge_decode::<RejectTruncated, _>(eof()), Verdict::Exact);
+        assert_eq!(judge_decode::<RejectTruncated, _>(syntax()), Verdict::Exact);
+        assert_eq!(
+            judge_decode::<RejectShape, _>(syntax()),
+            Verdict::Wrong("answered 400, expected 422: Syntax: expected value".to_owned())
+        );
+        assert_eq!(
+            judge_decode::<RejectTruncated, _>(data()),
+            Verdict::Wrong("answered 422, expected 400: Data: invalid type".to_owned())
+        );
+        assert_eq!(
+            judge_decode::<RejectShape, _>(Ok(JsonLarge::value())),
+            Verdict::Wrong("accepted; expected a refusal with status 422".to_owned())
+        );
+    }
+
+    #[test]
+    fn an_unsupported_operation_is_no_answer() {
+        for verdict in [
+            judge_decode::<RejectTruncated, Catalog>(Err(Failure::unsupported())),
+            judge_decode::<JsonLarge, Catalog>(Err(Failure::unsupported())),
+        ] {
+            assert!(matches!(verdict, Verdict::Rejected(_)), "{verdict:?}");
+        }
+    }
+
+    #[test]
+    fn a_value_workload_is_judged_by_its_value() {
+        assert_eq!(judge_decode::<JsonLarge, _>(Ok(JsonLarge::value())), Verdict::Exact);
+        let mut other = JsonLarge::value();
+        other.revision += 1;
+        assert!(matches!(judge_decode::<JsonLarge, _>(Ok(other)), Verdict::Wrong(_)));
+        assert!(matches!(
+            judge_decode::<JsonLarge, Catalog>(Err(Failure::new(Class::Data, "x"))),
+            Verdict::Rejected(_)
+        ));
     }
 
     #[test]

@@ -150,6 +150,7 @@ pub fn render(
         out.push('\n');
     }
     verdict_table(&mut out, verdicts);
+    outstanding(&mut out, data, verdicts);
     rules_table(&mut out, verdicts);
     kynos_cpu(&mut out, data);
     pareto(&mut out, figures);
@@ -175,6 +176,27 @@ pub fn render(
     exports(&mut out, exported);
     provenance(&mut out, data, stale);
     out
+}
+
+/// What a rerun has still to settle, from `verdict::outstanding`.
+fn outstanding(out: &mut String, data: &Data, verdicts: &[Verdict]) {
+    section(out, "outstanding", "Outstanding");
+    let items = verdict::outstanding(data, verdicts);
+    if items.is_empty() {
+        out.push_str("Nothing: every timed stage is `canonical`, no rule is pending and no \"deserves to exist\" is provisional.\n\n");
+        return;
+    }
+    out.push_str("What the recorded results leave open, each line derived from `results/` and the decision rule, none written by hand.");
+    if items.iter().any(|i| i.starts_with("Canonical-trust rerun")) {
+        out.push_str(" A canonical-trust rerun is outstanding: a stage rerun at `canonical` trust on the same measured code (the fingerprint the report checks) drops its line, and the lines resting on its `solo` timing are then decided anew.");
+    }
+    out.push_str(
+        " A recommendation needs every rule to pass, so no line here can change one where rule 2 already fails.\n\n",
+    );
+    for item in items {
+        let _ = writeln!(out, "- {item}");
+    }
+    out.push('\n');
 }
 
 /// What the recorded results leave unmeasured or weakly measured, each

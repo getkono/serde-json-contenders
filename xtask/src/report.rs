@@ -52,7 +52,10 @@ pub fn report(args: &[String]) -> Result<()> {
         ("README.md".into(), body.clone()),
         (
             "verdict.json".into(),
-            format!("{}\n", serde_json::to_string_pretty(&verdict::to_json(&verdicts))?),
+            format!(
+                "{}\n",
+                serde_json::to_string_pretty(&verdict::to_json(&data, &verdicts))?
+            ),
         ),
     ];
     files.extend(figures.iter().map(|f| (format!("figures/{}", f.file), f.svg.clone())));

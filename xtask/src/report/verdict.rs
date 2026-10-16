@@ -1105,12 +1105,54 @@ pub fn reason(v: &Verdict) -> &str {
     }
 }
 
+/// What the recorded results leave open, derived from them alone: each
+/// timed stage not recorded, or not all at `canonical` trust, then every
+/// pending rule and provisional "deserves to exist".
+pub fn outstanding(data: &Data, verdicts: &[Verdict]) -> Vec<String> {
+    let mut out = Vec::new();
+    let host = &data.host;
+    for (stage, task, rows) in [
+        ("Hardware cycles", "hw", host.hw.rows.values().collect::<Vec<_>>()),
+        ("Timed sampling", "time", host.time.rows.values().collect()),
+        ("End-to-end timing", "e2e:time", host.e2e_time.iter().collect()),
+    ] {
+        let trust = if rows.is_empty() {
+            "no"
+        } else {
+            weakest(rows.into_iter())
+        };
+        if trust != "canonical" {
+            out.push(format!(
+                "Canonical-trust rerun of {stage} (`SJC_TRUST=canonical mise run {task}`): {}; it needs a quiet host (1-minute load average at most 1.0, CPU governor `performance`).",
+                if trust == "no" { "not recorded".to_owned() } else { format!("recorded at `{trust}` trust") }
+            ));
+        }
+    }
+    for v in verdicts {
+        for (n, r) in v.rules.iter().enumerate() {
+            if let Outcome::Pending(d) = r {
+                out.push(format!("`{}` rule {}: {d}", v.entry.backend, n + 1));
+            }
+        }
+        if v.exists.2 {
+            out.push(format!(
+                "`{}` deserves to exist: {}, provisionally: {}",
+                v.entry.backend,
+                if v.exists.0 { "yes" } else { "no" },
+                v.exists.1
+            ));
+        }
+    }
+    out
+}
+
 /// Machine-readable verdicts.
-pub fn to_json(verdicts: &[Verdict]) -> Value {
+pub fn to_json(data: &Data, verdicts: &[Verdict]) -> Value {
     json!({
         "schema": 1,
         "epsilon": EPSILON,
         "e2e_gain": E2E_GAIN,
+        "outstanding": outstanding(data, verdicts),
         "entries": verdicts.iter().map(|v| json!({
             "backend": v.entry.backend,
             "crate": v.entry.krate,
@@ -1633,6 +1675,48 @@ pub(super) mod tests {
                     .into()
             )
         );
+    }
+
+    #[test]
+    fn solo_cycles_leave_a_canonical_rerun_outstanding() {
+        let cells = [
+            ("serde_json", 100.0, 100.0),
+            ("serde_json#aa", 100.0, 100.0),
+            ("simd-json", 70.0, 80.0),
+        ];
+        let rerun = |trust: &str| {
+            let mut data = measured(&cells, trust);
+            data.host.time.rows.insert(
+                Key::new("native", "serde_json", "json-small", "decode"),
+                json!({ "trust": trust }),
+            );
+            data.host.e2e_time.push(json!({ "trust": trust }));
+            let open = super::outstanding(&data, &super::judge(&data));
+            open.into_iter()
+                .filter(|o| o.starts_with("Canonical-trust rerun") || o.starts_with("`simd-json` rule 1"))
+                .collect::<Vec<_>>()
+        };
+        let solo = rerun("solo");
+        for task in ["hw", "time", "e2e:time"] {
+            assert!(
+                solo.iter().any(|o| o.contains(&format!(
+                    "(`SJC_TRUST=canonical mise run {task}`): recorded at `solo` trust"
+                ))),
+                "{task}: {solo:?}"
+            );
+        }
+        assert!(
+            solo.iter()
+                .any(|o| o.starts_with("`simd-json` rule 1: provisional pass"))
+        );
+        assert!(rerun("canonical").is_empty());
+    }
+
+    #[test]
+    fn an_unrecorded_stage_is_outstanding_not_canonical() {
+        let open = super::outstanding(&Data::default(), &[]);
+        assert_eq!(open.len(), 3);
+        assert!(open.iter().all(|o| o.contains("): not recorded; it needs")));
     }
 
     /// simd-json ties serde_json on decode cycles and allocates half its

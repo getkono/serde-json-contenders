@@ -233,7 +233,7 @@ Individual tasks are listed by `cargo xtask`. Every measured result file under `
 
 ## Findings
 
-Written from [the report](report/README.md) alone. Every figure links to the cell it comes from, and `cargo xtask report --check` fails if that cell does not hold it. All timing was taken on a shared host, trust class `solo` (see [Limitations](report/README.md#limitations)): the A/A margin is applied to every comparison, and a pass of rule 1 or rule 4 is provisional until a quiet-host rerun. The callgrind counts beside the cycles are deterministic: a cycles advantage counts as a win only where the count points the same way, so every cycles win the rule counts is corroborated.
+Written from [the report](report/README.md) alone. Every figure links to the cell it comes from, and `cargo xtask report --check` fails if that cell does not hold it. All timing was taken on a shared host, trust class `solo` (see [Limitations](report/README.md#limitations)): the A/A margin is applied to every comparison, and a pass of rule 1 or rule 4 is provisional until a quiet-host rerun. [Outstanding](report/README.md#outstanding) lists, from the results, each stage still to be rerun at `canonical` trust and every rule still pending. The callgrind counts beside the cycles are deterministic: a cycles advantage counts as a win only where the count points the same way, so every cycles win the rule counts is corroborated.
 
 **Kynos keeps serde_json.** No contender is recommended ([Verdict](report/README.md#verdict)). Each other library fails rule 2 on behaviour of the library itself ([Conformance](report/README.md#conformance)):
 

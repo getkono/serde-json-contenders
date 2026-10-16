@@ -4,16 +4,17 @@
     "boost": "1",
     "container_image": null,
     "cpu": "AMD Ryzen 7 7800X3D 8-Core Processor",
-    "git_commit": "429dbc42e1ba98e81b69d224c78b094499ad4f34",
+    "fingerprint": "cf070453554890eb",
+    "git_commit": "f0dd0a671e7ea6711f15c19d4d2ce79e7f3f7cfb",
     "git_dirty": false,
     "governor": "powersave",
     "host": "x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor",
     "kernel": "7.2.4-200.fc44.x86_64",
-    "loadavg": "15.56 17.81 14.59 8/5628 690497",
+    "loadavg": "2.66 2.82 2.93 3/2985 2902134",
     "microcode": "microcode\t: 0xa60120c",
     "os": "linux",
     "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
-    "timestamp": "2026-09-28T07:23:05Z",
+    "timestamp": "2026-10-15T18:30:07Z",
     "valgrind": null
   },
   "report": {
@@ -697,6 +698,16 @@
             "section": "numbers"
           },
           {
+            "case": "negative-zero-int#u64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "negative-zero-int#i64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
             "case": "negative-zero-int#f64",
             "detail": "both accept, values differ, and the backend's is not correctly rounded",
             "section": "numbers"
@@ -1320,6 +1331,46 @@
             "case": "y_string_pi.json#map/borrowed",
             "detail": "outcome differs from serde_json",
             "section": "value_targets"
+          },
+          {
+            "case": "keys-long-int#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "keys-long-int#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "keys-long-int#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "keys-long-int#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
           }
         ],
         "sections": {
@@ -2110,7 +2161,7 @@
             "notes": []
           },
           "encode_diff": {
-            "cases": 144,
+            "cases": 224,
             "differences": [
               {
                 "backend": {
@@ -2276,6 +2327,58 @@
               },
               {
                 "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/owned#unique",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/borrowed#unique",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/owned#shared",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/borrowed#shared",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
                   "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614315,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2212322 bytes, depth 7)"
                 },
                 "case": "canada-like#decode/owned#unique",
@@ -2309,11 +2412,79 @@
                 "reference": {
                   "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614316,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2207853 bytes, depth 7)"
                 }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "reject-shape#decode/owned#unique",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: string \"704\", expected u64 at line 1 column 65490",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "reject-shape#decode/borrowed#unique",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: string \"704\", expected u64 at line 1 column 65490",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "reject-shape#decode/owned#shared",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: string \"704\", expected u64 at line 1 column 65490",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "reject-shape#decode/borrowed#shared",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: string \"704\", expected u64 at line 1 column 65490",
+                    "status": 422
+                  }
+                }
               }
             ],
-            "disagreements": 18,
-            "gating": false,
-            "gating_failure_count": 0,
+            "disagreements": 26,
+            "gating": true,
+            "gating_failure_count": 8,
             "notes": [
               "floats#decode/owned#unique: the backend's value is the source's exactly; serde_json's is not",
               "floats#decode/borrowed#unique: the backend's value is the source's exactly; serde_json's is not",
@@ -3508,7 +3679,7 @@
             "notes": []
           },
           "numbers": {
-            "cases": 1475642,
+            "cases": 2836258,
             "data": {
               "random": {
                 "backend_not_correctly_rounded": 0,
@@ -3517,6 +3688,14 @@
                 "samples": 1000000,
                 "seed": 24301,
                 "texts": 1475586
+              },
+              "random_f32": {
+                "backend_not_correctly_rounded": 0,
+                "backend_rejected": 0,
+                "reference_not_correctly_rounded": 0,
+                "samples": 1000000,
+                "seed": 254959341,
+                "texts": 1360608
               },
               "round_trip": {
                 "backend_encode_backend_decode_mismatch": 0,
@@ -3839,7 +4018,7 @@
             ],
             "disagreements": 438733,
             "gating": true,
-            "gating_failure_count": 3,
+            "gating_failure_count": 5,
             "notes": []
           },
           "status": {
@@ -4333,7 +4512,7 @@
             "notes": []
           },
           "structs": {
-            "cases": 128,
+            "cases": 160,
             "differences": [
               {
                 "backend": {
@@ -6069,6 +6248,16 @@
             "section": "numbers"
           },
           {
+            "case": "negative-zero-int#u64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "negative-zero-int#i64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
             "case": "negative-zero-int#f64",
             "detail": "both accept, values differ, and the backend's is not correctly rounded",
             "section": "numbers"
@@ -6692,6 +6881,46 @@
             "case": "y_string_pi.json#map/borrowed",
             "detail": "outcome differs from serde_json",
             "section": "value_targets"
+          },
+          {
+            "case": "keys-long-int#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "keys-long-int#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "keys-long-int#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "keys-long-int#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
           }
         ],
         "sections": {
@@ -7482,7 +7711,7 @@
             "notes": []
           },
           "encode_diff": {
-            "cases": 144,
+            "cases": 224,
             "differences": [
               {
                 "backend": {
@@ -7648,6 +7877,58 @@
               },
               {
                 "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/owned#unique",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/borrowed#unique",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/owned#shared",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/borrowed#shared",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
                   "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614315,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2212322 bytes, depth 7)"
                 },
                 "case": "canada-like#decode/owned#unique",
@@ -7681,11 +7962,79 @@
                 "reference": {
                   "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614316,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2207853 bytes, depth 7)"
                 }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "reject-shape#decode/owned#unique",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: string \"704\", expected u64 at line 1 column 65490",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "reject-shape#decode/borrowed#unique",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: string \"704\", expected u64 at line 1 column 65490",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "reject-shape#decode/owned#shared",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: string \"704\", expected u64 at line 1 column 65490",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "reject-shape#decode/borrowed#shared",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: string \"704\", expected u64 at line 1 column 65490",
+                    "status": 422
+                  }
+                }
               }
             ],
-            "disagreements": 18,
-            "gating": false,
-            "gating_failure_count": 0,
+            "disagreements": 26,
+            "gating": true,
+            "gating_failure_count": 8,
             "notes": [
               "floats#decode/owned#unique: the backend's value is the source's exactly; serde_json's is not",
               "floats#decode/borrowed#unique: the backend's value is the source's exactly; serde_json's is not",
@@ -8880,7 +9229,7 @@
             "notes": []
           },
           "numbers": {
-            "cases": 1475642,
+            "cases": 2836258,
             "data": {
               "random": {
                 "backend_not_correctly_rounded": 0,
@@ -8889,6 +9238,14 @@
                 "samples": 1000000,
                 "seed": 24301,
                 "texts": 1475586
+              },
+              "random_f32": {
+                "backend_not_correctly_rounded": 0,
+                "backend_rejected": 0,
+                "reference_not_correctly_rounded": 0,
+                "samples": 1000000,
+                "seed": 254959341,
+                "texts": 1360608
               },
               "round_trip": {
                 "backend_encode_backend_decode_mismatch": 0,
@@ -9211,7 +9568,7 @@
             ],
             "disagreements": 438733,
             "gating": true,
-            "gating_failure_count": 3,
+            "gating_failure_count": 5,
             "notes": []
           },
           "status": {
@@ -9763,7 +10120,7 @@
             ]
           },
           "structs": {
-            "cases": 128,
+            "cases": 160,
             "differences": [
               {
                 "backend": {
@@ -10841,8 +11198,7 @@
       "lzcnt",
       "pclmulqdq",
       "avx512f",
-      "avx512bw",
-      "aes"
+      "avx512bw"
     ]
   },
   "schema": 1

@@ -504,7 +504,7 @@ fn heap_table(out: &mut String, data: &Data) {
         return;
     }
     section(out, "heap", "Heap per operation");
-    out.push_str("At `native`, owned decode of one shared frame and `to_vec` encode. Bytes are those requested, counting only the growth of a reallocation; peak is the most live at once.\n\n");
+    out.push_str("At the Kynos shapes, at `native`, owned decode of one shared frame and `to_vec` encode; every other workload's decode heap is the y-axis of its [figure](#pareto-workloads), and every workload's heap, every arrival and both ops, is in [`data/alloc.csv`](data/alloc.csv). Bytes are those requested, counting only the growth of a reallocation; peak is the most live at once.\n\n");
     out.push_str(&header(&[
         "Entry point",
         "Workload",
@@ -649,7 +649,8 @@ fn fuzz_and_miri(out: &mut String, data: &Data) {
                 s("target"),
                 s("seconds"),
                 s("finished"),
-                s("executions"),
+                // libFuzzer's own counter line, `#N:`; the figure is N.
+                s("executions").trim_start_matches('#').trim_end_matches(':').to_owned(),
                 s("crash_count"),
                 s("divergence_found"),
                 if r["sanitizer_report"].is_string() {
@@ -795,7 +796,7 @@ fn conformance(out: &mut String, data: &Data) {
         return;
     }
     section(out, "conformance", "Conformance against serde_json");
-    out.push_str("Disagreements per section, summed over every build variant; **bold** sections gate. Gating failures are listed below the table.\n\n");
+    out.push_str("Differences from serde_json per section, summed over every build variant, counting the ones the section allows (such as a correctly rounded float where serde_json's default parser is not); **bold** sections gate, and only gating failures, counted below the table with examples, fail one; every one recorded is in [`data/conformance-notes.csv`](data/conformance-notes.csv).\n\n");
     let sections = [
         "grammar",
         "status",
@@ -811,7 +812,7 @@ fn conformance(out: &mut String, data: &Data) {
     let mut cols = vec!["Entry point", "Gate"];
     cols.extend(sections);
     out.push_str(&header(&cols));
-    let mut listed: Vec<(String, Vec<String>)> = Vec::new();
+    let mut listed: Vec<String> = Vec::new();
     for e in ENTRIES.iter().filter(|e| !e.backend.starts_with("serde_json")) {
         let mine: Vec<(&(String, String), &Value)> = reports
             .iter()
@@ -840,30 +841,67 @@ fn conformance(out: &mut String, data: &Data) {
             });
         }
         out.push_str(&row(&cells));
-        for ((variant, set), b) in &mine {
-            for f in b["gating_failures"].as_array().into_iter().flatten().take(5) {
-                let case = format!(
-                    "- `{}`: {} — `{}`: {}",
-                    e.backend,
-                    f["section"].as_str().unwrap_or("?"),
-                    f["case"].as_str().unwrap_or("?"),
-                    f["detail"].as_str().unwrap_or("").chars().take(160).collect::<String>()
-                );
-                let build = format!("{variant}/{set}");
-                match listed.iter_mut().find(|(l, _)| *l == case) {
-                    Some((_, builds)) => builds.push(build),
-                    None => listed.push((case, vec![build])),
-                }
-            }
-        }
+        listed.extend(gating_list(e.backend, &sections, &mine));
     }
     out.push('\n');
-    for (case, builds) in listed.iter().take(80) {
-        let _ = writeln!(out, "{case} ({})", builds.join(", "));
+    for line in &listed {
+        let _ = writeln!(out, "{line}");
     }
     if !listed.is_empty() {
         out.push('\n');
     }
+}
+
+/// Every gating section of one entry, named with its count, and up to
+/// `SHOWN` of its cases, one per input, with the builds they fail in; every recorded case is
+/// in `data/conformance-notes.csv`.
+fn gating_list(backend: &str, sections: &[&str], mine: &[(&(String, String), &Value)]) -> Vec<String> {
+    const SHOWN: usize = 3;
+    let mut lines = Vec::new();
+    for s in sections.iter().chain(["process"].iter()) {
+        // (case, first build's detail, every build it fails in)
+        let mut cases: Vec<(String, String, Vec<String>)> = Vec::new();
+        for ((variant, set), b) in mine {
+            for f in b["gating_failures"].as_array().into_iter().flatten() {
+                if f["section"] != *s {
+                    continue;
+                }
+                let case = f["case"].as_str().unwrap_or("?").to_owned();
+                let build = format!("{variant}/{set}");
+                // One example per input: the same input in another mode
+                // (`#owned#shared`) says nothing new.
+                let input = |c: &str| c.split('#').next().unwrap_or("").to_owned();
+                if let Some((_, _, builds)) = cases.iter_mut().find(|(c, _, _)| *c == case) {
+                    builds.push(build);
+                } else if cases.len() < SHOWN && !cases.iter().any(|(c, _, _)| input(c) == input(&case)) {
+                    let detail = f["detail"].as_str().unwrap_or("").chars().take(160).collect();
+                    cases.push((case, detail, vec![build]));
+                }
+            }
+        }
+        let most = mine
+            .iter()
+            .filter_map(|(_, b)| b["sections"][*s]["gating_failure_count"].as_u64())
+            .max()
+            .unwrap_or(0)
+            .max(cases.len() as u64);
+        if most == 0 {
+            continue;
+        }
+        let shown = if most > cases.len() as u64 {
+            format!("; {} shown", cases.len())
+        } else {
+            String::new()
+        };
+        let noun = if most == 1 { "failure" } else { "failures" };
+        lines.push(format!(
+            "- `{backend}`: {s} — {most} gating {noun} in the build with the most{shown}"
+        ));
+        for (case, detail, builds) in cases {
+            lines.push(format!("  - `{case}`: {detail} ({})", builds.join(", ")));
+        }
+    }
+    lines
 }
 
 /// One depth limit: the deepest input accepted, and what happened next.

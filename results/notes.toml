@@ -17,51 +17,47 @@ merit = "Correctly rounded float parsing, which the default parser is not (see c
 merit = "Lazy path lookups without a full parse (`get`, `get_many`, `LazyValue`); errors carry a byte offset as well as line and column."
 
 [simd-json]
-merit = "Borrowing decode of escaped strings, unescaped in place: {allocs} allocations against serde_json's {base} for twitter-like into borrowed types from a unique buffer. A tape API (`to_tape`) traverses without building values."
+merit = "Borrowing decode of escaped strings, unescaped in place: {allocs} allocations against serde_json's {base} for twitter-like into borrowed types from a unique buffer, though {bytes} against serde_json's {base_bytes}. A tape API (`to_tape`) traverses without building values."
 figures.allocs = { table = "alloc", backend = "simd-json", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "allocations" }
 figures.base = { table = "alloc", backend = "serde_json", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "allocations" }
+figures.bytes = { table = "alloc", backend = "simd-json", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "bytes", format = "bytes" }
+figures.base_bytes = { table = "alloc", backend = "serde_json", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "bytes", format = "bytes" }
 holds = "allocs < base"
 
-[simd-json-buffers]
-merit = "Reusing `Buffers` across calls cuts the bytes plain `from_slice` allocates: {mine} against {plain} for twitter-like into borrowed types from a unique buffer."
-figures.mine = { table = "alloc", backend = "simd-json-buffers", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "bytes", format = "bytes" }
-figures.plain = { table = "alloc", backend = "simd-json", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "bytes", format = "bytes" }
-holds = "mine < plain"
+# simd-json-buffers: no merit of its own. Reusing `Buffers` takes back part of
+# what plain `from_slice` allocates, not anything serde_json lacks.
 
-[flexon-rt]
-merit = "`from_mut_slice` borrows escaped strings in place; JSON-pointer access. Its latest release (0.4.9) does not compile on stable Rust."
+# flexon-rt and flexon-ct: no merit of their own. Borrowing escaped strings in
+# place is `from_mut_slice`, measured as the `-mut` entry points below.
 
 [flexon-rt-mut]
-merit = "In-place parse lets escaped strings borrow: {allocs} allocations and {bytes} against `flexon-rt`'s {base_allocs} and {base_bytes} for twitter-like into borrowed types from a unique buffer."
+merit = "In-place parse (`from_mut_slice`) lets escaped strings borrow, which serde_json cannot: {allocs} allocations and {bytes} against serde_json's {base_allocs} and {base_bytes} for twitter-like into borrowed types from a unique buffer."
 figures.allocs = { table = "alloc", backend = "flexon-rt-mut", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "allocations" }
 figures.bytes = { table = "alloc", backend = "flexon-rt-mut", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "bytes", format = "bytes" }
-figures.base_allocs = { table = "alloc", backend = "flexon-rt", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "allocations" }
-figures.base_bytes = { table = "alloc", backend = "flexon-rt", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "bytes", format = "bytes" }
+figures.base_allocs = { table = "alloc", backend = "serde_json", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "allocations" }
+figures.base_bytes = { table = "alloc", backend = "serde_json", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "bytes", format = "bytes" }
 holds = "allocs < base_allocs and bytes < base_bytes"
 
-[flexon-ct]
-merit = "The compile-time SIMD configuration of flexon; same API as `flexon-rt`."
-
 [flexon-ct-mut]
-merit = "In-place parse lets escaped strings borrow: {allocs} allocations and {bytes} against `flexon-ct`'s {base_allocs} and {base_bytes} for twitter-like into borrowed types from a unique buffer."
+merit = "In-place parse (`from_mut_slice`) lets escaped strings borrow, which serde_json cannot: {allocs} allocations and {bytes} against serde_json's {base_allocs} and {base_bytes} for twitter-like into borrowed types from a unique buffer."
 figures.allocs = { table = "alloc", backend = "flexon-ct-mut", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "allocations" }
 figures.bytes = { table = "alloc", backend = "flexon-ct-mut", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "bytes", format = "bytes" }
-figures.base_allocs = { table = "alloc", backend = "flexon-ct", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "allocations" }
-figures.base_bytes = { table = "alloc", backend = "flexon-ct", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "bytes", format = "bytes" }
+figures.base_allocs = { table = "alloc", backend = "serde_json", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "allocations" }
+figures.base_bytes = { table = "alloc", backend = "serde_json", workload = "twitter-like", op = "decode", form = "borrowed", arrival = "unique", field = "bytes", format = "bytes" }
 holds = "allocs < base_allocs and bytes < base_bytes"
 
 [jiter]
 merit = "Partial mode parses truncated documents (built for streamed model output); decode only."
 
 [hifijson]
-merit = "{blocks} `unsafe` blocks, {fns} `unsafe` functions and {impls} `unsafe` impls across its {crates} runtime crate(s). Lexes any byte iterator (`IterLexer`), so input need not be in memory; numbers kept as text."
+merit = "{blocks} `unsafe` blocks, {fns} `unsafe` functions and {impls} `unsafe` impls across its {crates} runtime crate(s), against serde_json's own (see costs)."
 figures.blocks = { table = "footprint", set = "hifijson", field = "unsafe_blocks" }
 figures.fns = { table = "footprint", set = "hifijson", field = "unsafe_fns" }
 figures.impls = { table = "footprint", set = "hifijson", field = "unsafe_impls" }
 figures.crates = { table = "footprint", set = "hifijson", field = "runtime_crates_added" }
 
 [struson]
-merit = "{blocks} `unsafe` blocks, {fns} `unsafe` functions and {impls} `unsafe` impls across its {crates} runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors."
+merit = "{blocks} `unsafe` blocks, {fns} `unsafe` functions and {impls} `unsafe` impls across its {crates} runtime crates. A true streaming reader and writer, with JSON-path seeking."
 figures.blocks = { table = "footprint", set = "struson", field = "unsafe_blocks" }
 figures.fns = { table = "footprint", set = "struson", field = "unsafe_fns" }
 figures.impls = { table = "footprint", set = "struson", field = "unsafe_impls" }

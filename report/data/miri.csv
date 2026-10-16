@@ -1,0 +1,10 @@
+set,detail,outcome
+baseline,,pass
+baseline-float-roundtrip,,pass
+flexon-ct,"error: Undefined Behavior: in-bounds pointer arithmetic failed: attempting to offset pointer by 1 byte, but got alloc557437+0x3 which is at or beyond the end of the allocation of size 3 bytes",undefined-behavior
+flexon-rt,"error: Undefined Behavior: in-bounds pointer arithmetic failed: attempting to offset pointer by 1 byte, but got alloc557437+0x3 which is at or beyond the end of the allocation of size 3 bytes",undefined-behavior
+hifijson,,pass
+jiter,,pass
+simd-json,,pass
+sonic-rs,,pass
+struson,,pass

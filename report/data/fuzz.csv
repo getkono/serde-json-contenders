@@ -1,0 +1,34 @@
+set,backend,config,target,assertion,crash_count,crash_input_hex,crash_tail,divergence_found,executions,finished,forks,sanitizer_report,seconds,seed
+flexon-ct,flexon-ct,v3,decode_struct,assertion `left == right` failed: owned: status differs: Syntax: unexpected token   left: 422,3681,39,,true,#10954539:,true,2,,1800,1
+flexon-ct,flexon-ct,v3,decode_value,accepted what serde_json refuses (trailing characters at line 1 column 2): 0 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace,17175,3077,,true,#7586992:,true,2,,1800,1
+flexon-ct,flexon-ct,v3,roundtrip,,0,,,false,#28738386:,true,2,,1800,1
+flexon-ct,flexon-ct-mut,v3,decode_struct,assertion `left == right` failed: owned: status differs: Syntax: unexpected token   left: 422,3919,39,,true,#11699346:,true,2,,1800,1
+flexon-ct,flexon-ct-mut,v3,decode_value,accepted what serde_json refuses (trailing characters at line 1 column 2): 0 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace,14575,3077,,true,#6707604:,true,2,,1800,1
+flexon-ct,flexon-ct-mut,v3,roundtrip,,0,,,false,#28525902:,true,2,,1800,1
+flexon-rt,flexon-rt,v3,decode_struct,assertion `left == right` failed: owned: status differs: Syntax: unexpected token   left: 422,3573,39,,true,#11085364:,true,2,,1800,1
+flexon-rt,flexon-rt,v3,decode_value,accepted what serde_json refuses (trailing characters at line 1 column 2): 1 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace,18229,3118,,true,#7521317:,true,2,,1800,1
+flexon-rt,flexon-rt,v3,roundtrip,,0,,,false,#29414207:,true,2,,1800,1
+flexon-rt,flexon-rt-mut,v3,decode_struct,assertion `left == right` failed: owned: status differs: Syntax: unexpected token   left: 422,3413,39,,true,#11950077:,true,2,,1800,1
+flexon-rt,flexon-rt-mut,v3,decode_value,accepted what serde_json refuses (trailing characters at line 1 column 2): 1 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace,17546,3118,,true,#7451641:,true,2,,1800,1
+flexon-rt,flexon-rt-mut,v3,roundtrip,,0,,,false,#29060035:,true,2,,1800,1
+hifijson,hifijson,v3,decode_struct,assertion `left == right` failed: owned: status differs: Syntax: Parse(Num(ExpectedDigit))   left: 422,836,5b5b5d5d,,true,#115468856:,true,2,,1800,1
+hifijson,hifijson,v3,decode_value,accepted what serde_json refuses (number out of range at line 1 column 5): null note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace,29863,3445353933,,true,#76381116:,true,2,,1800,1
+hifijson,hifijson,v3,roundtrip,,0,,,false,#30847904:,true,2,,1800,1
+jiter,jiter,v3,decode_struct,"assertion `left == right` failed: owned: status differs: Eof: Syntax(JsonError { error_type: EofWhileParsingList, index: 7 })   left: 422",25,205b362c22225d,,true,#96767465:,true,2,,1800,1
+jiter,jiter,v3,decode_value,"accepted what serde_json refuses (number out of range at line 1 column 5): ""Infinity"" note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace",31872,3365333930,,true,#66929731:,true,2,,1800,1
+jiter,jiter,v3,roundtrip,"candidate reads serde_json's output: Failure { class: Data, position: Some(Offset(1)), message: ""Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })"" } note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace",64393,030490fa9b3b63fffd,,true,#21927232:,true,2,,1800,1
+simd-json,simd-json,v3,decode_struct,assertion `left == right` failed: owned: status differs: Syntax: InvalidNumber at character 12 ('7')   left: 422,4180,30653737373735323737373737,,true,#95948664:,true,2,,1800,1
+simd-json,simd-json,v3,decode_value,"accepted what serde_json refuses (unexpected end of hex escape at line 1 column 10): ""^0\u00000"" note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace",6479,225e305c754438303630220d,,true,#130050438:,true,2,,1800,1
+simd-json,simd-json,v3,roundtrip,,0,,,false,#26356266:,true,2,,1800,1
+simd-json,simd-json-buffers,v3,decode_struct,assertion `left == right` failed: owned: status differs: Syntax: InvalidNumber at character 13 ('4')   left: 422,5829,30652d3832303434343434343434,,true,#102091261:,true,2,,1800,1
+simd-json,simd-json-buffers,v3,decode_value,"accepted what serde_json refuses (unexpected end of hex escape at line 1 column 8): ""\u0000"" note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace",4185,225c754441454522,,true,#154573833:,true,2,,1800,1
+simd-json,simd-json-buffers,v3,roundtrip,,0,,,false,#26526373:,true,2,,1800,1
+sonic-rs,sonic-rs,portable,decode_struct,,0,,,false,#60546486:,true,2,,1800,1
+sonic-rs,sonic-rs,portable,decode_value,,0,,,false,#72775078:,true,2,,1800,1
+sonic-rs,sonic-rs,portable,roundtrip,,0,,,false,#29333257:,true,2,,1800,1
+sonic-rs,sonic-rs,v3,decode_struct,,0,,,false,#61202109:,true,2,,1800,1
+sonic-rs,sonic-rs,v3,decode_value,,0,,,false,#68869710:,true,2,,1800,1
+sonic-rs,sonic-rs,v3,roundtrip,,0,,,false,#30064893:,true,2,,1800,1
+struson,struson,v3,decode_struct,,0,,,false,#78858405:,true,2,,1800,1
+struson,struson,v3,decode_value,"refused a valid document (1e+111): Data: unsupported number value '1E111' at path '$', line 0, column 0 (data pos 0) note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace",36111,3145313131,,true,#32463419:,true,2,,1800,1
+struson,struson,v3,roundtrip,"candidate reads serde_json's output: Failure { class: Data, position: Some(LineColumn(1, 1)), message: ""unsupported number value '9.4e-322' at path '$', line 0, column 0 (data pos 0)"" } note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace",15303,2cbe,,true,#5054680:,true,2,,1800,1

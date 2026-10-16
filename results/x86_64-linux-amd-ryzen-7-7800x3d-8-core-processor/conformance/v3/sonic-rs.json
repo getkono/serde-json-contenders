@@ -4,16 +4,17 @@
     "boost": "1",
     "container_image": null,
     "cpu": "AMD Ryzen 7 7800X3D 8-Core Processor",
-    "git_commit": "429dbc42e1ba98e81b69d224c78b094499ad4f34",
+    "fingerprint": "cf070453554890eb",
+    "git_commit": "f0dd0a671e7ea6711f15c19d4d2ce79e7f3f7cfb",
     "git_dirty": false,
     "governor": "powersave",
     "host": "x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor",
     "kernel": "7.2.4-200.fc44.x86_64",
-    "loadavg": "8.59 8.19 10.75 2/4181 538808",
+    "loadavg": "2.57 2.73 2.98 2/2995 2824153",
     "microcode": "microcode\t: 0xa60120c",
     "os": "linux",
     "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
-    "timestamp": "2026-09-28T07:09:38Z",
+    "timestamp": "2026-10-15T18:16:38Z",
     "valgrind": null
   },
   "report": {
@@ -329,7 +330,7 @@
             "notes": []
           },
           "encode_diff": {
-            "cases": 144,
+            "cases": 224,
             "differences": [
               {
                 "backend": {
@@ -479,7 +480,7 @@
             "data": {
               "line_column": {
                 "backend_has_none": 0,
-                "different": 41,
+                "different": 40,
                 "mismatches": [
                   {
                     "backend": [
@@ -781,17 +782,6 @@
                   {
                     "backend": [
                       1,
-                      3
-                    ],
-                    "case": "n_object_lone_continuation_byte_in_key_and_trailing_comma.json",
-                    "reference": [
-                      1,
-                      4
-                    ]
-                  },
-                  {
-                    "backend": [
-                      1,
                       8
                     ],
                     "case": "n_string_1_surrogate_then_escape.json",
@@ -933,7 +923,7 @@
                     ]
                   }
                 ],
-                "same": 147
+                "same": 148
               }
             },
             "differences": [],
@@ -941,7 +931,7 @@
             "gating": false,
             "gating_failure_count": 0,
             "notes": [
-              "error position: 41 n_ case(s) differ from serde_json, 0 have none (data.line_column)"
+              "error position: 40 n_ case(s) differ from serde_json, 0 have none (data.line_column)"
             ]
           },
           "grammar": {
@@ -1784,7 +1774,7 @@
             "notes": []
           },
           "numbers": {
-            "cases": 1475642,
+            "cases": 2836258,
             "data": {
               "random": {
                 "backend_not_correctly_rounded": 0,
@@ -1793,6 +1783,14 @@
                 "samples": 1000000,
                 "seed": 24301,
                 "texts": 1475586
+              },
+              "random_f32": {
+                "backend_not_correctly_rounded": 0,
+                "backend_rejected": 0,
+                "reference_not_correctly_rounded": 0,
+                "samples": 1000000,
+                "seed": 254959341,
+                "texts": 1360608
               },
               "round_trip": {
                 "backend_encode_backend_decode_mismatch": 0,
@@ -2146,7 +2144,7 @@
             "notes": []
           },
           "structs": {
-            "cases": 128,
+            "cases": 160,
             "differences": [],
             "disagreements": 0,
             "gating": false,

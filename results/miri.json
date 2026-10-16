@@ -5,16 +5,17 @@
     "boost": "1",
     "container_image": null,
     "cpu": "AMD Ryzen 7 7800X3D 8-Core Processor",
-    "git_commit": "82772022ba50ee9e2c914dc589e62dc99fea786a",
+    "fingerprint": "cf070453554890eb",
+    "git_commit": "f0dd0a671e7ea6711f15c19d4d2ce79e7f3f7cfb",
     "git_dirty": false,
     "governor": "powersave",
     "host": "x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor",
     "kernel": "7.2.4-200.fc44.x86_64",
-    "loadavg": "10.14 19.02 22.77 6/5115 1701742",
+    "loadavg": "3.01 2.81 3.36 2/3066 3921535",
     "microcode": "microcode\t: 0xa60120c",
     "os": "linux",
     "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
-    "timestamp": "2026-09-28T08:50:21Z",
+    "timestamp": "2026-10-15T20:42:27Z",
     "valgrind": null
   },
   "rows": [
@@ -29,12 +30,12 @@
       "set": "baseline-float-roundtrip"
     },
     {
-      "detail": "error: Undefined Behavior: in-bounds pointer arithmetic failed: attempting to offset pointer by 1 byte, but got alloc587983+0x3 which is at or beyond the end of the allocation of size 3 bytes",
+      "detail": "error: Undefined Behavior: in-bounds pointer arithmetic failed: attempting to offset pointer by 1 byte, but got alloc557437+0x3 which is at or beyond the end of the allocation of size 3 bytes",
       "outcome": "undefined-behavior",
       "set": "flexon-ct"
     },
     {
-      "detail": "error: Undefined Behavior: in-bounds pointer arithmetic failed: attempting to offset pointer by 1 byte, but got alloc587983+0x3 which is at or beyond the end of the allocation of size 3 bytes",
+      "detail": "error: Undefined Behavior: in-bounds pointer arithmetic failed: attempting to offset pointer by 1 byte, but got alloc557437+0x3 which is at or beyond the end of the allocation of size 3 bytes",
       "outcome": "undefined-behavior",
       "set": "flexon-rt"
     },

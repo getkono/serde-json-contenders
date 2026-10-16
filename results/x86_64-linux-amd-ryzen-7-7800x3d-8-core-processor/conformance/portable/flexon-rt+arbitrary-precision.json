@@ -4,16 +4,17 @@
     "boost": "1",
     "container_image": null,
     "cpu": "AMD Ryzen 7 7800X3D 8-Core Processor",
-    "git_commit": "429dbc42e1ba98e81b69d224c78b094499ad4f34",
+    "fingerprint": "cf070453554890eb",
+    "git_commit": "f0dd0a671e7ea6711f15c19d4d2ce79e7f3f7cfb",
     "git_dirty": false,
     "governor": "powersave",
     "host": "x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor",
     "kernel": "7.2.4-200.fc44.x86_64",
-    "loadavg": "13.46 13.29 13.95 14/4560 457769",
+    "loadavg": "3.98 3.70 3.33 3/3043 2731485",
     "microcode": "microcode\t: 0xa60120c",
     "os": "linux",
     "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
-    "timestamp": "2026-09-28T06:59:49Z",
+    "timestamp": "2026-10-15T18:04:20Z",
     "valgrind": null
   },
   "report": {
@@ -697,8 +698,33 @@
             "section": "numbers"
           },
           {
+            "case": "negative-zero-int#u64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "negative-zero-int#i64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
             "case": "negative-zero-int#f64",
             "detail": "both accept, values differ, and the backend's is not correctly rounded",
+            "section": "numbers"
+          },
+          {
+            "case": "1e400#value",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "-1e400#value",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "1000-digit-integer#value",
+            "detail": "serde_json accepts, the backend refuses",
             "section": "numbers"
           },
           {
@@ -960,6 +986,546 @@
             "case": "borrow-cow/2#borrowed#shared",
             "detail": "outcome differs from serde_json",
             "section": "attributes"
+          },
+          {
+            "case": "y_array_arraysWithSpaces.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_arraysWithSpaces.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_empty-string.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_empty-string.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_empty.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_empty.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_ending_with_newline.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_ending_with_newline.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_false.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_false.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_heterogeneous.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_heterogeneous.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_null.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_null.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_with_1_and_newline.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_with_1_and_newline.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_with_leading_space.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_with_leading_space.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_with_several_null.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_with_several_null.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_with_trailing_space.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_with_trailing_space.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_0e+1.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_0e+1.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_0e1.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_0e1.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_after_space.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_after_space.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_double_close_to_zero.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_double_close_to_zero.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_int_with_exp.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_int_with_exp.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_minus_zero.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_minus_zero.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_negative_int.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_negative_int.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_negative_one.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_negative_one.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_negative_zero.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_negative_zero.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_capital_e.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_capital_e.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_capital_e_neg_exp.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_capital_e_neg_exp.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_capital_e_pos_exp.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_capital_e_pos_exp.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_exponent.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_exponent.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_fraction_exponent.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_fraction_exponent.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_neg_exp.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_neg_exp.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_pos_exponent.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_pos_exponent.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_simple_int.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_simple_int.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_simple_real.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_simple_real.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_1_2_3_bytes_UTF-8_sequences.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_1_2_3_bytes_UTF-8_sequences.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_accepted_surrogate_pair.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_accepted_surrogate_pair.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_accepted_surrogate_pairs.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_accepted_surrogate_pairs.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_allowed_escapes.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_allowed_escapes.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_backslash_and_u_escaped_zero.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_backslash_and_u_escaped_zero.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_backslash_doublequotes.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_backslash_doublequotes.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_comments.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_comments.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_double_escape_a.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_double_escape_a.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_double_escape_n.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_double_escape_n.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_escaped_control_character.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_escaped_control_character.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_escaped_noncharacter.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_escaped_noncharacter.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_in_array.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_in_array.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_in_array_with_leading_space.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_in_array_with_leading_space.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_last_surrogates_1_and_2.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_last_surrogates_1_and_2.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_nbsp_uescaped.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_nbsp_uescaped.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_nonCharacterInUTF-8_U+10FFFF.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_nonCharacterInUTF-8_U+10FFFF.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_nonCharacterInUTF-8_U+FFFF.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_nonCharacterInUTF-8_U+FFFF.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_null_escape.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_null_escape.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_one-byte-utf-8.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_one-byte-utf-8.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_pi.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_pi.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "keys-long-int#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "keys-long-int#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "keys-long-int#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "keys-long-int#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
           }
         ],
         "sections": {
@@ -2214,7 +2780,7 @@
             "notes": []
           },
           "encode_diff": {
-            "cases": 144,
+            "cases": 224,
             "differences": [
               {
                 "backend": {
@@ -2380,6 +2946,58 @@
               },
               {
                 "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/owned#unique",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/borrowed#unique",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/owned#shared",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/borrowed#shared",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
                   "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614315,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2212322 bytes, depth 7)"
                 },
                 "case": "canada-like#decode/owned#unique",
@@ -2413,11 +3031,79 @@
                 "reference": {
                   "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614316,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2207853 bytes, depth 7)"
                 }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "reject-shape#decode/owned#unique",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: string \"704\", expected u64 at line 1 column 65490",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "reject-shape#decode/borrowed#unique",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: string \"704\", expected u64 at line 1 column 65490",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "reject-shape#decode/owned#shared",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: string \"704\", expected u64 at line 1 column 65490",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "reject-shape#decode/borrowed#shared",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: string \"704\", expected u64 at line 1 column 65490",
+                    "status": 422
+                  }
+                }
               }
             ],
-            "disagreements": 18,
-            "gating": false,
-            "gating_failure_count": 0,
+            "disagreements": 26,
+            "gating": true,
+            "gating_failure_count": 8,
             "notes": [
               "floats#decode/owned#unique: the backend's value is the source's exactly; serde_json's is not",
               "floats#decode/borrowed#unique: the backend's value is the source's exactly; serde_json's is not",
@@ -3716,7 +4402,7 @@
             "notes": []
           },
           "numbers": {
-            "cases": 1475642,
+            "cases": 2836258,
             "data": {
               "random": {
                 "backend_not_correctly_rounded": 0,
@@ -3725,6 +4411,14 @@
                 "samples": 1000000,
                 "seed": 24301,
                 "texts": 1475586
+              },
+              "random_f32": {
+                "backend_not_correctly_rounded": 0,
+                "backend_rejected": 0,
+                "reference_not_correctly_rounded": 0,
+                "samples": 1000000,
+                "seed": 254959341,
+                "texts": 1360608
               },
               "round_trip": {
                 "backend_encode_backend_decode_mismatch": 0,
@@ -4063,7 +4757,7 @@
             ],
             "disagreements": 438734,
             "gating": true,
-            "gating_failure_count": 3,
+            "gating_failure_count": 8,
             "notes": []
           },
           "status": {
@@ -4557,7 +5251,7 @@
             "notes": []
           },
           "structs": {
-            "cases": 128,
+            "cases": 160,
             "differences": [
               {
                 "backend": {
@@ -5624,176 +6318,9 @@
               }
             ],
             "disagreements": 166,
-            "gating": false,
-            "gating_failure_count": 0,
-            "notes": [
-              "y_array_arraysWithSpaces.json#map/owned: differs under arbitrary_precision",
-              "y_array_arraysWithSpaces.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_empty-string.json#map/owned: differs under arbitrary_precision",
-              "y_array_empty-string.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_empty.json#map/owned: differs under arbitrary_precision",
-              "y_array_empty.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_ending_with_newline.json#map/owned: differs under arbitrary_precision",
-              "y_array_ending_with_newline.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_false.json#map/owned: differs under arbitrary_precision",
-              "y_array_false.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_heterogeneous.json#map/owned: differs under arbitrary_precision",
-              "y_array_heterogeneous.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_null.json#map/owned: differs under arbitrary_precision",
-              "y_array_null.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_with_1_and_newline.json#map/owned: differs under arbitrary_precision",
-              "y_array_with_1_and_newline.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_with_leading_space.json#map/owned: differs under arbitrary_precision",
-              "y_array_with_leading_space.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_with_several_null.json#map/owned: differs under arbitrary_precision",
-              "y_array_with_several_null.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_with_trailing_space.json#map/owned: differs under arbitrary_precision",
-              "y_array_with_trailing_space.json#map/borrowed: differs under arbitrary_precision",
-              "y_number.json#map/owned: differs under arbitrary_precision",
-              "y_number.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_0e+1.json#map/owned: differs under arbitrary_precision",
-              "y_number_0e+1.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_0e1.json#map/owned: differs under arbitrary_precision",
-              "y_number_0e1.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_after_space.json#map/owned: differs under arbitrary_precision",
-              "y_number_after_space.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_double_close_to_zero.json#map/owned: differs under arbitrary_precision",
-              "y_number_double_close_to_zero.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_int_with_exp.json#map/owned: differs under arbitrary_precision",
-              "y_number_int_with_exp.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_minus_zero.json#map/owned: differs under arbitrary_precision",
-              "y_number_minus_zero.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_negative_int.json#map/owned: differs under arbitrary_precision",
-              "y_number_negative_int.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_negative_one.json#map/owned: differs under arbitrary_precision",
-              "y_number_negative_one.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_negative_zero.json#map/owned: differs under arbitrary_precision",
-              "y_number_negative_zero.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_real_capital_e.json#map/owned: differs under arbitrary_precision",
-              "y_number_real_capital_e.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_real_capital_e_neg_exp.json#map/owned: differs under arbitrary_precision",
-              "y_number_real_capital_e_neg_exp.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_real_capital_e_pos_exp.json#map/owned: differs under arbitrary_precision",
-              "y_number_real_capital_e_pos_exp.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_real_exponent.json#map/owned: differs under arbitrary_precision",
-              "y_number_real_exponent.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_real_fraction_exponent.json#map/owned: differs under arbitrary_precision",
-              "y_number_real_fraction_exponent.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_real_neg_exp.json#map/owned: differs under arbitrary_precision",
-              "y_number_real_neg_exp.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_real_pos_exponent.json#map/owned: differs under arbitrary_precision",
-              "y_number_real_pos_exponent.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_simple_int.json#map/owned: differs under arbitrary_precision",
-              "y_number_simple_int.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_simple_real.json#map/owned: differs under arbitrary_precision",
-              "y_number_simple_real.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_1_2_3_bytes_UTF-8_sequences.json#map/owned: differs under arbitrary_precision",
-              "y_string_1_2_3_bytes_UTF-8_sequences.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_accepted_surrogate_pair.json#map/owned: differs under arbitrary_precision",
-              "y_string_accepted_surrogate_pair.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_accepted_surrogate_pairs.json#map/owned: differs under arbitrary_precision",
-              "y_string_accepted_surrogate_pairs.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_allowed_escapes.json#map/owned: differs under arbitrary_precision",
-              "y_string_allowed_escapes.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_backslash_and_u_escaped_zero.json#map/owned: differs under arbitrary_precision",
-              "y_string_backslash_and_u_escaped_zero.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_backslash_doublequotes.json#map/owned: differs under arbitrary_precision",
-              "y_string_backslash_doublequotes.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_comments.json#map/owned: differs under arbitrary_precision",
-              "y_string_comments.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_double_escape_a.json#map/owned: differs under arbitrary_precision",
-              "y_string_double_escape_a.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_double_escape_n.json#map/owned: differs under arbitrary_precision",
-              "y_string_double_escape_n.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_escaped_control_character.json#map/owned: differs under arbitrary_precision",
-              "y_string_escaped_control_character.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_escaped_noncharacter.json#map/owned: differs under arbitrary_precision",
-              "y_string_escaped_noncharacter.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_in_array.json#map/owned: differs under arbitrary_precision",
-              "y_string_in_array.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_in_array_with_leading_space.json#map/owned: differs under arbitrary_precision",
-              "y_string_in_array_with_leading_space.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_last_surrogates_1_and_2.json#map/owned: differs under arbitrary_precision",
-              "y_string_last_surrogates_1_and_2.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_nbsp_uescaped.json#map/owned: differs under arbitrary_precision",
-              "y_string_nbsp_uescaped.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_nonCharacterInUTF-8_U+10FFFF.json#map/owned: differs under arbitrary_precision",
-              "y_string_nonCharacterInUTF-8_U+10FFFF.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_nonCharacterInUTF-8_U+FFFF.json#map/owned: differs under arbitrary_precision",
-              "y_string_nonCharacterInUTF-8_U+FFFF.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_null_escape.json#map/owned: differs under arbitrary_precision",
-              "y_string_null_escape.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_one-byte-utf-8.json#map/owned: differs under arbitrary_precision",
-              "y_string_one-byte-utf-8.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_pi.json#map/owned: differs under arbitrary_precision",
-              "y_string_pi.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_reservedCharacterInUTF-8_U+1BFFF.json#map/owned: differs under arbitrary_precision",
-              "y_string_reservedCharacterInUTF-8_U+1BFFF.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_simple_ascii.json#map/owned: differs under arbitrary_precision",
-              "y_string_simple_ascii.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_space.json#map/owned: differs under arbitrary_precision",
-              "y_string_space.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_surrogates_U+1D11E_MUSICAL_SYMBOL_G_CLEF.json#map/owned: differs under arbitrary_precision",
-              "y_string_surrogates_U+1D11E_MUSICAL_SYMBOL_G_CLEF.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_three-byte-utf-8.json#map/owned: differs under arbitrary_precision",
-              "y_string_three-byte-utf-8.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_two-byte-utf-8.json#map/owned: differs under arbitrary_precision",
-              "y_string_two-byte-utf-8.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_u+2028_line_sep.json#map/owned: differs under arbitrary_precision",
-              "y_string_u+2028_line_sep.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_u+2029_par_sep.json#map/owned: differs under arbitrary_precision",
-              "y_string_u+2029_par_sep.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_uEscape.json#map/owned: differs under arbitrary_precision",
-              "y_string_uEscape.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_uescaped_newline.json#map/owned: differs under arbitrary_precision",
-              "y_string_uescaped_newline.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unescaped_char_delete.json#map/owned: differs under arbitrary_precision",
-              "y_string_unescaped_char_delete.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicodeEscapedBackslash.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicodeEscapedBackslash.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode_2.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode_2.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode_U+10FFFE_nonchar.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode_U+10FFFE_nonchar.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode_U+1FFFE_nonchar.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode_U+1FFFE_nonchar.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode_U+200B_ZERO_WIDTH_SPACE.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode_U+200B_ZERO_WIDTH_SPACE.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode_U+2064_invisible_plus.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode_U+2064_invisible_plus.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode_U+FDD0_nonchar.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode_U+FDD0_nonchar.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode_U+FFFE_nonchar.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode_U+FFFE_nonchar.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode_escaped_double_quote.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode_escaped_double_quote.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_utf8.json#map/owned: differs under arbitrary_precision",
-              "y_string_utf8.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_with_del_character.json#map/owned: differs under arbitrary_precision",
-              "y_string_with_del_character.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_lonely_false.json#map/owned: differs under arbitrary_precision",
-              "y_structure_lonely_false.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_lonely_int.json#map/owned: differs under arbitrary_precision",
-              "y_structure_lonely_int.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_lonely_negative_real.json#map/owned: differs under arbitrary_precision",
-              "y_structure_lonely_negative_real.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_lonely_null.json#map/owned: differs under arbitrary_precision",
-              "y_structure_lonely_null.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_lonely_string.json#map/owned: differs under arbitrary_precision",
-              "y_structure_lonely_string.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_lonely_true.json#map/owned: differs under arbitrary_precision",
-              "y_structure_lonely_true.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_string_empty.json#map/owned: differs under arbitrary_precision",
-              "y_structure_string_empty.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_trailing_newline.json#map/owned: differs under arbitrary_precision",
-              "y_structure_trailing_newline.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_true_in_array.json#map/owned: differs under arbitrary_precision",
-              "y_structure_true_in_array.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_whitespace_array.json#map/owned: differs under arbitrary_precision",
-              "y_structure_whitespace_array.json#map/borrowed: differs under arbitrary_precision"
-            ]
+            "gating": true,
+            "gating_failure_count": 166,
+            "notes": []
           }
         }
       },
@@ -6476,8 +7003,33 @@
             "section": "numbers"
           },
           {
+            "case": "negative-zero-int#u64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "negative-zero-int#i64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
             "case": "negative-zero-int#f64",
             "detail": "both accept, values differ, and the backend's is not correctly rounded",
+            "section": "numbers"
+          },
+          {
+            "case": "1e400#value",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "-1e400#value",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "1000-digit-integer#value",
+            "detail": "serde_json accepts, the backend refuses",
             "section": "numbers"
           },
           {
@@ -6739,6 +7291,546 @@
             "case": "borrow-cow/2#borrowed#shared",
             "detail": "outcome differs from serde_json",
             "section": "attributes"
+          },
+          {
+            "case": "y_array_arraysWithSpaces.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_arraysWithSpaces.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_empty-string.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_empty-string.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_empty.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_empty.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_ending_with_newline.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_ending_with_newline.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_false.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_false.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_heterogeneous.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_heterogeneous.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_null.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_null.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_with_1_and_newline.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_with_1_and_newline.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_with_leading_space.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_with_leading_space.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_with_several_null.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_with_several_null.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_with_trailing_space.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_array_with_trailing_space.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_0e+1.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_0e+1.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_0e1.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_0e1.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_after_space.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_after_space.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_double_close_to_zero.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_double_close_to_zero.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_int_with_exp.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_int_with_exp.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_minus_zero.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_minus_zero.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_negative_int.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_negative_int.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_negative_one.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_negative_one.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_negative_zero.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_negative_zero.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_capital_e.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_capital_e.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_capital_e_neg_exp.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_capital_e_neg_exp.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_capital_e_pos_exp.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_capital_e_pos_exp.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_exponent.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_exponent.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_fraction_exponent.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_fraction_exponent.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_neg_exp.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_neg_exp.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_pos_exponent.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_real_pos_exponent.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_simple_int.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_simple_int.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_simple_real.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_number_simple_real.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_1_2_3_bytes_UTF-8_sequences.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_1_2_3_bytes_UTF-8_sequences.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_accepted_surrogate_pair.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_accepted_surrogate_pair.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_accepted_surrogate_pairs.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_accepted_surrogate_pairs.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_allowed_escapes.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_allowed_escapes.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_backslash_and_u_escaped_zero.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_backslash_and_u_escaped_zero.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_backslash_doublequotes.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_backslash_doublequotes.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_comments.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_comments.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_double_escape_a.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_double_escape_a.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_double_escape_n.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_double_escape_n.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_escaped_control_character.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_escaped_control_character.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_escaped_noncharacter.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_escaped_noncharacter.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_in_array.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_in_array.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_in_array_with_leading_space.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_in_array_with_leading_space.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_last_surrogates_1_and_2.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_last_surrogates_1_and_2.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_nbsp_uescaped.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_nbsp_uescaped.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_nonCharacterInUTF-8_U+10FFFF.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_nonCharacterInUTF-8_U+10FFFF.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_nonCharacterInUTF-8_U+FFFF.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_nonCharacterInUTF-8_U+FFFF.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_null_escape.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_null_escape.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_one-byte-utf-8.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_one-byte-utf-8.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_pi.json#map/owned",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "y_string_pi.json#map/borrowed",
+            "detail": "outcome differs from serde_json",
+            "section": "value_targets"
+          },
+          {
+            "case": "keys-long-int#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "keys-long-int#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "keys-long-int#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "keys-long-int#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
           }
         ],
         "sections": {
@@ -7993,7 +9085,7 @@
             "notes": []
           },
           "encode_diff": {
-            "cases": 144,
+            "cases": 224,
             "differences": [
               {
                 "backend": {
@@ -8159,6 +9251,58 @@
               },
               {
                 "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/owned#unique",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/borrowed#unique",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/owned#shared",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/borrowed#shared",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
                   "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614315,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2212322 bytes, depth 7)"
                 },
                 "case": "canada-like#decode/owned#unique",
@@ -8192,11 +9336,79 @@
                 "reference": {
                   "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614316,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2207853 bytes, depth 7)"
                 }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "reject-shape#decode/owned#unique",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: string \"704\", expected u64 at line 1 column 65490",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "reject-shape#decode/borrowed#unique",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: string \"704\", expected u64 at line 1 column 65490",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "reject-shape#decode/owned#shared",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: string \"704\", expected u64 at line 1 column 65490",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid literal",
+                    "status": 400
+                  }
+                },
+                "case": "reject-shape#decode/borrowed#shared",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "invalid type: string \"704\", expected u64 at line 1 column 65490",
+                    "status": 422
+                  }
+                }
               }
             ],
-            "disagreements": 18,
-            "gating": false,
-            "gating_failure_count": 0,
+            "disagreements": 26,
+            "gating": true,
+            "gating_failure_count": 8,
             "notes": [
               "floats#decode/owned#unique: the backend's value is the source's exactly; serde_json's is not",
               "floats#decode/borrowed#unique: the backend's value is the source's exactly; serde_json's is not",
@@ -9495,7 +10707,7 @@
             "notes": []
           },
           "numbers": {
-            "cases": 1475642,
+            "cases": 2836258,
             "data": {
               "random": {
                 "backend_not_correctly_rounded": 0,
@@ -9504,6 +10716,14 @@
                 "samples": 1000000,
                 "seed": 24301,
                 "texts": 1475586
+              },
+              "random_f32": {
+                "backend_not_correctly_rounded": 0,
+                "backend_rejected": 0,
+                "reference_not_correctly_rounded": 0,
+                "samples": 1000000,
+                "seed": 254959341,
+                "texts": 1360608
               },
               "round_trip": {
                 "backend_encode_backend_decode_mismatch": 0,
@@ -9842,7 +11062,7 @@
             ],
             "disagreements": 438734,
             "gating": true,
-            "gating_failure_count": 3,
+            "gating_failure_count": 8,
             "notes": []
           },
           "status": {
@@ -10394,7 +11614,7 @@
             ]
           },
           "structs": {
-            "cases": 128,
+            "cases": 160,
             "differences": [
               {
                 "backend": {
@@ -11461,176 +12681,9 @@
               }
             ],
             "disagreements": 166,
-            "gating": false,
-            "gating_failure_count": 0,
-            "notes": [
-              "y_array_arraysWithSpaces.json#map/owned: differs under arbitrary_precision",
-              "y_array_arraysWithSpaces.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_empty-string.json#map/owned: differs under arbitrary_precision",
-              "y_array_empty-string.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_empty.json#map/owned: differs under arbitrary_precision",
-              "y_array_empty.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_ending_with_newline.json#map/owned: differs under arbitrary_precision",
-              "y_array_ending_with_newline.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_false.json#map/owned: differs under arbitrary_precision",
-              "y_array_false.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_heterogeneous.json#map/owned: differs under arbitrary_precision",
-              "y_array_heterogeneous.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_null.json#map/owned: differs under arbitrary_precision",
-              "y_array_null.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_with_1_and_newline.json#map/owned: differs under arbitrary_precision",
-              "y_array_with_1_and_newline.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_with_leading_space.json#map/owned: differs under arbitrary_precision",
-              "y_array_with_leading_space.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_with_several_null.json#map/owned: differs under arbitrary_precision",
-              "y_array_with_several_null.json#map/borrowed: differs under arbitrary_precision",
-              "y_array_with_trailing_space.json#map/owned: differs under arbitrary_precision",
-              "y_array_with_trailing_space.json#map/borrowed: differs under arbitrary_precision",
-              "y_number.json#map/owned: differs under arbitrary_precision",
-              "y_number.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_0e+1.json#map/owned: differs under arbitrary_precision",
-              "y_number_0e+1.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_0e1.json#map/owned: differs under arbitrary_precision",
-              "y_number_0e1.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_after_space.json#map/owned: differs under arbitrary_precision",
-              "y_number_after_space.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_double_close_to_zero.json#map/owned: differs under arbitrary_precision",
-              "y_number_double_close_to_zero.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_int_with_exp.json#map/owned: differs under arbitrary_precision",
-              "y_number_int_with_exp.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_minus_zero.json#map/owned: differs under arbitrary_precision",
-              "y_number_minus_zero.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_negative_int.json#map/owned: differs under arbitrary_precision",
-              "y_number_negative_int.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_negative_one.json#map/owned: differs under arbitrary_precision",
-              "y_number_negative_one.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_negative_zero.json#map/owned: differs under arbitrary_precision",
-              "y_number_negative_zero.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_real_capital_e.json#map/owned: differs under arbitrary_precision",
-              "y_number_real_capital_e.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_real_capital_e_neg_exp.json#map/owned: differs under arbitrary_precision",
-              "y_number_real_capital_e_neg_exp.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_real_capital_e_pos_exp.json#map/owned: differs under arbitrary_precision",
-              "y_number_real_capital_e_pos_exp.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_real_exponent.json#map/owned: differs under arbitrary_precision",
-              "y_number_real_exponent.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_real_fraction_exponent.json#map/owned: differs under arbitrary_precision",
-              "y_number_real_fraction_exponent.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_real_neg_exp.json#map/owned: differs under arbitrary_precision",
-              "y_number_real_neg_exp.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_real_pos_exponent.json#map/owned: differs under arbitrary_precision",
-              "y_number_real_pos_exponent.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_simple_int.json#map/owned: differs under arbitrary_precision",
-              "y_number_simple_int.json#map/borrowed: differs under arbitrary_precision",
-              "y_number_simple_real.json#map/owned: differs under arbitrary_precision",
-              "y_number_simple_real.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_1_2_3_bytes_UTF-8_sequences.json#map/owned: differs under arbitrary_precision",
-              "y_string_1_2_3_bytes_UTF-8_sequences.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_accepted_surrogate_pair.json#map/owned: differs under arbitrary_precision",
-              "y_string_accepted_surrogate_pair.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_accepted_surrogate_pairs.json#map/owned: differs under arbitrary_precision",
-              "y_string_accepted_surrogate_pairs.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_allowed_escapes.json#map/owned: differs under arbitrary_precision",
-              "y_string_allowed_escapes.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_backslash_and_u_escaped_zero.json#map/owned: differs under arbitrary_precision",
-              "y_string_backslash_and_u_escaped_zero.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_backslash_doublequotes.json#map/owned: differs under arbitrary_precision",
-              "y_string_backslash_doublequotes.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_comments.json#map/owned: differs under arbitrary_precision",
-              "y_string_comments.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_double_escape_a.json#map/owned: differs under arbitrary_precision",
-              "y_string_double_escape_a.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_double_escape_n.json#map/owned: differs under arbitrary_precision",
-              "y_string_double_escape_n.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_escaped_control_character.json#map/owned: differs under arbitrary_precision",
-              "y_string_escaped_control_character.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_escaped_noncharacter.json#map/owned: differs under arbitrary_precision",
-              "y_string_escaped_noncharacter.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_in_array.json#map/owned: differs under arbitrary_precision",
-              "y_string_in_array.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_in_array_with_leading_space.json#map/owned: differs under arbitrary_precision",
-              "y_string_in_array_with_leading_space.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_last_surrogates_1_and_2.json#map/owned: differs under arbitrary_precision",
-              "y_string_last_surrogates_1_and_2.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_nbsp_uescaped.json#map/owned: differs under arbitrary_precision",
-              "y_string_nbsp_uescaped.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_nonCharacterInUTF-8_U+10FFFF.json#map/owned: differs under arbitrary_precision",
-              "y_string_nonCharacterInUTF-8_U+10FFFF.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_nonCharacterInUTF-8_U+FFFF.json#map/owned: differs under arbitrary_precision",
-              "y_string_nonCharacterInUTF-8_U+FFFF.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_null_escape.json#map/owned: differs under arbitrary_precision",
-              "y_string_null_escape.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_one-byte-utf-8.json#map/owned: differs under arbitrary_precision",
-              "y_string_one-byte-utf-8.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_pi.json#map/owned: differs under arbitrary_precision",
-              "y_string_pi.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_reservedCharacterInUTF-8_U+1BFFF.json#map/owned: differs under arbitrary_precision",
-              "y_string_reservedCharacterInUTF-8_U+1BFFF.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_simple_ascii.json#map/owned: differs under arbitrary_precision",
-              "y_string_simple_ascii.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_space.json#map/owned: differs under arbitrary_precision",
-              "y_string_space.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_surrogates_U+1D11E_MUSICAL_SYMBOL_G_CLEF.json#map/owned: differs under arbitrary_precision",
-              "y_string_surrogates_U+1D11E_MUSICAL_SYMBOL_G_CLEF.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_three-byte-utf-8.json#map/owned: differs under arbitrary_precision",
-              "y_string_three-byte-utf-8.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_two-byte-utf-8.json#map/owned: differs under arbitrary_precision",
-              "y_string_two-byte-utf-8.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_u+2028_line_sep.json#map/owned: differs under arbitrary_precision",
-              "y_string_u+2028_line_sep.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_u+2029_par_sep.json#map/owned: differs under arbitrary_precision",
-              "y_string_u+2029_par_sep.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_uEscape.json#map/owned: differs under arbitrary_precision",
-              "y_string_uEscape.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_uescaped_newline.json#map/owned: differs under arbitrary_precision",
-              "y_string_uescaped_newline.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unescaped_char_delete.json#map/owned: differs under arbitrary_precision",
-              "y_string_unescaped_char_delete.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicodeEscapedBackslash.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicodeEscapedBackslash.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode_2.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode_2.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode_U+10FFFE_nonchar.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode_U+10FFFE_nonchar.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode_U+1FFFE_nonchar.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode_U+1FFFE_nonchar.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode_U+200B_ZERO_WIDTH_SPACE.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode_U+200B_ZERO_WIDTH_SPACE.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode_U+2064_invisible_plus.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode_U+2064_invisible_plus.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode_U+FDD0_nonchar.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode_U+FDD0_nonchar.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode_U+FFFE_nonchar.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode_U+FFFE_nonchar.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_unicode_escaped_double_quote.json#map/owned: differs under arbitrary_precision",
-              "y_string_unicode_escaped_double_quote.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_utf8.json#map/owned: differs under arbitrary_precision",
-              "y_string_utf8.json#map/borrowed: differs under arbitrary_precision",
-              "y_string_with_del_character.json#map/owned: differs under arbitrary_precision",
-              "y_string_with_del_character.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_lonely_false.json#map/owned: differs under arbitrary_precision",
-              "y_structure_lonely_false.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_lonely_int.json#map/owned: differs under arbitrary_precision",
-              "y_structure_lonely_int.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_lonely_negative_real.json#map/owned: differs under arbitrary_precision",
-              "y_structure_lonely_negative_real.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_lonely_null.json#map/owned: differs under arbitrary_precision",
-              "y_structure_lonely_null.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_lonely_string.json#map/owned: differs under arbitrary_precision",
-              "y_structure_lonely_string.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_lonely_true.json#map/owned: differs under arbitrary_precision",
-              "y_structure_lonely_true.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_string_empty.json#map/owned: differs under arbitrary_precision",
-              "y_structure_string_empty.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_trailing_newline.json#map/owned: differs under arbitrary_precision",
-              "y_structure_trailing_newline.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_true_in_array.json#map/owned: differs under arbitrary_precision",
-              "y_structure_true_in_array.json#map/borrowed: differs under arbitrary_precision",
-              "y_structure_whitespace_array.json#map/owned: differs under arbitrary_precision",
-              "y_structure_whitespace_array.json#map/borrowed: differs under arbitrary_precision"
-            ]
+            "gating": true,
+            "gating_failure_count": 166,
+            "notes": []
           }
         }
       }

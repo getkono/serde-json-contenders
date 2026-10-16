@@ -909,14 +909,13 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
             unweighable.push((*route).to_owned());
             continue;
         };
-        // The count bounds what the codec can give: more throughput than it
-        // predicts is a measurement error, not a result. Nor can a material
-        // predicted gain show as a throughput loss beyond the noise: the
-        // count and the timing then disagree on direction.
+        // The count and the timing must agree on direction, and only on
+        // that: the count is of the `v3` build in instructions and the timing
+        // of `native` in cycles, so it bounds no gain's or loss's size. A
+        // count predicting a material gain contradicts a timed loss beyond
+        // the noise, and one predicting a material loss a timed gain.
         let slack = EPSILON.max(aa_rps);
-        // A predicted loss bounds nothing above zero: loopback adds cost the
-        // in-memory count does not see, so a timed loss is often smaller.
-        if g.rps > predicted.max(0.0) + slack || (predicted > EPSILON && g.rps < -slack) {
+        if (predicted > EPSILON && g.rps < -slack) || (predicted < -EPSILON && g.rps > slack) {
             inconsistent.push(format!(
                 "{route}: {:+.0} % rps and p99 {} measured, {:+.0} % rps predicted",
                 g.rps * 100.0,
@@ -929,8 +928,8 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
         // A saturated run has no p99 to weigh; it can still win on
         // throughput. A p99 under load is not proportional to the cost of a
         // request (a cheaper request also shortens every queue behind it), so
-        // it has no bound like throughput's; it counts only where the count
-        // itself predicts a material gain.
+        // a large p99 gain can follow from a small saving: it counts only
+        // where the count itself predicts a material one.
         let pass_p99 =
             predicted > EPSILON && matches!((g.p99, g.aa_p99), (Some(p), Some(b)) if -p >= E2E_GAIN && -p > b);
         if !(pass_rps || pass_p99) {
@@ -954,10 +953,10 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
             "no A/A control or counted prediction for {}",
             unweighable.join(", ")
         )),
-        // More than the count allows is a measurement error, not a result:
-        // the rule cannot be decided until a rerun measures it.
+        // A timing the count contradicts is not a result: the rule cannot be
+        // decided until a rerun measures it.
         (true, None) if !inconsistent.is_empty() => Outcome::Pending(format!(
-            "gains inconsistent with counted codec share, so a measurement error; rerun: {}",
+            "timing contradicts the counted codec share, so undecided; rerun: {}",
             inconsistent.join("; ")
         )),
         (true, None) => Outcome::Fail("no route ≥10 % better in throughput or p99 beyond the A/A band".into()),
@@ -1483,20 +1482,59 @@ pub(super) mod tests {
 
     #[test]
     fn rule4_weighs_a_gain_against_the_count() {
-        // Predicted +25 %: a timed +20 % passes, +40 % is a measurement error.
+        // Predicted +25 %: a timed +20 % passes, and so does +40 %, since a
+        // `v3` count does not bound the size of a `native` cycles gain.
         assert!(
             matches!(e2e(1200.0, 800.0), Outcome::Pass(_)),
             "{:?}",
             e2e(1200.0, 800.0)
         );
         assert!(
-            matches!(e2e(1400.0, 800.0), Outcome::Pending(_)),
+            matches!(e2e(1400.0, 800.0), Outcome::Pass(_)),
             "{:?}",
             e2e(1400.0, 800.0)
         );
+        // Predicted −20 %, timed +40 %: the two disagree on direction.
+        assert!(
+            matches!(&e2e(1400.0, 1250.0), Outcome::Pending(d) if d.contains("contradicts")),
+            "{:?}",
+            e2e(1400.0, 1250.0)
+        );
+        // A prediction within ε constrains nothing, and one beyond it no
+        // gain's size: a timed +40 % passes at +0 % and at +5.04 % predicted.
+        for est in [952.0, 1000.0] {
+            assert!(
+                matches!(e2e(1400.0, est), Outcome::Pass(_)),
+                "{est}: {:?}",
+                e2e(1400.0, est)
+            );
+        }
+        // A large p99 gain counts only where the count predicts a material
+        // saving: at +0 % predicted it does not, at +25 % it does.
+        let p99 = |est: f64| {
+            let mut data = Data::default();
+            for (b, p, c) in [
+                ("serde_json", 1.0, 1000.0),
+                ("serde_json#aa", 1.0, 1000.0),
+                ("simd-json", 0.5, est),
+            ] {
+                data.host
+                    .e2e_time
+                    .push(json!({ "variant": "native", "backend": b, "route": "json-large-post",
+                    "rps": 1000.0, "p99_ms": p, "trust": "canonical" }));
+                data.e2e_count
+                    .push(json!({ "variant": "v3", "backend": b, "route": "json-large-post", "est_cycles": c }));
+            }
+            super::rule4(&data, simd())
+        };
+        assert!(matches!(p99(1000.0), Outcome::Fail(_)), "{:?}", p99(1000.0));
+        assert!(matches!(p99(800.0), Outcome::Pass(_)), "{:?}", p99(800.0));
+        // Predicted +25 %, timed −3 %: inside the slack, so no contradiction;
+        // simply a loss.
+        assert!(matches!(e2e(970.0, 800.0), Outcome::Fail(_)), "{:?}", e2e(970.0, 800.0));
         // Predicted +25 %, timed −30 %: the two disagree on direction.
         assert!(
-            matches!(e2e(700.0, 800.0), Outcome::Pending(_)),
+            matches!(&e2e(700.0, 800.0), Outcome::Pending(d) if d.contains("contradicts")),
             "{:?}",
             e2e(700.0, 800.0)
         );

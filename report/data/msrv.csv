@@ -1,0 +1,10 @@
+set,builds_on_msrv,crate,declared,first_error,msrv
+baseline,true,serde_json,1.71,,1.85.0
+baseline-float-roundtrip,true,serde_json,1.71,,1.85.0
+flexon-ct,false,flexon,,error[E0432]: unresolved import `core::hint::select_unpredictable` (in flexon-0.4.8),1.85.0
+flexon-rt,false,flexon,,error[E0432]: unresolved import `core::hint::select_unpredictable` (in flexon-0.4.8),1.85.0
+hifijson,true,hifijson,1.56,,1.85.0
+jiter,false,jiter,1.88,error[E0658]: `let` expressions in this position are unstable (in jiter-0.17.0),1.85.0
+simd-json,false,simd-json,1.88,error[E0658]: `let` expressions in this position are unstable (in halfbrown-0.4.0),1.85.0
+sonic-rs,true,sonic-rs,,,1.85.0
+struson,true,struson,1.85.0,,1.85.0

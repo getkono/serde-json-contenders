@@ -1,0 +1,25 @@
+{
+  "committed": 4648,
+  "compared": 4648,
+  "kind": "recount",
+  "provenance": {
+    "arch": "x86_64",
+    "boost": "1",
+    "container_image": "7f0aeada100e10f9bb362cc3ac3a403a2f6ee124ca36ff0245d827ee78b4dd5e",
+    "cpu": "AMD Ryzen 7 7800X3D 8-Core Processor",
+    "fingerprint": "cf070453554890eb",
+    "git_commit": "f0dd0a671e7ea6711f15c19d4d2ce79e7f3f7cfb",
+    "git_dirty": false,
+    "governor": "powersave",
+    "host": "x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor",
+    "kernel": "7.2.4-200.fc44.x86_64",
+    "loadavg": "8.52 6.16 5.97 2/3061 18119",
+    "microcode": "microcode\t: 0xa60120c",
+    "os": "linux",
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
+    "timestamp": "2026-10-15T20:16:38Z",
+    "valgrind": "valgrind-3.24.0"
+  },
+  "schema": 1,
+  "tolerance": 0.0
+}

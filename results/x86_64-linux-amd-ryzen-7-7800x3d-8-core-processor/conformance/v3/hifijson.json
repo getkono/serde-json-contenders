@@ -4,16 +4,17 @@
     "boost": "1",
     "container_image": null,
     "cpu": "AMD Ryzen 7 7800X3D 8-Core Processor",
-    "git_commit": "429dbc42e1ba98e81b69d224c78b094499ad4f34",
+    "fingerprint": "cf070453554890eb",
+    "git_commit": "f0dd0a671e7ea6711f15c19d4d2ce79e7f3f7cfb",
     "git_dirty": false,
     "governor": "powersave",
     "host": "x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor",
     "kernel": "7.2.4-200.fc44.x86_64",
-    "loadavg": "20.97 13.92 12.04 10/5136 597480",
+    "loadavg": "3.37 2.94 2.97 2/3001 2858523",
     "microcode": "microcode\t: 0xa60120c",
     "os": "linux",
     "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
-    "timestamp": "2026-09-28T07:15:03Z",
+    "timestamp": "2026-10-15T18:22:31Z",
     "valgrind": null
   },
   "report": {
@@ -205,6 +206,76 @@
             "case": "object/ignored/8MiB/1000000",
             "detail": "crashed: signal 6: fatal runtime error: stack overflow, aborting",
             "section": "depth"
+          },
+          {
+            "case": "2^64#value",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "negative-zero-int#i64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "1e400#u64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "1e400#i64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "1e400#f64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "1e400#value",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "-1e400#u64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "-1e400#i64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "-1e400#f64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "-1e400#value",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "1000-digit-integer#u64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "1000-digit-integer#i64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "1000-digit-integer#f64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "1000-digit-integer#value",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
           },
           {
             "case": "flatten-map/4#owned#unique",
@@ -517,6 +588,86 @@
             "section": "encode_diff"
           },
           {
+            "case": "sparse#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "sparse#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "sparse#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "sparse#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "defaults#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "defaults#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "defaults#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "defaults#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "keys-long-int#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "keys-long-int#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "keys-long-int#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "keys-long-int#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "enums#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "enums#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "enums#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "enums#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
             "case": "twitter-like#decode/owned#unique",
             "detail": "decode differs from serde_json",
             "section": "encode_diff"
@@ -573,6 +724,66 @@
           },
           {
             "case": "canada-like#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "pretty-twitter-like#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "pretty-twitter-like#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "pretty-twitter-like#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "pretty-twitter-like#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "raw-utf8#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "raw-utf8#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "raw-utf8#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "raw-utf8#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "reject-shape#decode/borrowed#shared",
             "detail": "decode differs from serde_json",
             "section": "encode_diff"
           }
@@ -1847,7 +2058,7 @@
             "notes": []
           },
           "encode_diff": {
-            "cases": 96,
+            "cases": 152,
             "differences": [
               {
                 "backend": {
@@ -2129,6 +2340,214 @@
                 "backend": {
                   "reject": {
                     "class": "data",
+                    "message": "Custom(\"invalid type: string \\\"user-63518\\\", expected option\")",
+                    "status": 422
+                  }
+                },
+                "case": "sparse#decode/owned#unique",
+                "reference": {
+                  "accept": "[{\"a\":null,\"b\":\"user-63518\",\"flags\":[false,false,true,false],\"meta\":{\"k5\":\"v464\"},\"tags\":[]},{\"a\":null,\"b\":null,\"flags\":[false,false,false,true],\"meta\":{},\"tags\":[\"tag-5\",\"tag-23\"]},{\"a\":4289600036,\"b\":null,\"flags\":[false,false,true,false],\"meta\":{},\"tags\":[]},{\"a\":null,\"b\":null,\"flags\":[false,false,true,false],\"meta\":{},\"tags\":[\"tag-41\"]},{\"a\":3689668235,\"b\":null,\"flags\":[false,true,false,false],... (16430 bytes, depth 3)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Custom(\"invalid type: string \\\"user-63518\\\", expected option\")",
+                    "status": 422
+                  }
+                },
+                "case": "sparse#decode/borrowed#unique",
+                "reference": {
+                  "accept": "[{\"a\":null,\"b\":\"user-63518\",\"flags\":[false,false,true,false],\"meta\":{\"k5\":\"v464\"},\"tags\":[]},{\"a\":null,\"b\":null,\"flags\":[false,false,false,true],\"meta\":{},\"tags\":[\"tag-5\",\"tag-23\"]},{\"a\":4289600036,\"b\":null,\"flags\":[false,false,true,false],\"meta\":{},\"tags\":[]},{\"a\":null,\"b\":null,\"flags\":[false,false,true,false],\"meta\":{},\"tags\":[\"tag-41\"]},{\"a\":3689668235,\"b\":null,\"flags\":[false,true,false,false],... (16430 bytes, depth 3)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Custom(\"invalid type: string \\\"user-63518\\\", expected option\")",
+                    "status": 422
+                  }
+                },
+                "case": "sparse#decode/owned#shared",
+                "reference": {
+                  "accept": "[{\"a\":null,\"b\":\"user-63518\",\"flags\":[false,false,true,false],\"meta\":{\"k5\":\"v464\"},\"tags\":[]},{\"a\":null,\"b\":null,\"flags\":[false,false,false,true],\"meta\":{},\"tags\":[\"tag-5\",\"tag-23\"]},{\"a\":4289600036,\"b\":null,\"flags\":[false,false,true,false],\"meta\":{},\"tags\":[]},{\"a\":null,\"b\":null,\"flags\":[false,false,true,false],\"meta\":{},\"tags\":[\"tag-41\"]},{\"a\":3689668235,\"b\":null,\"flags\":[false,true,false,false],... (16430 bytes, depth 3)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Custom(\"invalid type: string \\\"user-63518\\\", expected option\")",
+                    "status": 422
+                  }
+                },
+                "case": "sparse#decode/borrowed#shared",
+                "reference": {
+                  "accept": "[{\"a\":null,\"b\":\"user-63518\",\"flags\":[false,false,true,false],\"meta\":{\"k5\":\"v464\"},\"tags\":[]},{\"a\":null,\"b\":null,\"flags\":[false,false,false,true],\"meta\":{},\"tags\":[\"tag-5\",\"tag-23\"]},{\"a\":4289600036,\"b\":null,\"flags\":[false,false,true,false],\"meta\":{},\"tags\":[]},{\"a\":null,\"b\":null,\"flags\":[false,false,true,false],\"meta\":{},\"tags\":[\"tag-41\"]},{\"a\":3689668235,\"b\":null,\"flags\":[false,true,false,false],... (16430 bytes, depth 3)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Custom(\"invalid type: integer `0`, expected option\")",
+                    "status": 422
+                  }
+                },
+                "case": "defaults#decode/owned#unique",
+                "reference": {
+                  "accept": "[{\"description\":\"\",\"enabled\":false,\"id\":1,\"kind\":\"secret\",\"labels\":[],\"name\":\"setting-00001\",\"owner\":null,\"parent\":0,\"retries\":0,\"version\":9},{\"description\":\"\",\"enabled\":false,\"id\":2,\"kind\":\"limit\",\"labels\":[],\"name\":\"setting-00002\",\"owner\":null,\"parent\":null,\"retries\":0,\"version\":1},{\"description\":\"\",\"enabled\":false,\"id\":3,\"kind\":\"flag\",\"labels\":[],\"name\":\"setting-00003\",\"owner\":null,\"parent\":nul... (30512 bytes, depth 3)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Custom(\"invalid type: integer `0`, expected option\")",
+                    "status": 422
+                  }
+                },
+                "case": "defaults#decode/borrowed#unique",
+                "reference": {
+                  "accept": "[{\"description\":\"\",\"enabled\":false,\"id\":1,\"kind\":\"secret\",\"labels\":[],\"name\":\"setting-00001\",\"owner\":null,\"parent\":0,\"retries\":0,\"version\":9},{\"description\":\"\",\"enabled\":false,\"id\":2,\"kind\":\"limit\",\"labels\":[],\"name\":\"setting-00002\",\"owner\":null,\"parent\":null,\"retries\":0,\"version\":1},{\"description\":\"\",\"enabled\":false,\"id\":3,\"kind\":\"flag\",\"labels\":[],\"name\":\"setting-00003\",\"owner\":null,\"parent\":nul... (30512 bytes, depth 3)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Custom(\"invalid type: integer `0`, expected option\")",
+                    "status": 422
+                  }
+                },
+                "case": "defaults#decode/owned#shared",
+                "reference": {
+                  "accept": "[{\"description\":\"\",\"enabled\":false,\"id\":1,\"kind\":\"secret\",\"labels\":[],\"name\":\"setting-00001\",\"owner\":null,\"parent\":0,\"retries\":0,\"version\":9},{\"description\":\"\",\"enabled\":false,\"id\":2,\"kind\":\"limit\",\"labels\":[],\"name\":\"setting-00002\",\"owner\":null,\"parent\":null,\"retries\":0,\"version\":1},{\"description\":\"\",\"enabled\":false,\"id\":3,\"kind\":\"flag\",\"labels\":[],\"name\":\"setting-00003\",\"owner\":null,\"parent\":nul... (30512 bytes, depth 3)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Custom(\"invalid type: integer `0`, expected option\")",
+                    "status": 422
+                  }
+                },
+                "case": "defaults#decode/borrowed#shared",
+                "reference": {
+                  "accept": "[{\"description\":\"\",\"enabled\":false,\"id\":1,\"kind\":\"secret\",\"labels\":[],\"name\":\"setting-00001\",\"owner\":null,\"parent\":0,\"retries\":0,\"version\":9},{\"description\":\"\",\"enabled\":false,\"id\":2,\"kind\":\"limit\",\"labels\":[],\"name\":\"setting-00002\",\"owner\":null,\"parent\":null,\"retries\":0,\"version\":1},{\"description\":\"\",\"enabled\":false,\"id\":3,\"kind\":\"flag\",\"labels\":[],\"name\":\"setting-00003\",\"owner\":null,\"parent\":nul... (30512 bytes, depth 3)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Parse(Num(ExpectedDigit))",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/owned#unique",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Parse(Num(ExpectedDigit))",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/borrowed#unique",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Parse(Num(ExpectedDigit))",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/owned#shared",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "Parse(Num(ExpectedDigit))",
+                    "status": 400
+                  }
+                },
+                "case": "keys-long-int#decode/borrowed#shared",
+                "reference": {
+                  "accept": "{\"by_id\":{\"0\":1925390373,\"1\":3665325168,\"10204063932280125549\":1057908506,\"10522371349437\":917744019,\"106669121770327\":3353193790,\"11388091563344885\":2302116036,\"11905576163580834719\":2718330,\"1203630458070177004\":25822278,\"1269796775\":1597156581,\"12866576787878968171\":1802403870,\"131029747\":2755512958,\"1320635562068841\":692462780,\"136664783378\":656347074,\"1384575860309933\":2780352951,\"138517708\":... (16436 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Custom(\"invalid type: string \\\"stop\\\", expected enum Command\")",
+                    "status": 422
+                  }
+                },
+                "case": "enums#decode/owned#unique",
+                "reference": {
+                  "accept": "[{\"command\":\"stop\",\"envelope\":{\"content\":1941717066,\"tag\":\"count\"},\"event\":{\"id\":236472755151,\"name\":\"alpha-136\",\"public\":false,\"type\":\"created\"},\"payload\":[209,832,347],\"seq\":1},{\"command\":\"stop\",\"envelope\":{\"content\":1488615652,\"tag\":\"count\"},\"event\":{\"from\":\"echo-134\",\"id\":11464562384,\"to\":\"alpha-207\",\"type\":\"moved\"},\"payload\":null,\"seq\":2},{\"command\":{\"resize\":3237},\"envelope\":{\"content\":21337... (65689 bytes, depth 4)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Custom(\"invalid type: string \\\"stop\\\", expected enum CommandRef\")",
+                    "status": 422
+                  }
+                },
+                "case": "enums#decode/borrowed#unique",
+                "reference": {
+                  "accept": "[{\"command\":\"stop\",\"envelope\":{\"content\":1941717066,\"tag\":\"count\"},\"event\":{\"id\":236472755151,\"name\":\"alpha-136\",\"public\":false,\"type\":\"created\"},\"payload\":[209,832,347],\"seq\":1},{\"command\":\"stop\",\"envelope\":{\"content\":1488615652,\"tag\":\"count\"},\"event\":{\"from\":\"echo-134\",\"id\":11464562384,\"to\":\"alpha-207\",\"type\":\"moved\"},\"payload\":null,\"seq\":2},{\"command\":{\"resize\":3237},\"envelope\":{\"content\":21337... (65689 bytes, depth 4)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Custom(\"invalid type: string \\\"stop\\\", expected enum Command\")",
+                    "status": 422
+                  }
+                },
+                "case": "enums#decode/owned#shared",
+                "reference": {
+                  "accept": "[{\"command\":\"stop\",\"envelope\":{\"content\":1941717066,\"tag\":\"count\"},\"event\":{\"id\":236472755151,\"name\":\"alpha-136\",\"public\":false,\"type\":\"created\"},\"payload\":[209,832,347],\"seq\":1},{\"command\":\"stop\",\"envelope\":{\"content\":1488615652,\"tag\":\"count\"},\"event\":{\"from\":\"echo-134\",\"id\":11464562384,\"to\":\"alpha-207\",\"type\":\"moved\"},\"payload\":null,\"seq\":2},{\"command\":{\"resize\":3237},\"envelope\":{\"content\":21337... (65689 bytes, depth 4)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Custom(\"invalid type: string \\\"stop\\\", expected enum CommandRef\")",
+                    "status": 422
+                  }
+                },
+                "case": "enums#decode/borrowed#shared",
+                "reference": {
+                  "accept": "[{\"command\":\"stop\",\"envelope\":{\"content\":1941717066,\"tag\":\"count\"},\"event\":{\"id\":236472755151,\"name\":\"alpha-136\",\"public\":false,\"type\":\"created\"},\"payload\":[209,832,347],\"seq\":1},{\"command\":\"stop\",\"envelope\":{\"content\":1488615652,\"tag\":\"count\"},\"event\":{\"from\":\"echo-134\",\"id\":11464562384,\"to\":\"alpha-207\",\"type\":\"moved\"},\"payload\":null,\"seq\":2},{\"command\":{\"resize\":3237},\"envelope\":{\"content\":21337... (65689 bytes, depth 4)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
                     "message": "Custom(\"invalid type: integer `505875830978693874`, expected option\")",
                     "status": 422
                   }
@@ -2280,11 +2699,37 @@
                 "reference": {
                   "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614316,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2207853 bytes, depth 7)"
                 }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Custom(\"invalid type: integer `505875830978693874`, expected option\")",
+                    "status": 422
+                  }
+                },
+                "case": "pretty-twitter-like#decode/owned#unique",
+                "reference": {
+                  "accept": "{\"statuses\":[{\"created_at\":\"Sun Aug 31 00:00:01 +0000 2014\",\"favorite_count\":198,\"favorited\":false,\"hashtags\":[{\"text\":\"東京\"},{\"text\":\"東京\"}],\"id\":505875830978693875,\"id_str\":\"505875830978693875\",\"in_reply_to_status_id\":505875830978693874,\"lang\":\"ja\",\"retweet_count\":494,\"retweeted\":false,\"source\":\"<a href=\\\"https://example.invalid/app\\\" rel=\\\"nofollow\\\">client</a>\",\"text\":\"object server 猫 ... (761750 bytes, depth 5)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Custom(\"invalid type: integer `505875830978693874`, expected option\")",
+                    "status": 422
+                  }
+                },
+                "case": "pretty-twitter-like#decode/borrowed#unique",
+                "reference": {
+                  "accept": "{\"statuses\":[{\"created_at\":\"Sun Aug 31 00:00:01 +0000 2014\",\"favorite_count\":198,\"favorited\":false,\"hashtags\":[{\"text\":\"東京\"},{\"text\":\"東京\"}],\"id\":505875830978693875,\"id_str\":\"505875830978693875\",\"in_reply_to_status_id\":505875830978693874,\"lang\":\"ja\",\"retweet_count\":494,\"retweeted\":false,\"source\":\"<a href=\\\"https://example.invalid/app\\\" rel=\\\"nofollow\\\">client</a>\",\"text\":\"object server 猫 ... (761750 bytes, depth 5)"
+                }
               }
             ],
-            "disagreements": 32,
+            "disagreements": 60,
             "gating": true,
-            "gating_failure_count": 20,
+            "gating_failure_count": 48,
             "notes": [
               "decode-only backend: encode checks skipped, decode checks run",
               "floats#decode/owned#unique: the backend's value is the source's exactly; serde_json's is not",
@@ -3560,7 +4005,7 @@
             "notes": []
           },
           "numbers": {
-            "cases": 1475642,
+            "cases": 2836258,
             "data": {
               "random": {
                 "backend_not_correctly_rounded": 0,
@@ -3569,6 +4014,14 @@
                 "samples": 1000000,
                 "seed": 24301,
                 "texts": 1475586
+              },
+              "random_f32": {
+                "backend_not_correctly_rounded": 0,
+                "backend_rejected": 0,
+                "reference_not_correctly_rounded": 0,
+                "samples": 1000000,
+                "seed": 254959341,
+                "texts": 1360608
               }
             },
             "differences": [
@@ -3991,8 +4444,8 @@
               }
             ],
             "disagreements": 438742,
-            "gating": false,
-            "gating_failure_count": 0,
+            "gating": true,
+            "gating_failure_count": 14,
             "notes": [
               "decode-only backend: encoder round trips skipped"
             ]
@@ -4332,7 +4785,7 @@
             ]
           },
           "structs": {
-            "cases": 128,
+            "cases": 160,
             "differences": [
               {
                 "backend": {

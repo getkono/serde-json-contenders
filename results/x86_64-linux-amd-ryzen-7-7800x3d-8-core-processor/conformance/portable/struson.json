@@ -4,16 +4,17 @@
     "boost": "1",
     "container_image": null,
     "cpu": "AMD Ryzen 7 7800X3D 8-Core Processor",
-    "git_commit": "429dbc42e1ba98e81b69d224c78b094499ad4f34",
+    "fingerprint": "cf070453554890eb",
+    "git_commit": "f0dd0a671e7ea6711f15c19d4d2ce79e7f3f7cfb",
     "git_dirty": false,
     "governor": "powersave",
     "host": "x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor",
     "kernel": "7.2.4-200.fc44.x86_64",
-    "loadavg": "3.73 7.40 11.13 6/4290 508590",
+    "loadavg": "2.65 2.84 3.09 2/3012 2801608",
     "microcode": "microcode\t: 0xa60120c",
     "os": "linux",
     "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
-    "timestamp": "2026-09-28T07:06:27Z",
+    "timestamp": "2026-10-15T18:12:50Z",
     "valgrind": null
   },
   "report": {
@@ -27,14 +28,124 @@
             "section": "status"
           },
           {
-            "case": "shape/tuple-too-long",
-            "detail": "status Some(422), serde_json Some(400)",
-            "section": "status"
+            "case": "unknown-invalid-escape#btreemap/owned#unique",
+            "detail": "outcome differs from serde_json",
+            "section": "structs"
           },
           {
-            "case": "shape/array-too-long",
-            "detail": "status Some(422), serde_json Some(400)",
-            "section": "status"
+            "case": "unknown-invalid-escape#btreemap/owned#shared",
+            "detail": "outcome differs from serde_json",
+            "section": "structs"
+          },
+          {
+            "case": "unknown-invalid-escape#btreemap/borrowed#unique",
+            "detail": "outcome differs from serde_json",
+            "section": "structs"
+          },
+          {
+            "case": "unknown-invalid-escape#btreemap/borrowed#shared",
+            "detail": "outcome differs from serde_json",
+            "section": "structs"
+          },
+          {
+            "case": "2^64#value",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "negative-zero-int#i64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "1e400#u64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "1e400#i64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "1e400#f64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "1e400#value",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "-1e400#u64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "-1e400#i64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "-1e400#f64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "-1e400#value",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "min-subnormal#f64",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "min-subnormal#value",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "min-subnormal-4.9#f64",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "min-subnormal-4.9#value",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "half-min-subnormal#f64",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "half-min-subnormal#value",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "1000-digit-integer#u64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "1000-digit-integer#i64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "1000-digit-integer#f64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "1000-digit-integer#value",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
           },
           {
             "case": "random/9.14136969137253e-261",
@@ -437,126 +548,6 @@
             "section": "numbers"
           },
           {
-            "case": "random/1.773623054647864e+228",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '1.773623054647864e+228' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/1.773623054647864e228",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '1.773623054647864e228' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/5.9115185613851444e+100",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '5.9115185613851444e+100' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/5.9115185613851444e100",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '5.9115185613851444e100' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/-2.412970109115536e-236",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '-2.412970109115536e-236' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/-4.8087983940188424e-278",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '-4.8087983940188424e-278' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/4.2369129838999155e+195",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '4.2369129838999155e+195' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/4.2369129838999155e195",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '4.2369129838999155e195' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/4.1763187158764393e-305",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '4.1763187158764393e-305' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/2.2948053016475183e-304",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '2.2948053016475183e-304' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/-1.8065687046060962e+113",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '-1.8065687046060962e+113' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/-1.8065687046060962e113",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '-1.8065687046060962e113' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/1.957042905128487e-257",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '1.957042905128487e-257' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/-3.1466063729581253e-255",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '-3.1466063729581253e-255' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/-2.580464067098608e+171",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '-2.580464067098608e+171' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/-2.580464067098608e171",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '-2.580464067098608e171' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/2.639464096990569e-239",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '2.639464096990569e-239' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/2.043611205428492e-157",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '2.043611205428492e-157' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/-1.6150229334651086e-221",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '-1.6150229334651086e-221' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "random/2.1825927772658337e-182",
-            "detail": "decoded {\"error\":\"Data: unsupported number value '2.1825927772658337e-182' at path '$', line 0, column 0 (data pos 0)\"}, neither the correctly rounded value nor serde_json's",
-            "section": "numbers"
-          },
-          {
-            "case": "externally-tagged/6#owned#unique",
-            "detail": "outcome differs from serde_json",
-            "section": "attributes"
-          },
-          {
-            "case": "externally-tagged/6#owned#shared",
-            "detail": "outcome differs from serde_json",
-            "section": "attributes"
-          },
-          {
-            "case": "externally-tagged/6#borrowed#unique",
-            "detail": "outcome differs from serde_json",
-            "section": "attributes"
-          },
-          {
-            "case": "externally-tagged/6#borrowed#shared",
-            "detail": "outcome differs from serde_json",
-            "section": "attributes"
-          },
-          {
             "case": "floats#decode/owned#unique",
             "detail": "decode differs from serde_json",
             "section": "encode_diff"
@@ -580,91 +571,10 @@
         "sections": {
           "attributes": {
             "cases": 272,
-            "differences": [
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "unexpected JSON structure MoreElementsThanExpected at path '$.New', line 0, column 9 (data pos 9)",
-                    "status": 422
-                  }
-                },
-                "case": "externally-tagged/6#owned#unique",
-                "reference": {
-                  "input": "{\"New\":1,\"Unit\":null}",
-                  "outcome": {
-                    "reject": {
-                      "class": "syntax",
-                      "message": "expected value at line 1 column 8",
-                      "status": 400
-                    }
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "unexpected JSON structure MoreElementsThanExpected at path '$.New', line 0, column 9 (data pos 9)",
-                    "status": 422
-                  }
-                },
-                "case": "externally-tagged/6#owned#shared",
-                "reference": {
-                  "input": "{\"New\":1,\"Unit\":null}",
-                  "outcome": {
-                    "reject": {
-                      "class": "syntax",
-                      "message": "expected value at line 1 column 8",
-                      "status": 400
-                    }
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "unexpected JSON structure MoreElementsThanExpected at path '$.New', line 0, column 9 (data pos 9)",
-                    "status": 422
-                  }
-                },
-                "case": "externally-tagged/6#borrowed#unique",
-                "reference": {
-                  "input": "{\"New\":1,\"Unit\":null}",
-                  "outcome": {
-                    "reject": {
-                      "class": "syntax",
-                      "message": "expected value at line 1 column 8",
-                      "status": 400
-                    }
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "unexpected JSON structure MoreElementsThanExpected at path '$.New', line 0, column 9 (data pos 9)",
-                    "status": 422
-                  }
-                },
-                "case": "externally-tagged/6#borrowed#shared",
-                "reference": {
-                  "input": "{\"New\":1,\"Unit\":null}",
-                  "outcome": {
-                    "reject": {
-                      "class": "syntax",
-                      "message": "expected value at line 1 column 8",
-                      "status": 400
-                    }
-                  }
-                }
-              }
-            ],
-            "disagreements": 4,
-            "gating": true,
-            "gating_failure_count": 4,
+            "differences": [],
+            "disagreements": 0,
+            "gating": false,
+            "gating_failure_count": 0,
             "notes": []
           },
           "depth": {
@@ -945,7 +855,7 @@
             "notes": []
           },
           "encode_diff": {
-            "cases": 144,
+            "cases": 224,
             "differences": [
               {
                 "backend": {
@@ -1265,6 +1175,72 @@
               },
               {
                 "backend": {
+                  "backend_len": 31251,
+                  "backend_window": "[0.000000000000000000000002383036,16.247",
+                  "offset": 1,
+                  "reference_len": 16390,
+                  "reference_window": "[2.383036e-24,16.247889,-0.026040887,-8."
+                },
+                "case": "f32s#encode",
+                "reference": "semantically equal"
+              },
+              {
+                "backend": {
+                  "backend_len": 31251,
+                  "backend_window": "[0.000000000000000000000002383036,16.247",
+                  "offset": 1,
+                  "reference_len": 16390,
+                  "reference_window": "[2.383036e-24,16.247889,-0.026040887,-8."
+                },
+                "case": "f32s#encode_into",
+                "reference": "semantically equal"
+              },
+              {
+                "backend": {
+                  "backend_len": 65556,
+                  "backend_window": "ive\":false,\"score\":0},{\"id\":1,\"name\":\"it",
+                  "offset": 125,
+                  "reference_len": 65572,
+                  "reference_window": "ive\":false,\"score\":0.0},{\"id\":1,\"name\":\""
+                },
+                "case": "pretty-json-large#encode",
+                "reference": "semantically equal"
+              },
+              {
+                "backend": {
+                  "backend_len": 65556,
+                  "backend_window": "ive\":false,\"score\":0},{\"id\":1,\"name\":\"it",
+                  "offset": 125,
+                  "reference_len": 65572,
+                  "reference_window": "ive\":false,\"score\":0.0},{\"id\":1,\"name\":\""
+                },
+                "case": "pretty-json-large#encode_into",
+                "reference": "semantically equal"
+              },
+              {
+                "backend": {
+                  "backend_len": 16382,
+                  "backend_window": "05238},{\"price\":9482,\"lat\":-37.63683,\"lo",
+                  "offset": 523,
+                  "reference_len": 16396,
+                  "reference_window": "05238},{\"price\":9482.0,\"lat\":-37.63683,\""
+                },
+                "case": "floats-short#encode",
+                "reference": "semantically equal"
+              },
+              {
+                "backend": {
+                  "backend_len": 16382,
+                  "backend_window": "05238},{\"price\":9482,\"lat\":-37.63683,\"lo",
+                  "offset": 523,
+                  "reference_len": 16396,
+                  "reference_window": "05238},{\"price\":9482.0,\"lat\":-37.63683,\""
+                },
+                "case": "floats-short#encode_into",
+                "reference": "semantically equal"
+              },
+              {
+                "backend": {
                   "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614315,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2212322 bytes, depth 7)"
                 },
                 "case": "canada-like#decode/owned#unique",
@@ -1300,7 +1276,7 @@
                 }
               }
             ],
-            "disagreements": 32,
+            "disagreements": 38,
             "gating": true,
             "gating_failure_count": 4,
             "notes": [
@@ -1315,7 +1291,7 @@
             "data": {
               "line_column": {
                 "backend_has_none": 2,
-                "different": 86,
+                "different": 85,
                 "mismatches": [
                   {
                     "backend": [
@@ -1804,17 +1780,6 @@
                   {
                     "backend": [
                       1,
-                      3
-                    ],
-                    "case": "n_object_lone_continuation_byte_in_key_and_trailing_comma.json",
-                    "reference": [
-                      1,
-                      4
-                    ]
-                  },
-                  {
-                    "backend": [
-                      1,
                       6
                     ],
                     "case": "n_object_missing_value.json",
@@ -1866,9 +1831,20 @@
                       1,
                       1
                     ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      3
+                    ],
+                    "case": "n_string_1_surrogate_then_escape.json",
+                    "reference": [
+                      1,
+                      10
+                    ]
                   }
                 ],
-                "same": 100
+                "same": 101
               }
             },
             "differences": [
@@ -2009,7 +1985,7 @@
               "f64/-inf/field: refuses a non-finite float (Data: invalid number: non-finite number: -inf); serde_json writes null",
               "f64/-inf/bare: refuses a non-finite float (Data: invalid number: non-finite number: -inf); serde_json writes null",
               "f32/-inf/field: refuses a non-finite float (Data: invalid number: non-finite number: -inf); serde_json writes null",
-              "error position: 86 n_ case(s) differ from serde_json, 2 have none (data.line_column)"
+              "error position: 85 n_ case(s) differ from serde_json, 2 have none (data.line_column)"
             ]
           },
           "grammar": {
@@ -3292,7 +3268,7 @@
             "notes": []
           },
           "numbers": {
-            "cases": 1475642,
+            "cases": 2836258,
             "data": {
               "random": {
                 "backend_not_correctly_rounded": 1015561,
@@ -3301,6 +3277,14 @@
                 "samples": 1000000,
                 "seed": 24301,
                 "texts": 1475586
+              },
+              "random_f32": {
+                "backend_not_correctly_rounded": 0,
+                "backend_rejected": 0,
+                "reference_not_correctly_rounded": 0,
+                "samples": 1000000,
+                "seed": 254959341,
+                "texts": 1360608
               },
               "round_trip": {
                 "backend_encode_backend_decode_mismatch": 705816,
@@ -3842,7 +3826,7 @@
             ],
             "disagreements": 1134376,
             "gating": true,
-            "gating_failure_count": 1015561,
+            "gating_failure_count": 1015581,
             "notes": []
           },
           "status": {
@@ -3864,45 +3848,11 @@
                     "status": 400
                   }
                 }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "unexpected JSON structure MoreElementsThanExpected at path '$.pair[2]', line 0, column 85 (data pos 85)",
-                    "status": 422
-                  }
-                },
-                "case": "shape/tuple-too-long",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "trailing characters at line 1 column 86",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "unexpected JSON structure MoreElementsThanExpected at path '$.triple[3]', line 0, column 102 (data pos 102)",
-                    "status": 422
-                  }
-                },
-                "case": "shape/array-too-long",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "trailing characters at line 1 column 103",
-                    "status": 400
-                  }
-                }
               }
             ],
-            "disagreements": 3,
+            "disagreements": 1,
             "gating": true,
-            "gating_failure_count": 3,
+            "gating_failure_count": 1,
             "notes": [
               "n_: 1 case(s) where serde_json says Syntax and the backend Io, same status (first: n_object_lone_continuation_byte_in_key_and_trailing_comma.json)",
               "n_: 32 case(s) where serde_json says Eof and the backend Syntax, same status (first: n_array_incomplete.json)",
@@ -4000,11 +3950,80 @@
             ]
           },
           "structs": {
-            "cases": 128,
-            "differences": [],
-            "disagreements": 0,
-            "gating": false,
-            "gating_failure_count": 0,
+            "cases": 160,
+            "differences": [
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "expected JSON value type Number but got String at path '$.unknown', line 0, column 17 (data pos 17)",
+                    "status": 422
+                  }
+                },
+                "case": "unknown-invalid-escape#btreemap/owned#unique",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid escape at line 1 column 20",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "expected JSON value type Number but got String at path '$.unknown', line 0, column 17 (data pos 17)",
+                    "status": 422
+                  }
+                },
+                "case": "unknown-invalid-escape#btreemap/owned#shared",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid escape at line 1 column 20",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "expected JSON value type Number but got String at path '$.unknown', line 0, column 17 (data pos 17)",
+                    "status": 422
+                  }
+                },
+                "case": "unknown-invalid-escape#btreemap/borrowed#unique",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid escape at line 1 column 20",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "expected JSON value type Number but got String at path '$.unknown', line 0, column 17 (data pos 17)",
+                    "status": 422
+                  }
+                },
+                "case": "unknown-invalid-escape#btreemap/borrowed#shared",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "invalid escape at line 1 column 20",
+                    "status": 400
+                  }
+                }
+              }
+            ],
+            "disagreements": 4,
+            "gating": true,
+            "gating_failure_count": 4,
             "notes": []
           },
           "value_targets": {

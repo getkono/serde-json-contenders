@@ -4,16 +4,17 @@
     "boost": "1",
     "container_image": null,
     "cpu": "AMD Ryzen 7 7800X3D 8-Core Processor",
-    "git_commit": "429dbc42e1ba98e81b69d224c78b094499ad4f34",
+    "fingerprint": "cf070453554890eb",
+    "git_commit": "f0dd0a671e7ea6711f15c19d4d2ce79e7f3f7cfb",
     "git_dirty": false,
     "governor": "powersave",
     "host": "x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor",
     "kernel": "7.2.4-200.fc44.x86_64",
-    "loadavg": "5.83 7.50 10.39 2/4145 543276",
+    "loadavg": "2.38 2.64 2.94 2/2983 2830112",
     "microcode": "microcode\t: 0xa60120c",
     "os": "linux",
     "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
-    "timestamp": "2026-09-28T07:10:22Z",
+    "timestamp": "2026-10-15T18:17:36Z",
     "valgrind": null
   },
   "report": {
@@ -21,11 +22,6 @@
       "simd-json": {
         "gate": "fail",
         "gating_failures": [
-          {
-            "case": "shape/variant-wrong-type",
-            "detail": "status Some(422), serde_json Some(400)",
-            "section": "status"
-          },
           {
             "case": "shape/u64-out-of-range",
             "detail": "status Some(400), serde_json Some(422)",
@@ -147,79 +143,59 @@
             "section": "strings"
           },
           {
-            "case": "high-then-escaped-non-low#string/owned#unique",
+            "case": "unknown-invalid-escape#strict/owned#unique",
             "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "section": "structs"
           },
           {
-            "case": "high-then-escaped-non-low#string/owned#shared",
+            "case": "unknown-invalid-escape#strict/owned#shared",
             "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "section": "structs"
           },
           {
-            "case": "high-then-escaped-non-low#string/borrowed#unique",
+            "case": "unknown-invalid-escape#strict/borrowed#unique",
             "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "section": "structs"
           },
           {
-            "case": "high-then-escaped-non-low#string/borrowed#shared",
+            "case": "unknown-invalid-escape#strict/borrowed#shared",
             "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "section": "structs"
           },
           {
-            "case": "high-then-escaped-non-low#cow/owned#unique",
-            "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "case": "2^64#u64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
           },
           {
-            "case": "high-then-escaped-non-low#cow/owned#shared",
-            "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "case": "2^64#i64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
           },
           {
-            "case": "high-then-escaped-non-low#cow/borrowed#unique",
-            "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "case": "2^64#f64",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
           },
           {
-            "case": "high-then-escaped-non-low#cow/borrowed#shared",
-            "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "case": "2^64#value",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
           },
           {
-            "case": "high-then-escaped-non-low#str/borrowed#unique",
-            "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "case": "negative-zero-int#u64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
           },
           {
-            "case": "high-then-escaped-non-low#str/borrowed#shared",
-            "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "case": "negative-zero-int#i64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
           },
           {
             "case": "negative-zero-int#f64",
             "detail": "both accept, values differ, and the backend's is not correctly rounded",
             "section": "numbers"
-          },
-          {
-            "case": "externally-tagged/6#owned#unique",
-            "detail": "outcome differs from serde_json",
-            "section": "attributes"
-          },
-          {
-            "case": "externally-tagged/6#owned#shared",
-            "detail": "outcome differs from serde_json",
-            "section": "attributes"
-          },
-          {
-            "case": "externally-tagged/6#borrowed#unique",
-            "detail": "outcome differs from serde_json",
-            "section": "attributes"
-          },
-          {
-            "case": "externally-tagged/6#borrowed#shared",
-            "detail": "outcome differs from serde_json",
-            "section": "attributes"
           },
           {
             "case": "f64/nan/field",
@@ -270,91 +246,10 @@
         "sections": {
           "attributes": {
             "cases": 272,
-            "differences": [
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "ExpectedEnum at character 0",
-                    "status": 422
-                  }
-                },
-                "case": "externally-tagged/6#owned#unique",
-                "reference": {
-                  "input": "{\"New\":1,\"Unit\":null}",
-                  "outcome": {
-                    "reject": {
-                      "class": "syntax",
-                      "message": "expected value at line 1 column 8",
-                      "status": 400
-                    }
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "ExpectedEnum at character 0",
-                    "status": 422
-                  }
-                },
-                "case": "externally-tagged/6#owned#shared",
-                "reference": {
-                  "input": "{\"New\":1,\"Unit\":null}",
-                  "outcome": {
-                    "reject": {
-                      "class": "syntax",
-                      "message": "expected value at line 1 column 8",
-                      "status": 400
-                    }
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "ExpectedEnum at character 0",
-                    "status": 422
-                  }
-                },
-                "case": "externally-tagged/6#borrowed#unique",
-                "reference": {
-                  "input": "{\"New\":1,\"Unit\":null}",
-                  "outcome": {
-                    "reject": {
-                      "class": "syntax",
-                      "message": "expected value at line 1 column 8",
-                      "status": 400
-                    }
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "ExpectedEnum at character 0",
-                    "status": 422
-                  }
-                },
-                "case": "externally-tagged/6#borrowed#shared",
-                "reference": {
-                  "input": "{\"New\":1,\"Unit\":null}",
-                  "outcome": {
-                    "reject": {
-                      "class": "syntax",
-                      "message": "expected value at line 1 column 8",
-                      "status": 400
-                    }
-                  }
-                }
-              }
-            ],
-            "disagreements": 4,
-            "gating": true,
-            "gating_failure_count": 4,
+            "differences": [],
+            "disagreements": 0,
+            "gating": false,
+            "gating_failure_count": 0,
             "notes": []
           },
           "depth": {
@@ -635,7 +530,7 @@
             "notes": []
           },
           "encode_diff": {
-            "cases": 144,
+            "cases": 224,
             "differences": [
               {
                 "backend": {
@@ -749,6 +644,28 @@
               },
               {
                 "backend": {
+                  "backend_len": 24890,
+                  "backend_window": "[2.38303598756323e-24,16.247888565063477",
+                  "offset": 8,
+                  "reference_len": 16390,
+                  "reference_window": "[2.383036e-24,16.247889,-0.026040887,-8."
+                },
+                "case": "f32s#encode",
+                "reference": "semantically equal"
+              },
+              {
+                "backend": {
+                  "backend_len": 24890,
+                  "backend_window": "[2.38303598756323e-24,16.247888565063477",
+                  "offset": 8,
+                  "reference_len": 16390,
+                  "reference_window": "[2.383036e-24,16.247889,-0.026040887,-8."
+                },
+                "case": "f32s#encode_into",
+                "reference": "semantically equal"
+              },
+              {
+                "backend": {
                   "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614315,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2212322 bytes, depth 7)"
                 },
                 "case": "canada-like#decode/owned#unique",
@@ -784,7 +701,7 @@
                 }
               }
             ],
-            "disagreements": 14,
+            "disagreements": 16,
             "gating": false,
             "gating_failure_count": 0,
             "notes": [
@@ -982,7 +899,7 @@
                     "case": "n_object_lone_continuation_byte_in_key_and_trailing_comma.json",
                     "reference": [
                       1,
-                      4
+                      3
                     ]
                   },
                   {
@@ -2621,7 +2538,7 @@
             "notes": []
           },
           "numbers": {
-            "cases": 1475642,
+            "cases": 2836258,
             "data": {
               "random": {
                 "backend_not_correctly_rounded": 0,
@@ -2630,6 +2547,14 @@
                 "samples": 1000000,
                 "seed": 24301,
                 "texts": 1475586
+              },
+              "random_f32": {
+                "backend_not_correctly_rounded": 0,
+                "backend_rejected": 0,
+                "reference_not_correctly_rounded": 0,
+                "samples": 1000000,
+                "seed": 254959341,
+                "texts": 1360608
               },
               "round_trip": {
                 "backend_encode_backend_decode_mismatch": 0,
@@ -2981,29 +2906,12 @@
             ],
             "disagreements": 438735,
             "gating": true,
-            "gating_failure_count": 1,
+            "gating_failure_count": 7,
             "notes": []
           },
           "status": {
             "cases": 66959,
             "differences": [
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "ExpectedEnum at character 0",
-                    "status": 422
-                  }
-                },
-                "case": "shape/variant-wrong-type",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "expected value at line 1 column 111",
-                    "status": 400
-                  }
-                }
-              },
               {
                 "backend": {
                   "reject": {
@@ -3088,9 +2996,9 @@
                 }
               }
             ],
-            "disagreements": 5,
+            "disagreements": 4,
             "gating": true,
-            "gating_failure_count": 5,
+            "gating_failure_count": 4,
             "notes": [
               "n_: 30 case(s) where serde_json says Eof and the backend Syntax, same status (first: n_array_incomplete.json)",
               "prefixes: 66736 case(s) where serde_json says Eof and the backend Syntax, same status (first: prefix/json-small/1)"
@@ -3385,136 +3293,6 @@
               },
               {
                 "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#string/owned#unique",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#string/owned#shared",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#string/borrowed#unique",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#string/borrowed#shared",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#cow/owned#unique",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#cow/owned#shared",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#cow/borrowed#unique",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#cow/borrowed#shared",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#str/borrowed#unique",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#str/borrowed#shared",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
                   "accept": "😀"
                 },
                 "case": "pair-escaped#str/borrowed#unique",
@@ -3566,9 +3344,9 @@
                 }
               }
             ],
-            "disagreements": 34,
+            "disagreements": 24,
             "gating": true,
-            "gating_failure_count": 30,
+            "gating_failure_count": 20,
             "notes": [
               "pair-escaped#str/borrowed#unique: borrowing differs from serde_json (see data.borrow_probe)",
               "pair-escaped#str/borrowed#shared: borrowing differs from serde_json (see data.borrow_probe)",
@@ -3577,11 +3355,80 @@
             ]
           },
           "structs": {
-            "cases": 128,
-            "differences": [],
-            "disagreements": 0,
-            "gating": false,
-            "gating_failure_count": 0,
+            "cases": 160,
+            "differences": [
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "InvalidEscape at character 0 ('x')",
+                    "status": 400
+                  }
+                },
+                "case": "unknown-invalid-escape#strict/owned#unique",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "unknown field `unknown`, expected `a` at line 1 column 16",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "InvalidEscape at character 0 ('x')",
+                    "status": 400
+                  }
+                },
+                "case": "unknown-invalid-escape#strict/owned#shared",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "unknown field `unknown`, expected `a` at line 1 column 16",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "InvalidEscape at character 0 ('x')",
+                    "status": 400
+                  }
+                },
+                "case": "unknown-invalid-escape#strict/borrowed#unique",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "unknown field `unknown`, expected `a` at line 1 column 16",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "InvalidEscape at character 0 ('x')",
+                    "status": 400
+                  }
+                },
+                "case": "unknown-invalid-escape#strict/borrowed#shared",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "unknown field `unknown`, expected `a` at line 1 column 16",
+                    "status": 422
+                  }
+                }
+              }
+            ],
+            "disagreements": 4,
+            "gating": true,
+            "gating_failure_count": 4,
             "notes": []
           },
           "value_targets": {
@@ -3651,11 +3498,6 @@
         "gate": "fail",
         "gating_failures": [
           {
-            "case": "shape/variant-wrong-type",
-            "detail": "status Some(422), serde_json Some(400)",
-            "section": "status"
-          },
-          {
             "case": "shape/u64-out-of-range",
             "detail": "status Some(400), serde_json Some(422)",
             "section": "status"
@@ -3776,79 +3618,59 @@
             "section": "strings"
           },
           {
-            "case": "high-then-escaped-non-low#string/owned#unique",
+            "case": "unknown-invalid-escape#strict/owned#unique",
             "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "section": "structs"
           },
           {
-            "case": "high-then-escaped-non-low#string/owned#shared",
+            "case": "unknown-invalid-escape#strict/owned#shared",
             "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "section": "structs"
           },
           {
-            "case": "high-then-escaped-non-low#string/borrowed#unique",
+            "case": "unknown-invalid-escape#strict/borrowed#unique",
             "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "section": "structs"
           },
           {
-            "case": "high-then-escaped-non-low#string/borrowed#shared",
+            "case": "unknown-invalid-escape#strict/borrowed#shared",
             "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "section": "structs"
           },
           {
-            "case": "high-then-escaped-non-low#cow/owned#unique",
-            "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "case": "2^64#u64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
           },
           {
-            "case": "high-then-escaped-non-low#cow/owned#shared",
-            "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "case": "2^64#i64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
           },
           {
-            "case": "high-then-escaped-non-low#cow/borrowed#unique",
-            "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "case": "2^64#f64",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
           },
           {
-            "case": "high-then-escaped-non-low#cow/borrowed#shared",
-            "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "case": "2^64#value",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
           },
           {
-            "case": "high-then-escaped-non-low#str/borrowed#unique",
-            "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "case": "negative-zero-int#u64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
           },
           {
-            "case": "high-then-escaped-non-low#str/borrowed#shared",
-            "detail": "outcome differs from serde_json",
-            "section": "strings"
+            "case": "negative-zero-int#i64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
           },
           {
             "case": "negative-zero-int#f64",
             "detail": "both accept, values differ, and the backend's is not correctly rounded",
             "section": "numbers"
-          },
-          {
-            "case": "externally-tagged/6#owned#unique",
-            "detail": "outcome differs from serde_json",
-            "section": "attributes"
-          },
-          {
-            "case": "externally-tagged/6#owned#shared",
-            "detail": "outcome differs from serde_json",
-            "section": "attributes"
-          },
-          {
-            "case": "externally-tagged/6#borrowed#unique",
-            "detail": "outcome differs from serde_json",
-            "section": "attributes"
-          },
-          {
-            "case": "externally-tagged/6#borrowed#shared",
-            "detail": "outcome differs from serde_json",
-            "section": "attributes"
           },
           {
             "case": "f64/nan/field",
@@ -3899,91 +3721,10 @@
         "sections": {
           "attributes": {
             "cases": 272,
-            "differences": [
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "ExpectedEnum at character 0",
-                    "status": 422
-                  }
-                },
-                "case": "externally-tagged/6#owned#unique",
-                "reference": {
-                  "input": "{\"New\":1,\"Unit\":null}",
-                  "outcome": {
-                    "reject": {
-                      "class": "syntax",
-                      "message": "expected value at line 1 column 8",
-                      "status": 400
-                    }
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "ExpectedEnum at character 0",
-                    "status": 422
-                  }
-                },
-                "case": "externally-tagged/6#owned#shared",
-                "reference": {
-                  "input": "{\"New\":1,\"Unit\":null}",
-                  "outcome": {
-                    "reject": {
-                      "class": "syntax",
-                      "message": "expected value at line 1 column 8",
-                      "status": 400
-                    }
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "ExpectedEnum at character 0",
-                    "status": 422
-                  }
-                },
-                "case": "externally-tagged/6#borrowed#unique",
-                "reference": {
-                  "input": "{\"New\":1,\"Unit\":null}",
-                  "outcome": {
-                    "reject": {
-                      "class": "syntax",
-                      "message": "expected value at line 1 column 8",
-                      "status": 400
-                    }
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "ExpectedEnum at character 0",
-                    "status": 422
-                  }
-                },
-                "case": "externally-tagged/6#borrowed#shared",
-                "reference": {
-                  "input": "{\"New\":1,\"Unit\":null}",
-                  "outcome": {
-                    "reject": {
-                      "class": "syntax",
-                      "message": "expected value at line 1 column 8",
-                      "status": 400
-                    }
-                  }
-                }
-              }
-            ],
-            "disagreements": 4,
-            "gating": true,
-            "gating_failure_count": 4,
+            "differences": [],
+            "disagreements": 0,
+            "gating": false,
+            "gating_failure_count": 0,
             "notes": []
           },
           "depth": {
@@ -4264,7 +4005,7 @@
             "notes": []
           },
           "encode_diff": {
-            "cases": 144,
+            "cases": 224,
             "differences": [
               {
                 "backend": {
@@ -4378,6 +4119,28 @@
               },
               {
                 "backend": {
+                  "backend_len": 24890,
+                  "backend_window": "[2.38303598756323e-24,16.247888565063477",
+                  "offset": 8,
+                  "reference_len": 16390,
+                  "reference_window": "[2.383036e-24,16.247889,-0.026040887,-8."
+                },
+                "case": "f32s#encode",
+                "reference": "semantically equal"
+              },
+              {
+                "backend": {
+                  "backend_len": 24890,
+                  "backend_window": "[2.38303598756323e-24,16.247888565063477",
+                  "offset": 8,
+                  "reference_len": 16390,
+                  "reference_window": "[2.383036e-24,16.247889,-0.026040887,-8."
+                },
+                "case": "f32s#encode_into",
+                "reference": "semantically equal"
+              },
+              {
+                "backend": {
                   "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614315,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2212322 bytes, depth 7)"
                 },
                 "case": "canada-like#decode/owned#unique",
@@ -4413,7 +4176,7 @@
                 }
               }
             ],
-            "disagreements": 14,
+            "disagreements": 16,
             "gating": false,
             "gating_failure_count": 0,
             "notes": [
@@ -4611,7 +4374,7 @@
                     "case": "n_object_lone_continuation_byte_in_key_and_trailing_comma.json",
                     "reference": [
                       1,
-                      4
+                      3
                     ]
                   },
                   {
@@ -6250,7 +6013,7 @@
             "notes": []
           },
           "numbers": {
-            "cases": 1475642,
+            "cases": 2836258,
             "data": {
               "random": {
                 "backend_not_correctly_rounded": 0,
@@ -6259,6 +6022,14 @@
                 "samples": 1000000,
                 "seed": 24301,
                 "texts": 1475586
+              },
+              "random_f32": {
+                "backend_not_correctly_rounded": 0,
+                "backend_rejected": 0,
+                "reference_not_correctly_rounded": 0,
+                "samples": 1000000,
+                "seed": 254959341,
+                "texts": 1360608
               },
               "round_trip": {
                 "backend_encode_backend_decode_mismatch": 0,
@@ -6610,29 +6381,12 @@
             ],
             "disagreements": 438735,
             "gating": true,
-            "gating_failure_count": 1,
+            "gating_failure_count": 7,
             "notes": []
           },
           "status": {
             "cases": 66959,
             "differences": [
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "ExpectedEnum at character 0",
-                    "status": 422
-                  }
-                },
-                "case": "shape/variant-wrong-type",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "expected value at line 1 column 111",
-                    "status": 400
-                  }
-                }
-              },
               {
                 "backend": {
                   "reject": {
@@ -6717,9 +6471,9 @@
                 }
               }
             ],
-            "disagreements": 5,
+            "disagreements": 4,
             "gating": true,
-            "gating_failure_count": 5,
+            "gating_failure_count": 4,
             "notes": [
               "n_: 30 case(s) where serde_json says Eof and the backend Syntax, same status (first: n_array_incomplete.json)",
               "prefixes: 66736 case(s) where serde_json says Eof and the backend Syntax, same status (first: prefix/json-small/1)"
@@ -7014,136 +6768,6 @@
               },
               {
                 "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#string/owned#unique",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#string/owned#shared",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#string/borrowed#unique",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#string/borrowed#shared",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#cow/owned#unique",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#cow/owned#shared",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#cow/borrowed#unique",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#cow/borrowed#shared",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#str/borrowed#unique",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "accept": "\u0000A"
-                },
-                "case": "high-then-escaped-non-low#str/borrowed#shared",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "unexpected end of hex escape at line 1 column 8",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
                   "accept": "😀"
                 },
                 "case": "pair-escaped#str/borrowed#unique",
@@ -7195,9 +6819,9 @@
                 }
               }
             ],
-            "disagreements": 34,
+            "disagreements": 24,
             "gating": true,
-            "gating_failure_count": 30,
+            "gating_failure_count": 20,
             "notes": [
               "pair-escaped#str/borrowed#unique: borrowing differs from serde_json (see data.borrow_probe)",
               "pair-escaped#str/borrowed#shared: borrowing differs from serde_json (see data.borrow_probe)",
@@ -7206,11 +6830,80 @@
             ]
           },
           "structs": {
-            "cases": 128,
-            "differences": [],
-            "disagreements": 0,
-            "gating": false,
-            "gating_failure_count": 0,
+            "cases": 160,
+            "differences": [
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "InvalidEscape at character 0 ('x')",
+                    "status": 400
+                  }
+                },
+                "case": "unknown-invalid-escape#strict/owned#unique",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "unknown field `unknown`, expected `a` at line 1 column 16",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "InvalidEscape at character 0 ('x')",
+                    "status": 400
+                  }
+                },
+                "case": "unknown-invalid-escape#strict/owned#shared",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "unknown field `unknown`, expected `a` at line 1 column 16",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "InvalidEscape at character 0 ('x')",
+                    "status": 400
+                  }
+                },
+                "case": "unknown-invalid-escape#strict/borrowed#unique",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "unknown field `unknown`, expected `a` at line 1 column 16",
+                    "status": 422
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "InvalidEscape at character 0 ('x')",
+                    "status": 400
+                  }
+                },
+                "case": "unknown-invalid-escape#strict/borrowed#shared",
+                "reference": {
+                  "reject": {
+                    "class": "data",
+                    "message": "unknown field `unknown`, expected `a` at line 1 column 16",
+                    "status": 422
+                  }
+                }
+              }
+            ],
+            "disagreements": 4,
+            "gating": true,
+            "gating_failure_count": 4,
             "notes": []
           },
           "value_targets": {

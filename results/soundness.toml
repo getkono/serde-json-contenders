@@ -1,4 +1,4 @@
-# Open issues touching soundness, reviewed by hand on 2026-09-27.
+# Open issues touching soundness, reviewed by hand on 2026-10-16.
 #
 # Found with `gh search issues --repo <repo> --state open` for each of:
 # unsound, soundness, "undefined behavior", miri, "use after free",
@@ -41,4 +41,7 @@ reviewed = ["no open issues matched; the crate forbids unsafe code"]
 
 [struson]
 open = []
-reviewed = ["no open issues matched these terms; #21 (verify use after error) concerns logic in a crate that forbids unsafe code"]
+reviewed = [
+  "Marcono1234/struson#21 verify use after error — logic in a crate that forbids unsafe code",
+  "Marcono1234/struson#11, #170 feature requests, not memory safety",
+]

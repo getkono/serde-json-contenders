@@ -6,8 +6,9 @@
       "crate": "serde_json",
       "deserves_to_exist": true,
       "exists_evidence": "the baseline",
-      "reason": "all four rules hold",
-      "recommended": "pass",
+      "exists_provisional": false,
+      "reason": "the baseline every entry is weighed against",
+      "recommended": "baseline",
       "rules": [
         {
           "detail": "baseline",
@@ -32,16 +33,17 @@
       "crate": "serde_json",
       "deserves_to_exist": true,
       "exists_evidence": "Correctly rounded float parsing, which the default parser is not (see conformance, numbers).",
-      "reason": "no route ≥10 % better in throughput or p99 beyond the A/A band",
+      "exists_provisional": false,
+      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "hardware cycles not yet recorded",
-          "outcome": "pending"
+          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+          "outcome": "fail"
         },
         {
-          "detail": "reference",
-          "outcome": "pass"
+          "detail": "not run through conformance or fuzzing as a backend of its own",
+          "outcome": "pending"
         },
         {
           "detail": "no advisory at advisory-db e2111519",
@@ -57,16 +59,17 @@
       "backend": "sonic-rs",
       "crate": "sonic-rs",
       "deserves_to_exist": true,
-      "exists_evidence": "Lazy path lookups without a full parse (`get`, `get_many`, `LazyValue`); errors carry a byte offset as well as line and column.",
-      "reason": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+      "exists_evidence": "long-string encode CPU 0.11× serde_json at native (cycles) (0.07× at v3 (est. cycles)), provisional (solo). Lazy path lookups without a full parse (`get`, `get_many`, `LazyValue`); errors carry a byte offset as well as line and column.",
+      "exists_provisional": false,
+      "reason": "grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
-          "outcome": "fail"
+          "detail": "provisional pass: echo-post encode CPU 0.24× at native (cycles) (solo); awaits a quiet-host rerun",
+          "outcome": "pending"
         },
         {
-          "detail": "grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs; fuzz decode_struct (portable); fuzz decode_struct (v3)",
+          "detail": "grammar n_string_invalid_unicode_escape.json#ignored/owned#unique fails 4 of 4 conformance runs",
           "outcome": "fail"
         },
         {
@@ -74,8 +77,8 @@
           "outcome": "pass"
         },
         {
-          "detail": "no route ≥10 % better in throughput or p99 beyond the A/A band",
-          "outcome": "fail"
+          "detail": "provisional pass: json-large-post +28 % rps, p99 -45 % (solo); awaits a quiet-host rerun",
+          "outcome": "pending"
         }
       ]
     },
@@ -83,16 +86,17 @@
       "backend": "simd-json",
       "crate": "simd-json",
       "deserves_to_exist": true,
-      "exists_evidence": "Borrowing decode of escaped strings, unescaped in place: 1,175 allocations against serde_json's 4,584 for twitter-like into borrowed types from a unique buffer. A tape API (`to_tape`) traverses without building values.",
-      "reason": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
+      "exists_evidence": "reject-truncated decode CPU 0.10× serde_json at native (cycles) (0.12× at v3 (est. cycles)), provisional (solo). Borrowing decode of escaped strings, unescaped in place: 1,175 allocations against serde_json's 4,584 for twitter-like into borrowed types from a unique buffer, though 5.54 MB against serde_json's 734 kB. A tape API (`to_tape`) traverses without building values.",
+      "exists_provisional": false,
+      "reason": "status shape/u64-out-of-range fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "hardware cycles not yet recorded",
+          "detail": "provisional pass: echo-post encode CPU 0.29× at native (cycles) (solo); awaits a quiet-host rerun",
           "outcome": "pending"
         },
         {
-          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
+          "detail": "status shape/u64-out-of-range fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
           "outcome": "fail"
         },
         {
@@ -100,7 +104,7 @@
           "outcome": "pass"
         },
         {
-          "detail": "provisional pass: echo-post +13 % rps, +66 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun",
+          "detail": "provisional pass: json-large-post +19 % rps, p99 -37 % (solo); awaits a quiet-host rerun",
           "outcome": "pending"
         }
       ]
@@ -109,16 +113,17 @@
       "backend": "simd-json-buffers",
       "crate": "simd-json",
       "deserves_to_exist": true,
-      "exists_evidence": "Reusing `Buffers` across calls cuts the bytes plain `from_slice` allocates: 2.93 MB against 5.54 MB for twitter-like into borrowed types from a unique buffer.",
-      "reason": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
+      "exists_evidence": "reject-truncated decode CPU 0.07× serde_json at native (cycles) (0.11× at v3 (est. cycles)), provisional (solo)",
+      "exists_provisional": true,
+      "reason": "status shape/u64-out-of-range fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "hardware cycles not yet recorded",
+          "detail": "provisional pass: echo-post encode CPU 0.29× at native (cycles) (solo); awaits a quiet-host rerun",
           "outcome": "pending"
         },
         {
-          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
+          "detail": "status shape/u64-out-of-range fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
           "outcome": "fail"
         },
         {
@@ -126,7 +131,7 @@
           "outcome": "pass"
         },
         {
-          "detail": "provisional pass: echo-post -16 % rps, +65 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun",
+          "detail": "provisional pass: json-large-post +21 % rps, p99 -35 % (solo); awaits a quiet-host rerun",
           "outcome": "pending"
         }
       ]
@@ -135,16 +140,17 @@
       "backend": "flexon-rt",
       "crate": "flexon",
       "deserves_to_exist": true,
-      "exists_evidence": "`from_mut_slice` borrows escaped strings in place; JSON-pointer access. Its latest release (0.4.9) does not compile on stable Rust.",
-      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+      "exists_evidence": "long-string encode CPU 0.21× serde_json at native (cycles) (0.23× at v3 (est. cycles)), provisional (solo)",
+      "exists_provisional": true,
+      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; refuses what serde_json decodes on keys-long-int decode (13 cells); wrong result on reject-shape decode (13 cells); Miri reports undefined behavior (in-bounds pointer arithmetic failed); 2 more fuzz divergences",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "hardware cycles not yet recorded",
+          "detail": "provisional pass: echo-post encode CPU 0.44× at native (cycles) (solo); awaits a quiet-host rerun",
           "outcome": "pending"
         },
         {
-          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; refuses what serde_json decodes on keys-long-int decode (13 cells); wrong result on reject-shape decode (13 cells); Miri reports undefined behavior (in-bounds pointer arithmetic failed); 2 more fuzz divergences",
           "outcome": "fail"
         },
         {
@@ -152,8 +158,8 @@
           "outcome": "pass"
         },
         {
-          "detail": "gains inconsistent with counted codec share: x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor json-large-post: +59 % measured, +30 % predicted",
-          "outcome": "fail"
+          "detail": "provisional pass: json-large-post +42 % rps, p99 -52 % (solo); awaits a quiet-host rerun",
+          "outcome": "pending"
         }
       ]
     },
@@ -161,16 +167,17 @@
       "backend": "flexon-rt-mut",
       "crate": "flexon",
       "deserves_to_exist": true,
-      "exists_evidence": "In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-rt`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer.",
-      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+      "exists_evidence": "long-string encode CPU 0.22× serde_json at native (cycles) (0.23× at v3 (est. cycles)), provisional (solo). In-place parse (`from_mut_slice`) lets escaped strings borrow, which serde_json cannot: 1,170 allocations and 558 kB against serde_json's 4,584 and 734 kB for twitter-like into borrowed types from a unique buffer.",
+      "exists_provisional": false,
+      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; refuses what serde_json decodes on keys-long-int decode (13 cells); wrong result on reject-shape decode (13 cells); Miri reports undefined behavior (in-bounds pointer arithmetic failed); 2 more fuzz divergences",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "hardware cycles not yet recorded",
+          "detail": "provisional pass: echo-post encode CPU 0.43× at native (cycles) (solo); awaits a quiet-host rerun",
           "outcome": "pending"
         },
         {
-          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; refuses what serde_json decodes on keys-long-int decode (13 cells); wrong result on reject-shape decode (13 cells); Miri reports undefined behavior (in-bounds pointer arithmetic failed); 2 more fuzz divergences",
           "outcome": "fail"
         },
         {
@@ -178,7 +185,7 @@
           "outcome": "pass"
         },
         {
-          "detail": "provisional pass: echo-post +8 % rps, +85 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun",
+          "detail": "provisional pass: json-large-post +45 % rps, p99 -51 % (solo); awaits a quiet-host rerun",
           "outcome": "pending"
         }
       ]
@@ -187,16 +194,17 @@
       "backend": "flexon-ct",
       "crate": "flexon",
       "deserves_to_exist": true,
-      "exists_evidence": "The compile-time SIMD configuration of flexon; same API as `flexon-rt`.",
-      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+      "exists_evidence": "long-string encode CPU 0.22× serde_json at native (cycles) (0.23× at v3 (est. cycles)), provisional (solo)",
+      "exists_provisional": true,
+      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; refuses what serde_json decodes on keys-long-int decode (13 cells); wrong result on reject-shape decode (13 cells); Miri reports undefined behavior (in-bounds pointer arithmetic failed); 2 more fuzz divergences",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "hardware cycles not yet recorded",
+          "detail": "provisional pass: echo-post encode CPU 0.43× at native (cycles) (solo); awaits a quiet-host rerun",
           "outcome": "pending"
         },
         {
-          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; refuses what serde_json decodes on keys-long-int decode (13 cells); wrong result on reject-shape decode (13 cells); Miri reports undefined behavior (in-bounds pointer arithmetic failed); 2 more fuzz divergences",
           "outcome": "fail"
         },
         {
@@ -204,8 +212,8 @@
           "outcome": "pass"
         },
         {
-          "detail": "no route ≥10 % better in throughput or p99 beyond the A/A band",
-          "outcome": "fail"
+          "detail": "provisional pass: json-large-post +51 % rps, p99 -56 % (solo); awaits a quiet-host rerun",
+          "outcome": "pending"
         }
       ]
     },
@@ -213,16 +221,17 @@
       "backend": "flexon-ct-mut",
       "crate": "flexon",
       "deserves_to_exist": true,
-      "exists_evidence": "In-place parse lets escaped strings borrow: 1,170 allocations and 558 kB against `flexon-ct`'s 4,583 and 749 kB for twitter-like into borrowed types from a unique buffer.",
-      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+      "exists_evidence": "long-string encode CPU 0.22× serde_json at native (cycles) (0.23× at v3 (est. cycles)), provisional (solo). In-place parse (`from_mut_slice`) lets escaped strings borrow, which serde_json cannot: 1,170 allocations and 558 kB against serde_json's 4,584 and 734 kB for twitter-like into borrowed types from a unique buffer.",
+      "exists_provisional": false,
+      "reason": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; refuses what serde_json decodes on keys-long-int decode (13 cells); wrong result on reject-shape decode (13 cells); Miri reports undefined behavior (in-bounds pointer arithmetic failed); 2 more fuzz divergences",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "hardware cycles not yet recorded",
+          "detail": "provisional pass: echo-post encode CPU 0.42× at native (cycles) (solo); awaits a quiet-host rerun",
           "outcome": "pending"
         },
         {
-          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; Miri reports undefined behavior (in-bounds pointer arithmetic failed); fuzz decode_struct (v3); 1 more fuzz divergence",
+          "detail": "grammar n_array_comma_after_close.json#value/owned#unique fails 4 of 4 conformance runs; refuses what serde_json decodes on keys-long-int decode (13 cells); wrong result on reject-shape decode (13 cells); Miri reports undefined behavior (in-bounds pointer arithmetic failed); 2 more fuzz divergences",
           "outcome": "fail"
         },
         {
@@ -230,7 +239,7 @@
           "outcome": "pass"
         },
         {
-          "detail": "provisional pass: json-large-post +52 % rps, +42 % p99 on x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor (solo); awaits a quiet-host rerun",
+          "detail": "provisional pass: json-large-post +54 % rps, p99 -56 % (solo); awaits a quiet-host rerun",
           "outcome": "pending"
         }
       ]
@@ -239,16 +248,17 @@
       "backend": "jiter",
       "crate": "jiter",
       "deserves_to_exist": true,
-      "exists_evidence": "Partial mode parses truncated documents (built for streamed model output); decode only.",
-      "reason": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence",
+      "exists_evidence": "long-string decode CPU 0.47× serde_json at native (cycles) (0.53× at v3 (est. cycles)), provisional (solo). Partial mode parses truncated documents (built for streamed model output); decode only.",
+      "exists_provisional": false,
+      "reason": "status shape/negative-zero-into-u64 fails 4 of 4 conformance runs; refuses what serde_json decodes on ints decode (13 cells); refuses what serde_json decodes on ints-extremes decode (13 cells); 3 more fuzz divergences",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "hardware cycles not yet recorded",
+          "detail": "provisional pass: echo-post decode CPU 0.65× at native (cycles) (solo); awaits a quiet-host rerun",
           "outcome": "pending"
         },
         {
-          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence",
+          "detail": "status shape/negative-zero-into-u64 fails 4 of 4 conformance runs; refuses what serde_json decodes on ints decode (13 cells); refuses what serde_json decodes on ints-extremes decode (13 cells); 3 more fuzz divergences",
           "outcome": "fail"
         },
         {
@@ -265,16 +275,17 @@
       "backend": "hifijson",
       "crate": "hifijson",
       "deserves_to_exist": true,
-      "exists_evidence": "No `unsafe`: 0 unsafe blocks, 0 functions and 0 impls across its 1 runtime crate(s). Lexes any byte iterator (`IterLexer`), so input need not be in memory; numbers kept as text.",
-      "reason": "reference point: no borrowed slice decode plus `to_vec`-style encoder",
+      "exists_evidence": "0 `unsafe` blocks, 0 `unsafe` functions and 0 `unsafe` impls across its 1 runtime crate(s), against serde_json's own (see costs).",
+      "exists_provisional": false,
+      "reason": "reference point: does not borrow strings from the body",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "hardware cycles not yet recorded",
-          "outcome": "pending"
+          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+          "outcome": "fail"
         },
         {
-          "detail": "status shape/valid fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3)",
+          "detail": "status shape/valid fails 4 of 4 conformance runs; refuses what serde_json decodes on canada-like decode (14 cells); refuses what serde_json decodes on citm-like decode (14 cells); refuses what serde_json decodes on defaults decode (13 cells); refuses what serde_json decodes on enums decode (13 cells); refuses what serde_json decodes on keys-long-int decode (13 cells); refuses what serde_json decodes on pretty-twitter-like decode (14 cells); refuses what serde_json decodes on raw-utf8 decode (14 cells); refuses what serde_json decodes on sparse decode (13 cells); refuses what serde_json decodes on twitter-like decode (14 cells); wrong result on reject-shape decode (13 cells); 2 more fuzz divergences",
           "outcome": "fail"
         },
         {
@@ -291,16 +302,17 @@
       "backend": "struson",
       "crate": "struson",
       "deserves_to_exist": true,
-      "exists_evidence": "No `unsafe`: 0 unsafe blocks, 0 functions and 0 impls across its 5 runtime crates. A true streaming reader and writer with JSON-path seeking and positions in errors.",
-      "reason": "reference point: no borrowed slice decode plus `to_vec`-style encoder",
+      "exists_evidence": "sweep-64b encode heap 0.70× serde_json at native, provisional (solo). 0 `unsafe` blocks, 0 `unsafe` functions and 0 `unsafe` impls across its 5 runtime crates. A true streaming reader and writer, with JSON-path seeking.",
+      "exists_provisional": false,
+      "reason": "reference point: does not borrow strings from the body",
       "recommended": "fail",
       "rules": [
         {
-          "detail": "hardware cycles not yet recorded",
-          "outcome": "pending"
+          "detail": "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape",
+          "outcome": "fail"
         },
         {
-          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; fuzz decode_struct (v3); fuzz decode_value (v3); 1 more fuzz divergence",
+          "detail": "status shape/variant-wrong-type fails 4 of 4 conformance runs; refuses what serde_json decodes on floats decode (13 cells); fuzz decode_value (v3); 1 more fuzz divergence",
           "outcome": "fail"
         },
         {

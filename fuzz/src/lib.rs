@@ -1,39 +1,65 @@
-//! What a divergence is, shared by every target.
+//! What a divergence is, shared by every target, and which backend a run
+//! fuzzes.
 //!
-//! The candidate is the one backend this build compiled beside serde_json.
-//! A divergence panics, which libFuzzer records as a crash with its input.
+//! A build compiles serde_json and one candidate crate, which may provide
+//! more than one backend (simd-json with and without reused buffers, flexon
+//! from a shared slice and in place). Each run fuzzes one of them, named by
+//! `FUZZ_BACKEND`; unset, it is the first backend after the reference, and
+//! with no candidate crate compiled, serde_json against itself (the
+//! harness's own check). A divergence panics, which libFuzzer records as a
+//! crash with its input.
 
+use std::marker::PhantomData;
+use std::sync::OnceLock;
+
+use codecs::{Backend, Visit};
 use serde_json::Value;
 
-/// The candidate this build fuzzes.
-#[cfg(feature = "sonic-rs")]
-pub type Candidate = codecs::backend::sonic_rs::SonicRs;
-/// The candidate this build fuzzes.
-#[cfg(feature = "simd-json")]
-pub type Candidate = codecs::backend::simd_json::SimdJson;
-/// The candidate this build fuzzes.
-#[cfg(any(feature = "flexon-rt", feature = "flexon-ct"))]
-pub type Candidate = codecs::backend::flexon::Flexon;
-/// The candidate this build fuzzes.
-#[cfg(feature = "jiter")]
-pub type Candidate = codecs::backend::jiter::Jiter;
-/// The candidate this build fuzzes.
-#[cfg(feature = "hifijson")]
-pub type Candidate = codecs::backend::hifijson::Hifijson;
-/// The candidate this build fuzzes.
-#[cfg(feature = "struson")]
-pub type Candidate = codecs::backend::struson::Struson;
-/// With no candidate, serde_json against itself: the harness's own check.
-#[cfg(not(any(
-    feature = "sonic-rs",
-    feature = "simd-json",
-    feature = "flexon-rt",
-    feature = "flexon-ct",
-    feature = "jiter",
-    feature = "hifijson",
-    feature = "struson"
-)))]
-pub type Candidate = codecs::backend::serde_json::SerdeJson;
+/// The environment variable naming the backend a run fuzzes.
+pub const BACKEND_VAR: &str = "FUZZ_BACKEND";
+
+/// The backend this run fuzzes, resolved once.
+///
+/// # Panics
+///
+/// If `FUZZ_BACKEND` names a backend this build did not compile, so a
+/// misconfigured run fails at its first input rather than fuzzing another
+/// backend under that name.
+#[must_use]
+pub fn candidate() -> &'static str {
+    static NAME: OnceLock<&'static str> = OnceLock::new();
+    NAME.get_or_init(|| {
+        let compiled = codecs::compiled();
+        match std::env::var(BACKEND_VAR) {
+            Ok(name) => compiled
+                .iter()
+                .copied()
+                .find(|c| *c == name)
+                .unwrap_or_else(|| panic!("{BACKEND_VAR}={name} is not compiled into this build: {compiled:?}")),
+            Err(_) => compiled.get(1).or(compiled.first()).copied().unwrap_or("serde_json"),
+        }
+    })
+}
+
+/// One target's check, generic over the backend it runs against.
+pub trait Check {
+    /// Check `data` against `B`, panicking on a divergence.
+    fn check<B: Backend>(data: &[u8]);
+}
+
+struct Run<'a, C>(&'a [u8], PhantomData<C>);
+
+impl<C: Check> Visit for Run<'_, C> {
+    type Output = ();
+    fn visit<B: Backend>(self) {
+        C::check::<B>(self.0);
+    }
+}
+
+/// Run `C`'s check on `data` against [`candidate`].
+pub fn run<C: Check>(data: &[u8]) {
+    codecs::dispatch(candidate(), Run::<C>(data, PhantomData));
+}
 
 /// Floats this many units in the last place apart are a rounding difference,
 /// which the conformance suite measures exactly; fuzzing hunts for the rest.

@@ -141,13 +141,16 @@ fn cell<B: Backend>(mode: &str, op: Op, workload: &str, iters: Option<u64>) -> V
     .unwrap_or_else(|| panic!("no workload {workload}"))
 }
 
+#[cfg(feature = "count-alloc")]
 fn field(output: &Value, name: &str) -> f64 {
     output[name].as_f64().unwrap_or_else(|| panic!("no {name} in {output}"))
 }
 
+#[cfg(feature = "count-alloc")]
 /// Fields of an `alloc` cell that only grow when something else allocates.
 const ALLOC_FIELDS: [&str; 5] = ["allocations", "reallocations", "bytes", "peak_bytes", "leaked_bytes"];
 
+#[cfg(feature = "count-alloc")]
 /// The smallest of each allocation field across `outputs`.
 ///
 /// libtest's main thread records the test it just spawned (a map insert and
@@ -165,6 +168,7 @@ fn least(outputs: &[Value]) -> Value {
 }
 
 #[test]
+#[cfg(feature = "count-alloc")]
 fn a_copy_of_the_body_is_one_more_allocation_of_its_size() {
     let (mut bases, mut clones) = (Vec::new(), Vec::new());
     for _ in 0..3 {

@@ -14,12 +14,21 @@ fn failure(error: &simd_json::Error) -> Failure {
     // malformed literal (`[fals]`) and its depth limit would read as a shape
     // error. A literal error at a `t`/`f`/`n` byte is the input's syntax; the
     // same variants elsewhere are a type mismatch.
+    //
+    // `ExpectedEnum` is a value that is neither a string nor a one-key object
+    // where an enum goes, which serde_json refuses as `ExpectedSomeValue`
+    // (syntax) before any visitor runs. Two status differences stay because the
+    // error cannot tell them apart from what serde_json also calls the
+    // other class: `InvalidNumber` is both `01` (400) and an integer past
+    // `u64` (serde_json: 422), and the `ExpectedString` that an array longer
+    // than its tuple leaves behind (serde_json: trailing characters, 400) is
+    // the same variant as a number where a string goes (422).
     let literal = matches!(error.character(), Some('t' | 'f' | 'n'));
     let class = if matches!(
         error.error(),
         ErrorType::ExpectedTrue | ErrorType::ExpectedFalse | ErrorType::ExpectedNull
     ) && literal
-        || matches!(error.error(), ErrorType::DepthLimitExceeded)
+        || matches!(error.error(), ErrorType::DepthLimitExceeded | ErrorType::ExpectedEnum)
     {
         Class::Syntax
     } else if error.is_io() {

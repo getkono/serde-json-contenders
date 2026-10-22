@@ -2,7 +2,7 @@
 
 use bytes::Bytes;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use struson::reader::{JsonReader, JsonStreamReader, ReaderError};
+use struson::reader::{JsonReader, JsonStreamReader, ReaderError, UnexpectedStructureKind};
 use struson::serde::{DeserializerError, JsonReaderDeserializer, JsonWriterSerializer};
 use struson::writer::{JsonStreamWriter, JsonWriter};
 
@@ -11,10 +11,19 @@ use crate::{Backend, Body, Class, Failure, Position};
 fn reader_failure(error: &ReaderError) -> Failure {
     let (class, location) = match error {
         ReaderError::SyntaxError(e) => (Class::Syntax, Some(&e.location)),
+        // An array longer than the tuple or fixed array it fills, or an enum
+        // object with a second key: what is left over once the target has
+        // read all it takes. serde_json finds the same bytes where it expects
+        // the close (`TrailingCharacters`, `ExpectedSomeValue`): syntax, as
+        // is the nesting limit.
+        ReaderError::UnexpectedStructure {
+            kind: UnexpectedStructureKind::MoreElementsThanExpected,
+            location,
+        }
+        | ReaderError::MaxNestingDepthExceeded { location, .. } => (Class::Syntax, Some(location)),
         ReaderError::UnexpectedValueType { location, .. } | ReaderError::UnexpectedStructure { location, .. } => {
             (Class::Data, Some(location))
         }
-        ReaderError::MaxNestingDepthExceeded { location, .. } => (Class::Syntax, Some(location)),
         ReaderError::UnsupportedNumberValue { location, .. } => (Class::Data, Some(location)),
         ReaderError::IoError { error, location } => {
             let class = if error.kind() == std::io::ErrorKind::UnexpectedEof {
@@ -38,7 +47,10 @@ fn failure(error: &DeserializerError) -> Failure {
         DeserializerError::ReaderError(e) => reader_failure(e),
         DeserializerError::MaxNestingDepthExceeded(_) => Failure::new(Class::Syntax, error),
         // `Custom` (a derived `Deserialize` refusing the shape), `InvalidNumber`,
-        // and future variants of the non-exhaustive enum.
+        // and future variants of the non-exhaustive enum. A number where an
+        // enum goes also lands here, as serde's `invalid_type` message, which
+        // serde_json answers 400; only the message text tells it apart from
+        // every other type mismatch, so it stays a shape error.
         _ => Failure::new(Class::Data, error),
     }
 }

@@ -29,7 +29,7 @@ bytes = "1"
 codecs = { path = "../crates/codecs", features = ["float-roundtrip"] }
 libfuzzer-sys = "0.4"
 serde = { version = "1", features = ["derive"] }
-serde_json = { version = "=1.0.151", features = ["float_roundtrip"] }
+serde_json = { version = "=1.0.154", features = ["float_roundtrip"] }
 
 [[bin]]
 name = "decode_value"

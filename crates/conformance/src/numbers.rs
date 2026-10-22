@@ -1,11 +1,17 @@
 //! Section `numbers`: integer range, float rounding, and float round trips.
 //!
-//! Truth for a float is `str::parse::<f64>`, which rounds correctly. A
-//! backend's float passes if it is bit-identical to the truth or to this
-//! build's serde_json (whose default parser is known to be inexact on rare
-//! inputs, and exact under `float_roundtrip`); anything else gates. An
-//! encoder gates only if its output does not parse back to the exact bits
-//! it was given; the other round trips are counted.
+//! Truth for a float is `str::parse::<f64>` (`str::parse::<f32>` for an
+//! `f32`), which rounds correctly. A backend's float passes if it is
+//! bit-identical to the truth or to this build's serde_json (whose default
+//! parser is known to be inexact on rare inputs, and exact under
+//! `float_roundtrip`); anything else gates. That covers random `f64` and
+//! `f32` bit patterns as text, and exponents written with leading zeros
+//! (`1e007`), which RFC 8259 allows and serde_json reads. On the fixed edge
+//! values every other disagreement gates too: accepting what serde_json
+//! refuses (`1e400` as infinity), refusing what it accepts (`u64::MAX`), and
+//! answering the other status (`-0` into `u64`). An encoder gates
+//! only if its output does not parse back to the exact bits it was given;
+//! the other round trips are counted.
 
 use codecs::Backend;
 use codecs::backend::serde_json::SerdeJson;
@@ -16,10 +22,12 @@ use serde_json::{Value, json};
 use crate::outcome::{AsValue, Decode, Outcome, Target, Typed, agree, faithful, guarded, owned};
 use crate::record::Section;
 
-/// Random floats checked per backend.
+/// Random floats checked per backend, of each width.
 pub const SAMPLES: usize = 1_000_000;
-/// Their seed.
+/// The `f64` samples' seed.
 pub const SEED: u64 = 0x5eed;
+/// The `f32` samples' seed.
+pub const F32_SEED: u64 = 0xf32_5eed;
 
 /// `f64`, viewed with its bit pattern so equality is exact.
 #[derive(Debug)]
@@ -91,16 +99,60 @@ fn run_fixed<B: Backend>(section: &mut Section) {
             section.differ(&case, r.describe(), b.describe());
             match (&r, &b) {
                 (_, Outcome::Panic(message)) => section.fail(&case, format!("panicked: {message}")),
-                (Outcome::Accept(_), Outcome::Accept(accepted))
-                    if !(correctly_rounded(path, &text, accepted)
+                (Outcome::Accept(_), Outcome::Accept(accepted)) => {
+                    if !(correctly_rounded(path, &text, accepted) || path == "value" && faithful(text.as_bytes(), &b)) {
+                        section.fail(
+                            &case,
+                            "both accept, values differ, and the backend's is not correctly rounded",
+                        );
+                    }
+                }
+                (Outcome::Accept(_), _) => section.fail(&case, "serde_json accepts, the backend refuses"),
+                (_, Outcome::Accept(_)) => section.fail(&case, "the backend accepts what serde_json refuses"),
+                _ => section.fail(&case, "both refuse, with a different status"),
+            }
+        }
+    }
+}
+
+/// Exponents with leading zeros, each valid JSON that serde_json accepts.
+#[must_use]
+pub fn exponents() -> Vec<(&'static str, &'static str)> {
+    vec![
+        ("1e007", "1e007"),
+        ("1E+007", "1E+007"),
+        ("-2.5E-0003", "-2.5E-0003"),
+        ("0e00", "0e00"),
+    ]
+}
+
+/// Exponents with leading zeros, into `f64` and `Value`: a backend that
+/// disagrees with serde_json must still accept them, with the correctly
+/// rounded value.
+fn run_exponents<B: Backend>(section: &mut Section) {
+    for (name, text) in exponents() {
+        for (path, backend, reference) in paths::<B>() {
+            if !matches!(path, "f64" | "value") {
+                continue;
+            }
+            let case = format!("exponent/{name}#{path}");
+            let r = reference(text.as_bytes(), Arrival::Unique);
+            let b = backend(text.as_bytes(), Arrival::Unique);
+            section.case();
+            if agree(&r, &b) {
+                continue;
+            }
+            section.differ(&case, r.describe(), b.describe());
+            match &b {
+                Outcome::Panic(message) => section.fail(&case, format!("panicked: {message}")),
+                Outcome::Reject(failure) => section.fail(&case, format!("valid number rejected: {failure}")),
+                Outcome::Accept(accepted)
+                    if !(correctly_rounded(path, text, accepted)
                         || path == "value" && faithful(text.as_bytes(), &b)) =>
                 {
-                    section.fail(
-                        &case,
-                        "both accept, values differ, and the backend's is not correctly rounded",
-                    );
+                    section.fail(&case, "accepted, but neither serde_json's value nor correctly rounded");
                 }
-                _ => {}
+                Outcome::Accept(_) => {}
             }
         }
     }
@@ -208,11 +260,70 @@ fn run_random<B: Backend>(section: &mut Section, samples: usize) -> Tally {
     tally
 }
 
-/// Run the section over `samples` random floats.
+/// An `f32` decode, as bits.
+fn decode_bits32<B: Backend>(text: &[u8]) -> Result<u32, String> {
+    let body = bytes::Bytes::copy_from_slice(text);
+    match guarded(|| B::decode::<f32>(body)) {
+        Ok(Ok(value)) => Ok(value.to_bits()),
+        Ok(Err(failure)) => Err(failure.to_string()),
+        Err(panic) => Err(format!("panicked: {panic}")),
+    }
+}
+
+fn hex32(bits: &Result<u32, String>) -> Value {
+    match bits {
+        Ok(bits) => json!(format!("{:?} ({bits:08x})", f32::from_bits(*bits))),
+        Err(error) => json!({ "error": error }),
+    }
+}
+
+/// Random `f32` bit patterns, as serde_json and `{:?}` write them, decoded
+/// into `f32`: a backend that rounds through `f64` can land an `f32` ulp off
+/// where the decimal is near the middle of two `f32`s.
+fn run_random_f32<B: Backend>(section: &mut Section, samples: usize) -> Tally {
+    let mut tally = Tally::default();
+    let mut rng = Rng::new(F32_SEED);
+    for _ in 0..samples {
+        let value = rng.finite_f32();
+        let serde_text = serde_json::to_string(&value).unwrap_or_default();
+        let debug_text = format!("{value:?}");
+        let texts: &[&str] = if serde_text == debug_text {
+            &[&serde_text]
+        } else {
+            &[&serde_text, &debug_text]
+        };
+        for text in texts {
+            tally.texts += 1;
+            let truth = text.parse::<f32>().map(f32::to_bits).ok();
+            let r = decode_bits32::<SerdeJson>(text.as_bytes());
+            let b = decode_bits32::<B>(text.as_bytes());
+            section.case();
+            tally.reference_inexact += usize::from(r.as_ref().ok() != truth.as_ref());
+            tally.backend_inexact += usize::from(b.as_ref().ok() != truth.as_ref());
+            tally.backend_rejected += usize::from(b.is_err());
+            if b != r {
+                section.differ(&format!("random-f32/{text}"), hex32(&r), hex32(&b));
+                if b.as_ref().ok() != truth.as_ref() {
+                    section.fail(
+                        &format!("random-f32/{text}"),
+                        format!(
+                            "decoded {}, neither the correctly rounded f32 nor serde_json's",
+                            hex32(&b)
+                        ),
+                    );
+                }
+            }
+        }
+    }
+    tally
+}
+
+/// Run the section over `samples` random floats of each width.
 #[must_use]
 pub fn run<B: Backend>(samples: usize) -> Section {
     let mut section = Section::new("numbers");
     run_fixed::<B>(&mut section);
+    run_exponents::<B>(&mut section);
     let tally = run_random::<B>(&mut section, samples);
     section.data(
         "random",
@@ -223,6 +334,18 @@ pub fn run<B: Backend>(samples: usize) -> Section {
             "backend_not_correctly_rounded": tally.backend_inexact,
             "reference_not_correctly_rounded": tally.reference_inexact,
             "backend_rejected": tally.backend_rejected,
+        }),
+    );
+    let f32s = run_random_f32::<B>(&mut section, samples);
+    section.data(
+        "random_f32",
+        json!({
+            "seed": F32_SEED,
+            "samples": samples,
+            "texts": f32s.texts,
+            "backend_not_correctly_rounded": f32s.backend_inexact,
+            "reference_not_correctly_rounded": f32s.reference_inexact,
+            "backend_rejected": f32s.backend_rejected,
         }),
     );
     if B::ENCODES {

@@ -3,7 +3,9 @@
 //!
 //! serde_json refuses a duplicate field in a derived struct (422) but lets a
 //! map keep the last value, and refuses unknown fields only under
-//! `deny_unknown_fields`. A backend that differs changes what a handler sees
+//! `deny_unknown_fields`. An unknown member it skips must still be valid JSON
+//! (an invalid escape in it is a 400), and whitespace after the document is
+//! not trailing garbage. A backend that differs changes what a handler sees
 //! for the same body. Every disagreement gates.
 
 use std::collections::BTreeMap;
@@ -37,6 +39,10 @@ const INPUTS: &[(&str, &str)] = &[
     ("unknown", r#"{"a":1,"b":2}"#),
     ("unknown-first", r#"{"b":2,"a":1}"#),
     ("unknown-nested", r#"{"a":1,"b":{"c":[1,{"d":null}]}}"#),
+    // Skipping an unknown member is still parsing it: a lazy skip that only
+    // finds the closing quote accepts the invalid escape.
+    ("unknown-invalid-escape", r#"{"a":1,"unknown":"\x"}"#),
+    ("trailing-whitespace", "{\"a\":1}  \n"),
     ("missing", "{}"),
     ("as-sequence", "[1]"),
 ];

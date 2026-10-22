@@ -16,6 +16,10 @@ jiter = ["codecs/jiter"]
 hifijson = ["codecs/hifijson"]
 struson = ["codecs/struson"]
 float-roundtrip = ["codecs/float-roundtrip"]
+# The counting allocator, for the `alloc` mode only. Every allocation through
+# it pays several atomic operations a server never pays, so the builds that
+# take cycles, time and callgrind counts leave it out.
+count-alloc = []
 
 [dependencies]
 alloc-count.workspace = true
@@ -26,8 +30,6 @@ serde.workspace = true
 serde_json.workspace = true
 simd-json = { workspace = true, optional = true }
 libc = "0.2"
-
-[target.'cfg(target_os = "linux")'.dependencies]
 perf-event2 = "0.7"
 
 [lints]

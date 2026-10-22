@@ -31,13 +31,10 @@ pub fn image() -> Result<()> {
 ///
 /// Core dumps are off: valgrind writes a `vgcore.<pid>` into the working
 /// directory, the mounted repository, for every client a signal kills, so a
-/// variant it cannot decode (SVE and `ldapr` on aarch64, AVX-512 on x86-64) would
+/// variant it cannot decode (AVX-512) would
 /// otherwise leave one core per cell until the disk fills. The cell's row
 /// records the failure; a core file adds nothing to it.
 pub fn reexec(task: &str, args: &[String]) -> Result<()> {
-    if !cfg!(target_os = "linux") {
-        anyhow::bail!("{task} runs valgrind, which does not run on this OS; run it on Linux (or let CI run it)");
-    }
     image()?;
     let id = output(Command::new(engine()).args(["image", "inspect", "--format", "{{.Id}}", IMAGE]))?;
     let home = std::env::var("CARGO_HOME")
@@ -49,6 +46,12 @@ pub fn reexec(task: &str, args: &[String]) -> Result<()> {
     let mut git = vec!["-e".to_owned(), format!("{}={dirty}", provenance::GIT_DIRTY_VAR)];
     if let Some(commit) = commit {
         git.extend(["-e".to_owned(), format!("{}={commit}", provenance::GIT_COMMIT_VAR)]);
+    }
+    if let Some(fingerprint) = provenance::fingerprint() {
+        git.extend([
+            "-e".to_owned(),
+            format!("{}={fingerprint}", provenance::FINGERPRINT_VAR),
+        ]);
     }
     run(Command::new(engine())
         .args(["run", "--rm", "--security-opt", "label=disable", "--ulimit", "core=0"])
@@ -71,5 +74,8 @@ pub fn reexec(task: &str, args: &[String]) -> Result<()> {
             "--",
             task,
         ])
-        .args(args))
+        .args(args))?;
+    // Inside, the stamp is the state passed in at the start, so only the host
+    // can see a commit or an edit made while the container ran.
+    provenance::stamp_checked().map(drop)
 }

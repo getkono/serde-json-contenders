@@ -6,12 +6,22 @@
 //! dependency bump cannot move an input. `tests` pins every corpus by SHA-256.
 //!
 //! Each workload has an owned form (`String` fields) and a borrowed form
-//! (`#[serde(borrow)] Cow<'de, str>`). The borrowed form borrows wherever the
-//! backend can hand out a slice of the input and allocates otherwise, so the
-//! difference between the two forms *is* each backend's ability to borrow.
+//! (`#[serde(borrow)] Cow<'de, str>` wherever the owned form holds a string).
+//! The borrowed form borrows wherever the backend can hand out a slice of the
+//! input and allocates otherwise, so the difference between the two forms *is*
+//! each backend's ability to borrow. Workloads with no strings (`ints`,
+//! `ints-extremes`, `floats`, `f32s`, `floats-short`, `nested-*`,
+//! `array-small`) use one type for both forms: there is nothing to borrow, and
+//! the two forms measure the same decode.
+//!
+//! Most workloads' bytes decode to their value. The `reject-*` workloads'
+//! bytes must be refused ([`Expect::Reject`]): they measure what a server pays
+//! to turn a bad body away.
 
+pub mod enums;
 pub mod families;
 pub mod kynos;
+pub mod reject;
 pub mod rng;
 pub mod sweep;
 pub mod world;
@@ -31,7 +41,11 @@ pub trait Workload: 'static {
     /// The borrowed form.
     type Borrowed<'de>: Serialize + Deserialize<'de> + std::fmt::Debug;
 
-    /// The value the bytes encode.
+    /// What decoding the bytes must yield.
+    const EXPECT: Expect = Expect::Value;
+
+    /// The value the bytes encode. For a workload whose bytes must be
+    /// rejected, the value they were damaged from.
     #[must_use]
     fn value() -> Self::Owned;
 
@@ -42,6 +56,16 @@ pub trait Workload: 'static {
     fn bytes() -> Vec<u8> {
         encode_canonical(&Self::value())
     }
+}
+
+/// What a correct decode of a workload's bytes yields.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Expect {
+    /// [`Workload::value`].
+    Value,
+    /// A refusal a server answers with this status: 400 for a body that is
+    /// not JSON or ends early, 422 for well-formed JSON of the wrong shape.
+    Reject(u16),
 }
 
 /// Report grouping.
@@ -65,6 +89,18 @@ pub enum Group {
 #[must_use]
 pub fn encode_canonical<T: Serialize>(value: &T) -> Vec<u8> {
     match serde_json::to_vec(value) {
+        Ok(bytes) => bytes,
+        Err(error) => unreachable!("a generated value failed to serialize: {error}"),
+    }
+}
+
+/// serde_json's pretty encoding: two-space indents, one member per line.
+///
+/// # Panics
+/// As [`encode_canonical`].
+#[must_use]
+pub fn encode_pretty<T: Serialize>(value: &T) -> Vec<u8> {
+    match serde_json::to_vec_pretty(value) {
         Ok(bytes) => bytes,
         Err(error) => unreachable!("a generated value failed to serialize: {error}"),
     }
@@ -121,9 +157,23 @@ pub const ALL: &[&str] = &[
     families::Nested::<10_000>::NAME,
     families::Wide::NAME,
     families::Points::NAME,
+    families::IntsExtremes::NAME,
+    families::F32s::NAME,
+    families::LongString::NAME,
+    families::PrettyJsonLarge::NAME,
+    families::FloatsShort::NAME,
+    families::Sparse::NAME,
+    families::Defaults::NAME,
+    families::KeysLongInt::NAME,
+    enums::Enums::NAME,
     world::TwitterLike::NAME,
     world::CitmLike::NAME,
     world::CanadaLike::NAME,
+    world::SkipUnknown::NAME,
+    world::PrettyTwitterLike::NAME,
+    world::RawUtf8::NAME,
+    reject::RejectTruncated::NAME,
+    reject::RejectShape::NAME,
 ];
 
 /// Dispatch `visitor` to the workload called `name`.
@@ -150,9 +200,23 @@ pub fn dispatch<V: Visit>(name: &str, visitor: V) -> Option<V::Output> {
         families::Nested::<10_000>::NAME => visitor.visit::<families::Nested<10_000>>(),
         families::Wide::NAME => visitor.visit::<families::Wide>(),
         families::Points::NAME => visitor.visit::<families::Points>(),
+        families::IntsExtremes::NAME => visitor.visit::<families::IntsExtremes>(),
+        families::F32s::NAME => visitor.visit::<families::F32s>(),
+        families::LongString::NAME => visitor.visit::<families::LongString>(),
+        families::PrettyJsonLarge::NAME => visitor.visit::<families::PrettyJsonLarge>(),
+        families::FloatsShort::NAME => visitor.visit::<families::FloatsShort>(),
+        families::Sparse::NAME => visitor.visit::<families::Sparse>(),
+        families::Defaults::NAME => visitor.visit::<families::Defaults>(),
+        families::KeysLongInt::NAME => visitor.visit::<families::KeysLongInt>(),
+        enums::Enums::NAME => visitor.visit::<enums::Enums>(),
         world::TwitterLike::NAME => visitor.visit::<world::TwitterLike>(),
         world::CitmLike::NAME => visitor.visit::<world::CitmLike>(),
         world::CanadaLike::NAME => visitor.visit::<world::CanadaLike>(),
+        world::SkipUnknown::NAME => visitor.visit::<world::SkipUnknown>(),
+        world::PrettyTwitterLike::NAME => visitor.visit::<world::PrettyTwitterLike>(),
+        world::RawUtf8::NAME => visitor.visit::<world::RawUtf8>(),
+        reject::RejectTruncated::NAME => visitor.visit::<reject::RejectTruncated>(),
+        reject::RejectShape::NAME => visitor.visit::<reject::RejectShape>(),
         _ => return None,
     })
 }

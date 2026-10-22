@@ -5,7 +5,8 @@
 //! serde_json. The one exemption is borrowing itself: a `&str` target that
 //! one side accepts and the other refuses as a wrong shape (422) measures
 //! whether the backend can hand out a slice, which the non-gating probe
-//! below records instead.
+//! below records instead. A backend that borrows where serde_json refuses
+//! must still borrow the string serde_json decodes into `String`.
 
 use std::borrow::Cow;
 
@@ -36,7 +37,7 @@ pub fn inputs() -> Vec<(&'static str, Vec<u8>)> {
         ("lone-high-surrogate", quoted(br"\ud800")),
         ("lone-low-surrogate", quoted(br"\udc00")),
         ("high-then-non-low", quoted(br"\ud800A")),
-        ("high-then-escaped-non-low", quoted(br"\ud800A")),
+        ("high-then-escaped-non-low", quoted(br"\ud800\u0041")),
         ("high-then-high", quoted(br"\ud800\ud800")),
         ("pair-raw", quoted("😀".as_bytes())),
         ("pair-escaped", quoted(br"\ud83d\ude00")),
@@ -49,10 +50,14 @@ pub fn inputs() -> Vec<(&'static str, Vec<u8>)> {
     ]
 }
 
-/// Whether a `&str` disagreement is only about borrowing.
-fn borrow_capability(reference: &Outcome, backend: &Outcome) -> bool {
+/// Whether a `&str` disagreement is only about borrowing: one side refuses
+/// to hand out a slice (422) where the other does. A backend that hands one
+/// out where serde_json cannot must still hand out the right string:
+/// `string` is serde_json's decode of the same input into `String`.
+fn borrow_capability(reference: &Outcome, backend: &Outcome, string: &Outcome) -> bool {
     match (reference, backend) {
-        (Outcome::Accept(_), Outcome::Reject(f)) | (Outcome::Reject(f), Outcome::Accept(_)) => f.status() == 422,
+        (Outcome::Accept(_), Outcome::Reject(f)) => f.status() == 422,
+        (Outcome::Reject(f), Outcome::Accept(_)) => f.status() == 422 && agree(string, backend),
         _ => false,
     }
 }
@@ -104,7 +109,9 @@ pub fn run<B: Backend>() -> Section {
                     continue;
                 }
                 section.differ(&name, r.describe(), b.describe());
-                if path.starts_with("str/") && borrow_capability(&r, &b) {
+                if path.starts_with("str/")
+                    && borrow_capability(&r, &b, &owned::<SerdeJson, Typed<String>>(&input, arrival))
+                {
                     section.note(format!(
                         "{name}: borrowing differs from serde_json (see data.borrow_probe)"
                     ));

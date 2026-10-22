@@ -1,9 +1,13 @@
 //! Loading `results/` into lookups.
+//!
+//! Loading is loud: a result file that is missing or does not parse is an
+//! error, unless `results/skipped.toml` declares it skipped and says why, and
+//! the report states that reason. An empty table never stands in for a
+//! measurement nobody took.
 
 use std::collections::BTreeMap;
-use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{Context, Result, bail};
 use serde_json::Value;
 
 use crate::util::{read_json, root};
@@ -52,20 +56,20 @@ pub struct Table {
 }
 
 impl Table {
-    fn load(path: &Path) -> Self {
-        let Ok(doc) = read_json(path) else {
-            return Self::default();
-        };
-        let rows = doc["rows"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .map(|r| (Key::of(r), r.clone()))
-            .collect();
-        Self {
+    /// The rows of `doc`, keyed. Two rows with one key would leave one of
+    /// them unread, so that is an error.
+    fn of(doc: &Value) -> Result<Self> {
+        let mut rows = BTreeMap::new();
+        for r in doc["rows"].as_array().into_iter().flatten() {
+            let key = Key::of(r);
+            if rows.insert(key.clone(), r.clone()).is_some() {
+                bail!("two rows for {key:?}");
+            }
+        }
+        Ok(Self {
             rows,
             provenance: doc["provenance"].clone(),
-        }
+        })
     }
 
     pub fn get(&self, key: &Key, field: &str) -> Option<f64> {
@@ -81,20 +85,133 @@ impl Table {
     }
 }
 
-/// Plain row lists (size, compile time, e2e...).
-fn rows(path: &Path) -> (Vec<Value>, Value) {
-    read_json(path).map_or_else(
-        |_| (Vec::new(), Value::Null),
-        |doc| {
-            (
-                doc["rows"].as_array().cloned().unwrap_or_default(),
-                doc["provenance"].clone(),
-            )
-        },
-    )
+/// One result file the report read, or was told to do without.
+#[derive(Debug, Clone, Default)]
+pub struct Source {
+    /// Path relative to `results/`.
+    pub name: String,
+    /// The file's provenance stamp; null when skipped.
+    pub provenance: Value,
+    /// Why the file is absent, from `results/skipped.toml`.
+    pub skipped: Option<String>,
 }
 
-/// One host's results.
+/// Reads result files, recording each as a [`Source`].
+struct Loader {
+    results: std::path::PathBuf,
+    skipped: toml::Table,
+    sources: Vec<Source>,
+    missing: Vec<String>,
+}
+
+impl Loader {
+    /// The document at `name` (relative to `results/`), or `None` when it is
+    /// declared skipped or missing (recorded either way).
+    fn doc(&mut self, name: &str) -> Result<Option<Value>> {
+        let path = self.results.join(name);
+        if !path.exists() {
+            match self
+                .skipped
+                .get(name)
+                .and_then(|s| s.get("reason"))
+                .and_then(toml::Value::as_str)
+            {
+                Some(reason) => self.sources.push(Source {
+                    name: name.to_owned(),
+                    provenance: Value::Null,
+                    skipped: Some(reason.to_owned()),
+                }),
+                None => self.missing.push(name.to_owned()),
+            }
+            return Ok(None);
+        }
+        let doc = read_json(&path).with_context(|| format!("results/{name} does not parse"))?;
+        self.sources.push(Source {
+            name: name.to_owned(),
+            provenance: doc["provenance"].clone(),
+            skipped: None,
+        });
+        Ok(Some(doc))
+    }
+
+    fn table(&mut self, name: &str) -> Result<Table> {
+        match self.doc(name)? {
+            Some(d) => Table::of(&d).with_context(|| format!("results/{name}")),
+            None => Ok(Table::default()),
+        }
+    }
+
+    /// The rows of a per-set or per-route file. Two rows with one identity
+    /// would leave one of them unread (lookups take the first), so that is
+    /// an error.
+    fn rows(&mut self, name: &str) -> Result<Vec<Value>> {
+        let rows = self
+            .doc(name)?
+            .and_then(|d| d["rows"].as_array().cloned())
+            .unwrap_or_default();
+        let mut seen = std::collections::BTreeSet::new();
+        for r in &rows {
+            let id: Vec<String> = ["variant", "set", "backend", "route", "config", "target"]
+                .iter()
+                .map(|k| r[*k].to_string())
+                .collect();
+            if !seen.insert(id.clone()) {
+                bail!("results/{name}: two rows for {}", id.join(" "));
+            }
+        }
+        Ok(rows)
+    }
+}
+
+/// Every conformance run, at every variant and with `arbitrary_precision` at
+/// portable, finished and reported every backend of its set: one that
+/// errored left a SIMD path unchecked.
+fn conformance_gaps(data: &Data) -> Vec<String> {
+    let host = &data.host;
+    let mut gaps = Vec::new();
+    for variant in crate::matrix::variants() {
+        for set in crate::matrix::SETS {
+            let mut names = vec![set.name.to_owned()];
+            if variant.name == "portable" {
+                names.push(format!("{}+arbitrary-precision", set.name));
+            }
+            for name in names {
+                let file = format!("conformance/{}/{name}.json", variant.name);
+                let Some(report) = host.conformance.get(&(variant.name.to_owned(), name.clone())) else {
+                    continue; // missing or skipped: the loader has said so
+                };
+                if let Some(e) = report["error"].as_str() {
+                    gaps.push(format!("{file}: the suite did not finish ({e})"));
+                    continue;
+                }
+                for b in set.backends.iter().filter(|b| !b.starts_with("serde_json")) {
+                    let label = crate::matrix::label(set, b);
+                    if report["backends"][label.as_str()].is_null() {
+                        gaps.push(format!("{file}: no result for {label}"));
+                    }
+                }
+            }
+        }
+    }
+    gaps
+}
+
+/// Every file under `dir`, as paths relative to it.
+fn files_under(dir: &std::path::Path, prefix: &str) -> Result<Vec<String>> {
+    let mut out = Vec::new();
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        let name = format!("{prefix}{}", entry.file_name().to_string_lossy());
+        if entry.file_type()?.is_dir() {
+            out.extend(files_under(&entry.path(), &format!("{name}/"))?);
+        } else {
+            out.push(name);
+        }
+    }
+    Ok(out)
+}
+
+/// The host's results.
 #[derive(Debug, Default)]
 pub struct Host {
     pub slug: String,
@@ -105,134 +222,463 @@ pub struct Host {
     pub compile: Vec<Value>,
     pub msrv: Vec<Value>,
     pub e2e_time: Vec<Value>,
-    pub e2e_trust: Option<String>,
     pub doctor: Value,
     /// conformance reports: (variant, set) -> report.
     pub conformance: BTreeMap<(String, String), Value>,
+    /// The host's CPU, from its allocation counts' stamp.
     pub provenance: Value,
-}
-
-impl Host {
-    fn load(dir: &Path) -> Self {
-        let slug = dir
-            .file_name()
-            .map(|n| n.to_string_lossy().into_owned())
-            .unwrap_or_default();
-        let (size, _) = rows(&dir.join("size.json"));
-        let (compile, _) = rows(&dir.join("compile-time.json"));
-        let (msrv, _) = rows(&dir.join("msrv.json"));
-        let (e2e_time, _) = rows(&dir.join("e2e-time.json"));
-        let e2e_trust = e2e_time.first().and_then(|r| r["trust"].as_str()).map(str::to_owned);
-        let mut conformance = BTreeMap::new();
-        if let Ok(variants) = std::fs::read_dir(dir.join("conformance")) {
-            for variant in variants.filter_map(Result::ok) {
-                for file in std::fs::read_dir(variant.path())
-                    .into_iter()
-                    .flatten()
-                    .filter_map(Result::ok)
-                {
-                    if let Ok(doc) = read_json(&file.path()) {
-                        let set = file
-                            .path()
-                            .file_stem()
-                            .map(|s| s.to_string_lossy().into_owned())
-                            .unwrap_or_default();
-                        conformance.insert(
-                            (variant.file_name().to_string_lossy().into_owned(), set),
-                            doc["report"].clone(),
-                        );
-                    }
-                }
-            }
-        }
-        let alloc = Table::load(&dir.join("alloc.json"));
-        let provenance = alloc.provenance.clone();
-        Self {
-            slug,
-            hw: Table::load(&dir.join("hw.json")),
-            time: Table::load(&dir.join("time.json")),
-            alloc,
-            size,
-            compile,
-            msrv,
-            e2e_time,
-            e2e_trust,
-            doctor: read_json(&dir.join("doctor.json")).unwrap_or(Value::Null),
-            conformance,
-            provenance,
-        }
-    }
-
-    pub fn arch(&self) -> &str {
-        self.slug.split('-').next().unwrap_or_default()
-    }
-
-    pub fn os(&self) -> &str {
-        self.slug.split('-').nth(1).unwrap_or_default()
-    }
 }
 
 /// Everything under `results/`.
 #[derive(Debug, Default)]
 pub struct Data {
-    /// callgrind by architecture.
-    pub callgrind: BTreeMap<String, Table>,
-    pub e2e_count: BTreeMap<String, Vec<Value>>,
-    pub hosts: Vec<Host>,
+    /// callgrind counts per operation.
+    pub callgrind: Table,
+    /// callgrind counts per HTTP request.
+    pub e2e_count: Vec<Value>,
+    /// The zero-tolerance recount of every committed count.
+    pub recount: Value,
+    pub host: Host,
     pub footprint: Vec<Value>,
     pub advisory_db: String,
     pub fuzz: Vec<Value>,
     pub miri: Vec<Value>,
     pub soundness: toml::Table,
     pub notes: toml::Table,
+    /// Every result file read or declared skipped, in load order.
+    pub sources: Vec<Source>,
 }
 
 impl Data {
+    /// Load `results/`: the one host directory (this benchmark measures one
+    /// x86-64 Linux host), the callgrind counts, and the host-independent
+    /// files.
     pub fn load() -> Result<Self> {
         let results = root().join("results");
-        let mut data = Self::default();
-        for arch in ["x86_64", "aarch64"] {
-            let table = Table::load(&results.join("callgrind").join(format!("{arch}.json")));
-            if !table.is_empty() {
-                data.callgrind.insert(arch.into(), table);
+        let toml = |name: &str| -> Result<toml::Table> {
+            let path = results.join(name);
+            if !path.exists() {
+                return Ok(toml::Table::new());
             }
-            let (e2e, _) = rows(&results.join("callgrind").join(format!("e2e-{arch}.json")));
-            if !e2e.is_empty() {
-                data.e2e_count.insert(arch.into(), e2e);
-            }
-        }
-        let mut hosts: Vec<Host> = std::fs::read_dir(&results)?
+            std::fs::read_to_string(&path)?
+                .parse()
+                .with_context(|| format!("results/{name} does not parse"))
+        };
+        let mut load = Loader {
+            results: results.clone(),
+            skipped: toml("skipped.toml")?,
+            sources: Vec::new(),
+            missing: Vec::new(),
+        };
+        let mut data = Self {
+            callgrind: load.table("callgrind/x86_64.json")?,
+            e2e_count: load.rows("callgrind/e2e-x86_64.json")?,
+            recount: load.doc("callgrind/recount.json")?.unwrap_or(Value::Null),
+            ..Self::default()
+        };
+        let hosts: Vec<String> = std::fs::read_dir(&results)?
             .filter_map(Result::ok)
             .filter(|e| e.path().is_dir() && e.file_name() != "callgrind")
-            .map(|e| Host::load(&e.path()))
+            .map(|e| e.file_name().to_string_lossy().into_owned())
             .collect();
-        hosts.sort_by(|a, b| a.slug.cmp(&b.slug));
-        data.hosts = hosts;
-        let footprint = read_json(&results.join("footprint.json")).unwrap_or(Value::Null);
+        let [slug] = hosts.as_slice() else {
+            bail!("results/ must hold exactly one host directory, found {hosts:?}");
+        };
+        if !slug.starts_with("x86_64-linux-") {
+            bail!("results/{slug}: this benchmark measures x86-64 Linux only");
+        }
+        data.host = load_host(&mut load, slug)?;
+        let footprint = load.doc("footprint.json")?.unwrap_or(Value::Null);
         data.footprint = footprint["rows"].as_array().cloned().unwrap_or_default();
         footprint["advisory_db"]
             .as_str()
             .unwrap_or_default()
             .clone_into(&mut data.advisory_db);
-        data.fuzz = rows(&results.join("fuzz.json")).0;
-        data.miri = rows(&results.join("miri.json")).0;
-        let toml = |name: &str| {
-            std::fs::read_to_string(results.join(name))
-                .ok()
-                .and_then(|t| t.parse::<toml::Table>().ok())
-                .unwrap_or_default()
-        };
-        data.soundness = toml("soundness.toml");
-        data.notes = toml("notes.toml");
+        data.fuzz = load.rows("fuzz.json")?;
+        data.miri = load.rows("miri.json")?;
+        data.soundness = toml("soundness.toml")?;
+        data.notes = toml("notes.toml")?;
+        if !load.missing.is_empty() {
+            bail!(
+                "missing result files (measure them, or declare each skipped with a reason in results/skipped.toml): {}",
+                load.missing.join(", ")
+            );
+        }
+        // Every file under results/ is read: one no table reads would be
+        // neither checked for staleness nor published.
+        let read: std::collections::BTreeSet<String> = load
+            .sources
+            .iter()
+            .map(|s| s.name.clone())
+            .chain(["skipped.toml", "soundness.toml", "notes.toml"].map(str::to_owned))
+            .collect();
+        let unread: Vec<String> = files_under(&results, "")?
+            .into_iter()
+            .filter(|f| !f.starts_with("raw/") && !read.contains(f))
+            .collect();
+        if !unread.is_empty() {
+            bail!(
+                "results/ holds files the report does not read (delete them, or teach the report): {}",
+                unread.join(", ")
+            );
+        }
+        data.sources = load.sources;
         Ok(data)
     }
 
-    /// The x86-64 Linux host whose host-specific results (allocations,
-    /// hardware counters, size, compile time) the tables quote.
+    /// The host whose results the tables quote.
     pub fn primary(&self) -> Option<&Host> {
-        self.hosts
-            .iter()
-            .find(|h| h.arch() == "x86_64" && h.os() == "linux")
-            .or_else(|| self.hosts.first())
+        (!self.host.slug.is_empty()).then_some(&self.host)
     }
+}
+
+fn load_host(load: &mut Loader, slug: &str) -> Result<Host> {
+    let at = |file: &str| format!("{slug}/{file}");
+    let e2e_time = load.rows(&at("e2e-time.json"))?;
+    let mut conformance = BTreeMap::new();
+    for variant in crate::matrix::variants() {
+        for set in crate::matrix::SETS {
+            let mut names = vec![set.name.to_owned()];
+            if variant.name == "portable" {
+                names.push(format!("{}+arbitrary-precision", set.name));
+            }
+            for name in names {
+                if let Some(doc) = load.doc(&at(&format!("conformance/{}/{name}.json", variant.name)))? {
+                    conformance.insert((variant.name.to_owned(), name), doc["report"].clone());
+                }
+            }
+        }
+    }
+    let alloc = load.table(&at("alloc.json"))?;
+    let provenance = alloc.provenance.clone();
+    Ok(Host {
+        slug: slug.to_owned(),
+        hw: load.table(&at("hw.json"))?,
+        time: load.table(&at("time.json"))?,
+        alloc,
+        size: load.rows(&at("size.json"))?,
+        compile: load.rows(&at("compile-time.json"))?,
+        msrv: load.rows(&at("msrv.json"))?,
+        e2e_time,
+        doctor: load.doc(&at("doctor.json"))?.unwrap_or(Value::Null),
+        conformance,
+        provenance,
+    })
+}
+
+/// Why each source cannot be trusted for the code at HEAD: measured on other
+/// code (another fingerprint), or from a dirty checkout. Empty when every
+/// source was measured on exactly the committed code.
+#[must_use]
+pub fn stale(sources: &[Source], fingerprint: Option<&str>) -> Vec<String> {
+    sources
+        .iter()
+        .filter(|s| s.skipped.is_none())
+        .filter_map(|s| {
+            let p = &s.provenance;
+            let theirs = p["fingerprint"].as_str();
+            if p["git_dirty"] != false {
+                Some(format!("{}: measured from a dirty checkout", s.name))
+            } else if theirs.is_none() || theirs != fingerprint {
+                Some(format!(
+                    "{}: measured on code {} (HEAD is {})",
+                    s.name,
+                    theirs.unwrap_or("without a fingerprint"),
+                    fingerprint.unwrap_or("unknown")
+                ))
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+/// One per-operation table to check: its name, rows, variants, workloads,
+/// shapes per workload, and whether serde_json has an A/A copy.
+type PerOperation<'a> = (
+    &'a str,
+    &'a Table,
+    &'a [&'a str],
+    &'a [String],
+    &'a dyn Fn(&str) -> &'static [crate::matrix::Shape],
+    bool,
+);
+
+/// What a complete run of `mise run all` would have written and did not:
+/// every row of the matrix in each per-operation table (a row recording the
+/// backend's own rejection is present, and so is a wrong result, which rule
+/// 2 reads; a row recording an error is a failure of the run), every set in the cost tables, every
+/// server and route end to end, every fuzz target and configuration, Miri
+/// for every set, a full zero-tolerance recount, and a doctor run without
+/// failures.
+#[must_use]
+pub fn incomplete(data: &Data) -> Vec<String> {
+    use crate::matrix::{COUNTED_VARIANTS, SHAPES, TIMED_SHAPES, hw_shapes};
+    let mut gaps = Vec::new();
+    let all: Vec<String> = payloads::ALL.iter().map(|w| (*w).to_owned()).collect();
+    let host = &data.host;
+    let tables: [PerOperation<'_>; 4] = [
+        (
+            "callgrind/x86_64.json",
+            &data.callgrind,
+            COUNTED_VARIANTS,
+            &all,
+            &|_| SHAPES,
+            false,
+        ),
+        ("alloc.json", &host.alloc, &["native"], &all, &|_| SHAPES, false),
+        ("hw.json", &host.hw, &["native"], &all, &hw_shapes, true),
+        (
+            "time.json",
+            &host.time,
+            &["native"],
+            &crate::timed::default_workloads(),
+            &|_| TIMED_SHAPES,
+            true,
+        ),
+    ];
+    for (name, table, variants, workloads, shapes, aa) in tables {
+        gaps.extend(per_operation(name, table, variants, workloads, shapes, aa));
+    }
+    gaps.extend(per_set(data));
+    gaps.extend(fuzz_and_miri(data));
+    if !skipped(data, "callgrind/e2e-x86_64.json") {
+        gaps.extend(end_to_end(
+            &data.e2e_count,
+            "callgrind/e2e-x86_64.json",
+            COUNTED_VARIANTS,
+            false,
+        ));
+    }
+    if !skipped(data, &format!("{}/e2e-time.json", host.slug)) {
+        gaps.extend(end_to_end(&host.e2e_time, "e2e-time.json", &["native"], true));
+    }
+    let r = &data.recount;
+    let counted = data.callgrind.rows.values().filter(|r| r["ir"].is_number()).count();
+    if !r.is_null()
+        && (r["tolerance"] != 0.0 || r["compared"] != r["committed"] || r["committed"] != counted || counted == 0)
+    {
+        gaps.push(format!(
+            "callgrind/recount.json: {} of {} counts recounted at tolerance {}, against {counted} counts committed now; the check needs every one of them at 0",
+            r["compared"], r["committed"], r["tolerance"]
+        ));
+    }
+    let builds = host.doctor["builds"].as_array().map_or(0, Vec::len);
+    let expected = crate::matrix::variants().len() * crate::matrix::SETS.len();
+    if !host.doctor.is_null() && builds != expected {
+        gaps.push(format!(
+            "doctor.json: {builds} builds checked, not every set at every variant ({expected})"
+        ));
+    }
+    if let Some(f) = host.doctor["failures"].as_array().filter(|f| !f.is_empty()) {
+        gaps.push(format!(
+            "doctor.json: {} builds do not run the path they claim (first: {})",
+            f.len(),
+            f[0]
+        ));
+    }
+    gaps.extend(conformance_gaps(data));
+    // Rule 3 reads the hand review of open issues; a crate missing from it
+    // would pass unreviewed.
+    let mut unreviewed: Vec<&str> = super::verdict::ENTRIES
+        .iter()
+        .map(|e| e.krate)
+        .filter(|k| {
+            data.soundness
+                .get(*k)
+                .and_then(|t| t.get("open"))
+                .and_then(toml::Value::as_array)
+                .is_none()
+        })
+        .collect();
+    unreviewed.dedup();
+    if !unreviewed.is_empty() {
+        gaps.push(format!("soundness.toml: no `open` list for {}", unreviewed.join(", ")));
+    }
+    gaps
+}
+
+/// Whether `results/skipped.toml` declared `name` skipped (and it is absent).
+fn skipped(data: &Data, name: &str) -> bool {
+    data.sources.iter().any(|s| s.name == name && s.skipped.is_some())
+}
+
+/// The rows of one per-operation table that are missing or failed.
+fn per_operation(
+    name: &str,
+    table: &Table,
+    variants: &[&str],
+    workloads: &[String],
+    shapes: &dyn Fn(&str) -> &'static [crate::matrix::Shape],
+    aa: bool,
+) -> Option<String> {
+    use crate::matrix::{SETS, label};
+    if table.provenance.is_null() {
+        return None;
+    }
+    let (mut missing, mut failed) = (0usize, 0usize);
+    let mut first = None;
+    for variant in variants {
+        for set in SETS {
+            for backend in set.backends {
+                let mut labels = vec![label(set, backend)];
+                if aa && set.name == "baseline" {
+                    labels.push(format!("{backend}#aa"));
+                }
+                for b in &labels {
+                    for w in workloads {
+                        for s in crate::matrix::for_workload(w, shapes(w)) {
+                            let key = Key {
+                                variant: (*variant).to_owned(),
+                                backend: b.clone(),
+                                workload: w.clone(),
+                                op: s.op.to_owned(),
+                                form: s.form.to_owned(),
+                                arrival: s.arrival.to_owned(),
+                            };
+                            let what = match table.row(&key) {
+                                None => "missing",
+                                // A wrong result is a result (rule 2 reads it);
+                                // an error is a cell that did not run.
+                                Some(r) if r["error"].is_string() => "failed",
+                                Some(_) => continue,
+                            };
+                            if what == "missing" {
+                                missing += 1;
+                            } else {
+                                failed += 1;
+                            }
+                            first.get_or_insert(format!("{what}: {variant} {b} {w} {} {} {}", s.op, s.form, s.arrival));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    (missing + failed > 0).then(|| {
+        format!(
+            "{name}: {missing} rows missing, {failed} failed (first {})",
+            first.unwrap_or_default()
+        )
+    })
+}
+
+/// The sets the per-set tables have no row for.
+fn per_set(data: &Data) -> Vec<String> {
+    use crate::matrix::SETS;
+    let host = &data.host;
+    let mut gaps = Vec::new();
+    let at = |file: &str| format!("{}/{file}", host.slug);
+    for (name, rows, per_variant) in [
+        (at("size.json"), &host.size, true),
+        (at("compile-time.json"), &host.compile, false),
+        (at("msrv.json"), &host.msrv, false),
+        ("footprint.json".to_owned(), &data.footprint, false),
+        ("miri.json".to_owned(), &data.miri, false),
+    ] {
+        let variants: Vec<&str> = if per_variant {
+            crate::matrix::variants().iter().map(|v| v.name).collect()
+        } else {
+            vec![""]
+        };
+        let lacking: Vec<String> = SETS
+            .iter()
+            .flat_map(|s| variants.iter().map(move |v| (s.name, *v)))
+            .filter(|(set, v)| {
+                !rows
+                    .iter()
+                    .any(|r| r["set"] == *set && (v.is_empty() || r["variant"] == *v))
+            })
+            .map(|(set, v)| format!("{set} {v}").trim().to_owned())
+            .collect();
+        if !lacking.is_empty() && !skipped(data, &name) {
+            gaps.push(format!("{name}: no row for {}", lacking.join(", ")));
+        }
+    }
+    gaps
+}
+
+/// Fuzz runs that are missing or did not finish, and Miri runs that failed
+/// to run at all.
+fn fuzz_and_miri(data: &Data) -> Vec<String> {
+    use crate::matrix::SETS;
+    let mut gaps = Vec::new();
+    let lacking: Vec<String> = SETS
+        .iter()
+        .flat_map(crate::fuzzing::runs)
+        .filter(|(set, backend, c, _, t)| {
+            !data
+                .fuzz
+                .iter()
+                .any(|r| r["set"] == set.name && r["backend"] == *backend && r["config"] == *c && r["target"] == *t)
+        })
+        .map(|(_, backend, c, _, t)| format!("{backend} {c} {t}"))
+        .collect();
+    if !lacking.is_empty() && !skipped(data, "fuzz.json") {
+        gaps.push(format!("fuzz.json: no run for {}", lacking.join(", ")));
+    }
+    let unfinished: Vec<String> = data
+        .fuzz
+        .iter()
+        .filter(|r| r["finished"] == false)
+        .map(|r| format!("{} {} {}", r["set"], r["config"], r["target"]))
+        .collect();
+    if !unfinished.is_empty() {
+        gaps.push(format!(
+            "fuzz.json: runs that did not finish: {}",
+            unfinished.join(", ")
+        ));
+    }
+    let errored: Vec<String> = data
+        .miri
+        .iter()
+        .filter(|r| r["outcome"] == "error")
+        .map(|r| r["set"].to_string())
+        .collect();
+    if !errored.is_empty() {
+        gaps.push(format!("miri.json: Miri itself failed for {}", errored.join(", ")));
+    }
+    gaps
+}
+
+/// The servers and routes an end-to-end file lacks, or whose run failed.
+fn end_to_end(rows: &[Value], name: &str, variants: &[&str], aa: bool) -> Option<String> {
+    use crate::matrix::{SETS, label};
+    let mut lacking = Vec::new();
+    for v in variants {
+        for set in SETS {
+            for backend in crate::endtoend::backends(set) {
+                // The floor is counted, not timed.
+                if aa && backend == "floor" {
+                    continue;
+                }
+                let mut labels = vec![if backend == "floor" {
+                    "floor".to_owned()
+                } else {
+                    label(set, backend)
+                }];
+                if aa && set.name == "baseline" {
+                    labels.push(format!("{backend}#aa"));
+                }
+                for b in labels {
+                    for route in crate::endtoend::routes_for(backend) {
+                        let row = rows
+                            .iter()
+                            .find(|r| r["variant"] == *v && r["backend"] == b.as_str() && r["route"] == route.0);
+                        // A wrong answer is a result, which rule 2 reads.
+                        if row.is_none_or(|r| r["error"].is_string() && r["verdict"] != "wrong") {
+                            lacking.push(format!("{v} {b} {}", route.0));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    (!lacking.is_empty()).then(|| {
+        format!(
+            "{name}: {} rows missing or failed (first {})",
+            lacking.len(),
+            lacking[0]
+        )
+    })
 }

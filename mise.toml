@@ -9,7 +9,7 @@ hk = "1.53.0"
 # The load generator for end-to-end timing, pinned: a generator that upgrades
 # itself under a parser changes what a percentile means.
 "github:hatoo/oha" = "1.16.0"
-# Fuzzing and Miri only; built from source because it has no macOS binary.
+# Fuzzing and Miri only; built from source.
 "cargo:cargo-fuzz" = "0.13.2"
 
 [hooks]
@@ -35,11 +35,15 @@ for f in "" float-roundtrip sonic-rs simd-json flexon-rt flexon-ct jiter hifijso
   echo "clippy: features=[$f]"
   cargo clippy --workspace --all-targets --locked --features "$f" -- -D warnings
 done
+for f in sonic-rs simd-json flexon-rt flexon-ct jiter hifijson struson; do
+  echo "fuzz check: features=[$f]"
+  cargo check --manifest-path fuzz/Cargo.toml --locked --features "$f"
+done
 """
 
 [tasks.test]
 description = "Unit and integration tests"
-run = "cargo nextest run --workspace --locked --no-tests=pass --features sonic-rs,simd-json,flexon-rt,jiter,hifijson,struson && cargo nextest run --workspace --locked --no-tests=pass --features flexon-ct"
+run = "cargo nextest run --workspace --locked --no-tests=pass --features sonic-rs,simd-json,flexon-rt,jiter,hifijson,struson,cell/count-alloc && cargo nextest run --workspace --locked --no-tests=pass --features flexon-ct,cell/count-alloc"
 
 [tasks.image]
 description = "Build the valgrind container image"
@@ -58,15 +62,26 @@ description = "Conformance at the portable variant only"
 run = "cargo xtask conformance --variants portable"
 
 [tasks.count]
-description = "callgrind counts (Linux, in the container)"
+description = "callgrind counts (in the container)"
 run = "cargo xtask count"
+
+[tasks."count:check"]
+description = "Recount every committed count from an empty target/ at zero tolerance, and record that it reproduced"
+run = "rm -rf target/matrix/container target/callgrind && cargo xtask count --check --tolerance 0 --record"
+
+[tasks.sensitivity]
+description = "The harness-can-fail checks under callgrind, in the container"
+run = """
+cargo xtask image
+podman run --rm --security-opt label=disable -v "$PWD:/work" -v "${CARGO_HOME:-$HOME/.cargo}/registry:/usr/local/cargo/registry" serde-json-contenders:valgrind cargo test -p cell --locked --features count-alloc -- --ignored sensitivity
+"""
 
 [tasks.alloc]
 description = "Allocations per operation"
 run = "cargo xtask alloc"
 
 [tasks.hw]
-description = "Hardware counters (Linux)"
+description = "Hardware cycles at native, pinned, in shuffled rounds with an A/A control; pass --trust canonical only on a quieted machine"
 run = "cargo xtask hw"
 
 [tasks.time]
@@ -74,7 +89,7 @@ description = "Timed sampling; pass --trust canonical only on a quieted machine"
 run = "cargo xtask time"
 
 [tasks."e2e:count"]
-description = "Per-request callgrind counts and codec share (Linux, container)"
+description = "Per-request callgrind counts and codec share (in the container)"
 run = "cargo xtask e2e-count"
 
 [tasks."e2e:time"]
@@ -106,37 +121,49 @@ description = "Conformance subset under Miri (nightly)"
 run = "cargo xtask miri"
 
 [tasks.report]
-description = "Regenerate the README's results from results/"
+description = "Regenerate report/ from results/"
 run = "cargo xtask report"
 
 [tasks."report:check"]
-description = "Fail if the README's results are not what results/ generates"
+description = "Fail if report/ is not what results/ generates, or a README claim does not match it"
 run = "cargo xtask report --check"
 
 [tasks.check]
 description = "Everything a change must pass before handoff"
 depends = ["format:check", "lint", "test", "report:check"]
 
+[tasks.toolchains]
+description = "Install the extra toolchains: Rust 1.85.0 for msrv, the pinned nightly for fuzz and miri"
+run = """
+rustup toolchain install 1.85.0 --profile minimal
+rustup toolchain install nightly-2026-09-25 --profile minimal --component miri,rust-src,llvm-tools-preview
+"""
+
 [tasks.all]
-# `all` measures, so on a laptop it skips what that OS cannot run and says so.
-description = "Every measurement this host can take, then the report"
+# Every result file the report reads, in one run on one commit: the report
+# refuses results measured on other code, so a partial rerun after a change
+# to measured code is caught rather than mixed in. Set SJC_TRUST=canonical
+# on a quieted host; the timed tasks refuse it on a busy one.
+description = "Every measurement and verification, then the report (x86-64 Linux; hours)"
 run = """
 set -e
+mise run toolchains
+mise run test
+mise run sensitivity
 cargo xtask doctor
 cargo xtask conformance
 cargo xtask alloc
 cargo xtask size
 cargo xtask msrv
 cargo xtask compile-time
+cargo xtask count
+mise run count:check
+cargo xtask e2e-count
+cargo xtask footprint
+cargo xtask miri
+cargo xtask fuzz
+cargo xtask hw
 cargo xtask time
 cargo xtask e2e-time
-if [ "$(uname -s)" = Linux ]; then
-  cargo xtask count
-  cargo xtask e2e-count
-  cargo xtask hw
-else
-  echo "all: callgrind and hardware counters need Linux; skipped on $(uname -s)"
-fi
-cargo xtask footprint
 cargo xtask report
 """

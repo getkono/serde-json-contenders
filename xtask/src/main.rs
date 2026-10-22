@@ -1,7 +1,7 @@
 //! Every task this repository runs, behind `cargo xtask <task>`.
 //!
 //! Each task writes provenance-stamped JSON under `results/`; `report` is the
-//! only writer of the README's results, and it reads nothing else.
+//! only writer of `report/`, and it reads nothing but `results/`.
 
 mod build;
 mod container;
@@ -26,11 +26,12 @@ cargo xtask <task> [--sets a,b] [--variants v,w] [--workloads x,y] [--jobs N]
   image         build the valgrind container image
   doctor        verify every build compiled and runs its claimed SIMD paths
   count         callgrind instructions and estimated cycles (container)
+                [--check [--tolerance PCT] [--record]]
   alloc         allocations per operation
-  hw            hardware instruction and cycle counters (Linux)
+  hw            hardware cycles and instructions at native [--rounds 3] [--core 2] [--trust solo|canonical]
   time          timed sampling [--rounds 3] [--core 2] [--trust solo|canonical]
   e2e-count     callgrind per HTTP request, codec share (container)
-  e2e-time      loopback throughput and open-loop p99 [--reps 5] [--seconds 30]
+  e2e-time      loopback throughput and open-loop p99 [--reps 5] [--seconds 30] [--trust solo|canonical]
   size          .text of a fixture per backend, minus the floor
   compile-time  clean and incremental build times [--reps 5]
   msrv          does each backend build on Rust 1.85
@@ -38,7 +39,7 @@ cargo xtask <task> [--sets a,b] [--variants v,w] [--workloads x,y] [--jobs N]
   conformance   the differential suite, every set at every variant
   fuzz          differential fuzzing [--seconds 1800]
   miri          conformance subset under Miri
-  report        regenerate README results [--check]
+  report        regenerate report/ from results/ [--check] [--allow-stale]
 ";
 
 fn main() -> Result<()> {
@@ -47,12 +48,13 @@ fn main() -> Result<()> {
         eprint!("{HELP}");
         return Ok(());
     };
+    provenance::begin();
     match task.as_str() {
         "image" => container::image(),
         "doctor" => doctor::doctor(rest),
         "count" => counted::count(rest),
         "alloc" => counted::alloc(rest),
-        "hw" => counted::hw(rest),
+        "hw" => timed::hw(rest),
         "time" => timed::time(rest),
         "e2e-count" => endtoend::count(rest),
         "e2e-time" => endtoend::time(rest),

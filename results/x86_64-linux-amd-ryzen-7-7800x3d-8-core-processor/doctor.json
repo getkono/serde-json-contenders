@@ -887,8 +887,7 @@
           "lzcnt",
           "pclmulqdq",
           "avx512f",
-          "avx512bw",
-          "aes"
+          "avx512bw"
         ],
         "detected_features": [
           "sse4.2",
@@ -974,8 +973,7 @@
           "lzcnt",
           "pclmulqdq",
           "avx512f",
-          "avx512bw",
-          "aes"
+          "avx512bw"
         ],
         "detected_features": [
           "sse4.2",
@@ -1062,8 +1060,7 @@
           "lzcnt",
           "pclmulqdq",
           "avx512f",
-          "avx512bw",
-          "aes"
+          "avx512bw"
         ],
         "detected_features": [
           "sse4.2",
@@ -1152,8 +1149,7 @@
           "lzcnt",
           "pclmulqdq",
           "avx512f",
-          "avx512bw",
-          "aes"
+          "avx512bw"
         ],
         "detected_features": [
           "sse4.2",
@@ -1242,8 +1238,7 @@
           "lzcnt",
           "pclmulqdq",
           "avx512f",
-          "avx512bw",
-          "aes"
+          "avx512bw"
         ],
         "detected_features": [
           "sse4.2",
@@ -1332,8 +1327,7 @@
           "lzcnt",
           "pclmulqdq",
           "avx512f",
-          "avx512bw",
-          "aes"
+          "avx512bw"
         ],
         "detected_features": [
           "sse4.2",
@@ -1421,8 +1415,7 @@
           "lzcnt",
           "pclmulqdq",
           "avx512f",
-          "avx512bw",
-          "aes"
+          "avx512bw"
         ],
         "detected_features": [
           "sse4.2",
@@ -1510,8 +1503,7 @@
           "lzcnt",
           "pclmulqdq",
           "avx512f",
-          "avx512bw",
-          "aes"
+          "avx512bw"
         ],
         "detected_features": [
           "sse4.2",
@@ -1598,8 +1590,7 @@
           "lzcnt",
           "pclmulqdq",
           "avx512f",
-          "avx512bw",
-          "aes"
+          "avx512bw"
         ],
         "detected_features": [
           "sse4.2",
@@ -1673,16 +1664,17 @@
     "boost": "1",
     "container_image": null,
     "cpu": "AMD Ryzen 7 7800X3D 8-Core Processor",
-    "git_commit": "d70c256e7cfaa75fbc5a63cea3fb5c4e2875d164",
+    "fingerprint": "cf070453554890eb",
+    "git_commit": "f0dd0a671e7ea6711f15c19d4d2ce79e7f3f7cfb",
     "git_dirty": false,
     "governor": "powersave",
     "host": "x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor",
     "kernel": "7.2.4-200.fc44.x86_64",
-    "loadavg": "10.46 12.39 13.82 6/5207 343126",
+    "loadavg": "2.69 2.70 2.88 2/3024 2644348",
     "microcode": "microcode\t: 0xa60120c",
     "os": "linux",
     "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
-    "timestamp": "2026-09-28T06:50:44Z",
+    "timestamp": "2026-10-15T17:54:19Z",
     "valgrind": null
   },
   "schema": 1

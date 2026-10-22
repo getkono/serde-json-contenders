@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 440" width="720" height="440" role="img" aria-label="reject-truncated decode: cycles at native against decode heap bytes per operation">
+<style>
+.bg{fill:#fcfcfb}.ink{fill:#0b0b0b}.ink2{fill:#52514e}.grid{stroke:#e4e3df;stroke-width:1}
+.axis{stroke:#8a8984;stroke-width:1}.ref{stroke:#8a8984;stroke-width:1;stroke-dasharray:3 3}
+.front{stroke:#2a78d6;stroke-width:2;fill:none}
+.on{fill:#2a78d6;stroke:#fcfcfb;stroke-width:2}.off{fill:#8a8984;stroke:#fcfcfb;stroke-width:2}
+.on.hollow{fill:#fcfcfb;stroke:#2a78d6}.off.hollow{fill:#fcfcfb;stroke:#8a8984}
+.ring{fill:none;stroke:#eb6834;stroke-width:2}
+text{font-family:system-ui,'Segoe UI',sans-serif;font-size:12px}
+.title{font-size:14px;font-weight:600}
+@media (prefers-color-scheme:dark){
+.bg{fill:#1a1a19}.ink{fill:#f0efec}.ink2{fill:#c3c2b7}.grid{stroke:#2e2e2c}.axis,.ref{stroke:#7a7974}
+.front{stroke:#3987e5}.on{fill:#3987e5;stroke:#1a1a19}.off{fill:#7a7974;stroke:#1a1a19}
+.on.hollow{fill:#1a1a19;stroke:#3987e5}.off.hollow{fill:#1a1a19;stroke:#7a7974}.ring{stroke:#d95926}}
+</style>
+<rect class="bg" width="720" height="440" rx="6"/>
+<text class="ink title" x="84" y="24">reject-truncated decode: cycles at native against decode heap bytes per operation</text>
+<line class="grid" x1="158.4" y1="48" x2="158.4" y2="384.0"/><text class="ink2" x="158.4" y="402.0" text-anchor="middle">100k</text>
+<line class="grid" x1="234.1" y1="48" x2="234.1" y2="384.0"/><text class="ink2" x="234.1" y="402.0" text-anchor="middle">200k</text>
+<line class="grid" x1="334.1" y1="48" x2="334.1" y2="384.0"/><text class="ink2" x="334.1" y="402.0" text-anchor="middle">500k</text>
+<line class="grid" x1="409.8" y1="48" x2="409.8" y2="384.0"/><text class="ink2" x="409.8" y="402.0" text-anchor="middle">1M</text>
+<line class="grid" x1="485.5" y1="48" x2="485.5" y2="384.0"/><text class="ink2" x="485.5" y="402.0" text-anchor="middle">2M</text>
+<line class="grid" x1="84" y1="319.0" x2="550.0" y2="319.0"/><text class="ink2" x="76.0" y="323.0" text-anchor="end">200k</text>
+<line class="grid" x1="84" y1="232.3" x2="550.0" y2="232.3"/><text class="ink2" x="76.0" y="236.3" text-anchor="end">300k</text>
+<line class="grid" x1="84" y1="145.5" x2="550.0" y2="145.5"/><text class="ink2" x="76.0" y="149.5" text-anchor="end">400k</text>
+<line class="grid" x1="84" y1="58.8" x2="550.0" y2="58.8"/><text class="ink2" x="76.0" y="62.8" text-anchor="end">500k</text>
+<line class="axis" x1="84" y1="384.0" x2="550.0" y2="384.0"/><line class="axis" x1="84" y1="48" x2="84" y2="384.0"/>
+<text class="ink2" x="317.0" y="426.0" text-anchor="middle">hardware cycles per operation, native (log)</text>
+<text class="ink2" transform="translate(18 216.0) rotate(-90)" text-anchor="middle">decode heap bytes per operation</text>
+<line class="ref" x1="394.0" y1="48" x2="394.0" y2="384.0"/><line class="ref" x1="84" y1="360.6" x2="550.0" y2="360.6"/>
+<path class="front" d="M108.4,71.2 H144.1 V226.8 H343.0 V360.8 H347.0 V360.8"/>
+<circle class="on hollow" cx="108.4" cy="71.2" r="5"><title>simd-json-buffers: 63.23k cycles, 486k (fails conformance)</title></circle>
+<circle class="ring" cx="108.4" cy="71.2" r="9"/>
+<text class="ink" x="120.4" y="75.2">simd-json-buffers</text>
+<circle class="on hollow" cx="144.1" cy="226.8" r="5"><title>simd-json: 87.72k cycles, 306k (fails conformance)</title></circle>
+<circle class="ring" cx="144.1" cy="226.8" r="9"/>
+<text class="ink" x="156.1" y="230.8">simd-json</text>
+<circle class="off hollow" cx="344.8" cy="309.6" r="5"><title>flexon-rt-mut: 551k cycles, 211k (fails conformance)</title></circle>
+<circle class="ring" cx="344.8" cy="309.6" r="9"/>
+<text class="ink" x="356.8" y="313.6">flexon-rt-mut</text>
+<circle class="off hollow" cx="341.4" cy="309.6" r="5"><title>flexon-ct-mut: 534k cycles, 211k (fails conformance)</title></circle>
+<circle class="ring" cx="341.4" cy="309.6" r="9"/>
+<line class="ref" x1="347.4" y1="309.6" x2="351.4" y2="296.6"/>
+<text class="ink" x="353.4" y="300.6">flexon-ct-mut</text>
+<circle class="off hollow" cx="525.6" cy="346.9" r="5"><title>struson: 2.89M cycles, 168k (fails conformance)</title></circle>
+<text class="ink" x="537.6" y="350.9">struson</text>
+<circle class="off hollow" cx="440.2" cy="360.2" r="5"><title>sonic-rs: 1.32M cycles, 152k (fails conformance)</title></circle>
+<text class="ink" x="452.2" y="364.2">sonic-rs</text>
+<circle class="off" cx="394.0" cy="360.6" r="5"><title>serde_json: 865k cycles, 152k</title></circle>
+<circle class="ring" cx="394.0" cy="360.6" r="9"/>
+<line class="ref" x1="400.0" y1="360.6" x2="404.0" y2="334.6"/>
+<text class="ink" x="406.0" y="338.6">serde_json</text>
+<circle class="off" cx="393.1" cy="360.6" r="5"><title>serde_json+float_roundtrip: 858k cycles, 152k</title></circle>
+<line class="ref" x1="399.1" y1="360.6" x2="403.1" y2="282.6"/>
+<text class="ink" x="405.1" y="286.6">serde_json+float_roundtrip</text>
+<circle class="off hollow" cx="387.2" cy="360.7" r="5"><title>jiter: 813k cycles, 152k (fails conformance)</title></circle>
+<circle class="ring" cx="387.2" cy="360.7" r="9"/>
+<line class="ref" x1="393.2" y1="360.7" x2="397.2" y2="256.7"/>
+<text class="ink" x="399.2" y="260.7">jiter</text>
+<circle class="on hollow" cx="347.0" cy="360.8" r="5"><title>flexon-rt: 563k cycles, 152k (fails conformance)</title></circle>
+<circle class="ring" cx="347.0" cy="360.8" r="9"/>
+<line class="ref" x1="353.0" y1="360.8" x2="357.0" y2="230.8"/>
+<text class="ink" x="359.0" y="234.8">flexon-rt</text>
+<circle class="on hollow" cx="343.0" cy="360.8" r="5"><title>flexon-ct: 542k cycles, 152k (fails conformance)</title></circle>
+<circle class="ring" cx="343.0" cy="360.8" r="9"/>
+<line class="ref" x1="349.0" y1="360.8" x2="353.0" y2="217.8"/>
+<text class="ink" x="355.0" y="221.8">flexon-ct</text>
+<circle class="off hollow" cx="401.6" cy="360.8" r="5"><title>hifijson: 928k cycles, 152k (fails conformance)</title></circle>
+<line class="ref" x1="407.6" y1="360.8" x2="411.6" y2="373.8"/>
+<text class="ink" x="413.6" y="377.8">hifijson</text>
+</svg>

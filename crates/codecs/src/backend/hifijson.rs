@@ -11,7 +11,10 @@ fn failure(error: &hifijson::serde::Error) -> Failure {
         Error::Custom(_) | Error::Number(_) => Class::Data,
         Error::Parse(hifijson::Error::Str(hifijson::str::Error::Eof)) => Class::Eof,
         // hifijson does not distinguish running out of input from any other
-        // unexpected token outside strings.
+        // unexpected token outside strings. Nor a number target meeting a
+        // string (`"1"` into `u32`, serde_json: 422) from a malformed
+        // number (`-`, 400): its number lexer reports `ExpectedDigit` for
+        // both, so that stays a syntax error.
         Error::Parse(_) => Class::Syntax,
     };
     Failure::new(class, format!("{error:?}"))

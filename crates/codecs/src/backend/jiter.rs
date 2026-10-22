@@ -7,17 +7,27 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use crate::{Backend, Body, Class, Failure, Position};
 
 fn failure(error: &jiter::serde::Error) -> Failure {
+    use jiter::serde::Error;
     let class = match error {
-        jiter::serde::Error::Syntax(inner) => match inner.error_type {
+        Error::Syntax(inner) => match inner.error_type {
             JsonErrorType::EofWhileParsingList
             | JsonErrorType::EofWhileParsingObject
             | JsonErrorType::EofWhileParsingString
             | JsonErrorType::EofWhileParsingValue => Class::Eof,
+            // Without `num-bigint` this is only ever a well-formed integer
+            // outside `i64`. serde_json reads one as an `f64` and refuses it
+            // by type (`2^64` into `u64`), a shape error. Past 308 digits
+            // that `f64` overflows and serde_json answers 400 instead, which
+            // this error cannot tell apart, so such integers differ the other
+            // way. (jiter parses `1e400` to infinity rather than failing.)
+            JsonErrorType::NumberOutOfRange => Class::Data,
             _ => Class::Syntax,
         },
-        jiter::serde::Error::Message(_) | jiter::serde::Error::Data { .. } | jiter::serde::Error::Enum { .. } => {
-            Class::Data
-        }
+        // An enum that is neither a string nor a one-key object (a number,
+        // `null`, `{}`, a second key): serde_json refuses every such shape
+        // with `ExpectedSomeValue`, a syntax error, before a visitor runs.
+        Error::Enum { .. } => Class::Syntax,
+        Error::Message(_) | Error::Data { .. } => Class::Data,
     };
     let failure = Failure::new(class, format!("{error:?}"));
     match error.index() {

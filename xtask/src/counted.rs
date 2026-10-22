@@ -163,16 +163,24 @@ impl Filter {
     }
 
     pub fn cells(&self, set: &'static Set, shapes: &[Shape]) -> Vec<Cell> {
+        self.cells_by(set, |_| shapes)
+    }
+
+    /// [`Self::cells`], with the shapes chosen per workload.
+    pub fn cells_by<'s>(&self, set: &'static Set, shapes_of: impl Fn(&str) -> &'s [Shape]) -> Vec<Cell> {
         let workloads: Vec<&'static str> = payloads::ALL
             .iter()
             .copied()
             .filter(|w| self.workloads.as_ref().is_none_or(|f| f.iter().any(|n| n == w)))
             .collect();
-        let shapes = self.shapes.as_deref().unwrap_or(shapes);
         let mut cells = Vec::new();
         for backend in set.backends {
             for workload in &workloads {
-                for shape in shapes {
+                let shapes = self.shapes.as_deref().unwrap_or_else(|| shapes_of(workload));
+                for shape in shapes
+                    .iter()
+                    .filter(|s| !crate::matrix::DECODE_ONLY.contains(workload) || s.op == "decode")
+                {
                     cells.push(Cell {
                         set,
                         backend,
@@ -208,6 +216,12 @@ fn cell_json(stdout: &str) -> Value {
 /// there when it is not).
 pub fn count(args: &[String]) -> Result<()> {
     if std::env::var_os("SJC_IN_CONTAINER").is_none() {
+        // A recount compares with committed counts and writes none, so it
+        // needs no doctor of its own (CI's cross-host check runs on a fresh
+        // runner).
+        if !args.iter().any(|a| a == "--check") {
+            crate::doctor::require()?;
+        }
         return crate::container::reexec("count", args);
     }
     let filter = Filter::parse(args);
@@ -247,6 +261,20 @@ pub fn count(args: &[String]) -> Result<()> {
             "count --check: {compared} counts reproduce within {} %",
             tolerance * 100.0
         );
+        // `--record` keeps the evidence: the report requires a recount of
+        // every committed count, at zero tolerance, on the same code.
+        if args.iter().any(|a| a == "--record") {
+            let counted = committed["rows"]
+                .as_array()
+                .map_or(0, |r| r.iter().filter(|r| r["ir"].is_number()).count());
+            crate::util::write_json(
+                &root().join("results/callgrind/recount.json"),
+                &json!({
+                    "schema": 1, "kind": "recount", "provenance": crate::provenance::stamp_checked()?,
+                    "compared": compared, "committed": counted, "tolerance": tolerance,
+                }),
+            )?;
+        }
         return Ok(());
     }
     merge_rows(&path, &rows, "callgrind")
@@ -277,8 +305,9 @@ fn tolerance(args: &[String]) -> Result<f64> {
 }
 
 /// `count --check`: compare fresh rows with the committed ones; returns how
-/// many were compared. A committed count that the rerun failed to produce is
-/// a failure too, not a row to skip.
+/// many were compared. A committed count that the rerun failed to produce,
+/// or did not run although it ran its variant, set and workload, is a
+/// failure too, not a row to skip.
 ///
 /// Counts are compared as the whole-run totals callgrind reported: a row
 /// stores the total divided by its iterations, and the committed quotient
@@ -300,7 +329,21 @@ fn check_reproduced(committed: &Value, fresh: &[Value], tolerance: f64) -> Resul
         .collect();
     let mut compared = 0;
     let mut off = Vec::new();
+    // A committed verdict the rerun does not reproduce (a wrong or rejected
+    // cell that now counts, or the reverse) is a difference too.
+    let verdicts: std::collections::HashMap<String, &Value> = committed["rows"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|r| (key(r), &r["verdict"]))
+        .collect();
     for row in fresh {
+        if let Some(was) = verdicts.get(&key(row))
+            && **was != row["verdict"]
+        {
+            off.push(format!("{}: verdict {was} -> {}", key(row), row["verdict"]));
+            continue;
+        }
         let Some(old) = old.get(&key(row)) else {
             continue;
         };
@@ -323,6 +366,17 @@ fn check_reproduced(committed: &Value, fresh: &[Value], tolerance: f64) -> Resul
         }
     }
     anyhow::ensure!(compared > 0, "no committed rows to compare against");
+    // A committed count inside the rerun's scope (its variants, sets and
+    // workloads) that the rerun did not produce at all is a failure too: a
+    // cell dropped from the matrix must not pass by being skipped.
+    let scope = |r: &Value| ["variant", "set", "workload"].map(|k| r[k].to_string()).join("|");
+    let fresh_keys: std::collections::HashSet<String> = fresh.iter().map(key).collect();
+    let fresh_scope: std::collections::HashSet<String> = fresh.iter().map(scope).collect();
+    for r in committed["rows"].as_array().into_iter().flatten() {
+        if total(r).is_some() && fresh_scope.contains(&scope(r)) && !fresh_keys.contains(&key(r)) {
+            off.push(format!("{}: not recounted", key(r)));
+        }
+    }
     if !off.is_empty() {
         anyhow::bail!(
             "{} of {compared} counts moved more than {} %:\n{}",
@@ -425,16 +479,16 @@ pub fn merge_rows(path: &std::path::Path, rows: &[Value], kind: &str) -> Result<
 }
 
 /// `xtask alloc`: allocation counts on the host, every variant.
+///
+/// Only at `native` unless `--variants` says otherwise: allocation counts do
+/// not depend on the target CPU, and the report reads `native`.
 pub fn alloc(args: &[String]) -> Result<()> {
-    host_mode(args, "alloc", SHAPES, &crate::provenance::host_slug(), None)
-}
-
-/// `xtask hw`: hardware instruction and cycle counters (Linux).
-pub fn hw(args: &[String]) -> Result<()> {
-    if !cfg!(target_os = "linux") {
-        anyhow::bail!("hardware counters need perf_event_open, which only Linux has");
+    crate::doctor::require()?;
+    let mut args = args.to_vec();
+    if !args.iter().any(|a| a == "--variants") {
+        args.extend(["--variants".to_owned(), "native".to_owned()]);
     }
-    host_mode(args, "hw", SHAPES, &crate::provenance::host_slug(), Some(jobs(args, 4)))
+    host_mode(&args, "alloc", SHAPES, &crate::provenance::host_slug(), None)
 }
 
 fn host_mode(args: &[String], mode: &str, shapes: &[Shape], host: &str, threads: Option<usize>) -> Result<()> {
@@ -443,7 +497,9 @@ fn host_mode(args: &[String], mode: &str, shapes: &[Shape], host: &str, threads:
     let mut rows = Vec::new();
     for variant in filter.variants() {
         for set in filter.sets() {
-            let release = build(Place::Host, "cell", set, &variant)?;
+            // Only this mode counts allocations, so only its build pays for
+            // the counting allocator.
+            let release = crate::build::build_featured(Place::Host, "cell", set, &variant, "count-alloc")?;
             let cell_bin = bin(&release, "cell");
             let cells = filter.cells(set, shapes);
             eprintln!("{mode}: {} {} ({} cells)", variant.name, set.name, cells.len());
@@ -500,6 +556,17 @@ mod tests {
     }
 
     #[test]
+    fn a_verdict_the_recount_does_not_reproduce_fails() {
+        let mut wrong = row("json-small", None);
+        wrong["error"] = serde_json::Value::Null;
+        wrong["verdict"] = json!("wrong");
+        let committed = json!({ "rows": [row("json-large", Some(10.0)), wrong] });
+        let mut now_exact = row("json-small", Some(5.0));
+        now_exact["verdict"] = json!("exact");
+        assert!(check_reproduced(&committed, &[row("json-large", Some(10.0)), now_exact], 0.0).is_err());
+    }
+
+    #[test]
     fn a_counted_process_sees_only_a_fixed_path() {
         let mut cmd = std::process::Command::new("env");
         cmd.env("SJC_GIT_DIRTY", "true");
@@ -550,6 +617,17 @@ mod tests {
     }
 
     #[test]
+    fn a_committed_count_the_rerun_dropped_is_a_failure() {
+        let mut dropped = row("json-small", Some(2000.0));
+        dropped["op"] = json!("encode");
+        let committed = json!({ "rows": [row("json-small", Some(1000.0)), dropped] });
+        let err = check_reproduced(&committed, &[row("json-small", Some(1000.0))], 0.0)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("not recounted"), "{err}");
+    }
+
+    #[test]
     fn nothing_to_compare_is_a_failure() {
         let committed = json!({ "rows": [row("json-small", Some(1000.0))] });
         assert!(check_reproduced(&committed, &[row("echo-post", Some(1.0))], REPRODUCIBLE).is_err());
@@ -597,8 +675,8 @@ mod tests {
     fn names_the_instruction_valgrind_could_not_decode() {
         let stderr = "\
 ==7== Callgrind, a call-graph generating cache profiler
-disInstr(arm64): unhandled instruction 0x25F8C540
-disInstr(arm64): 0010'0101 1111'1000 1100'0101 0100'0000
+vex amd64->IR: unhandled instruction bytes: 0x62 0xF1 0x7C 0x48 0x10 0x6
+vex amd64->IR:   REX=0 REX.W=0 REX.R=0 REX.X=0 REX.B=0
 ==7== valgrind: Unrecognised instruction at address 0x4a1f20.
 ==7==    at 0x4a1f20: std::rt::lang_start_internal (mod.rs:713)
 ==7== Process terminating with default action of signal 4 (SIGILL)
@@ -607,7 +685,7 @@ In the bug report, send all the above text, the valgrind
 version, and what OS and version you are using.  Thanks.";
         assert_eq!(
             valgrind_error(stderr),
-            "disInstr(arm64): unhandled instruction 0x25F8C540\n\
+            "vex amd64->IR: unhandled instruction bytes: 0x62 0xF1 0x7C 0x48 0x10 0x6\n\
              ==7== valgrind: Unrecognised instruction at address 0x4a1f20."
         );
     }

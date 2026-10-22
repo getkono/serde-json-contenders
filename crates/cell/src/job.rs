@@ -6,11 +6,11 @@ use std::marker::PhantomData;
 use bytes::Bytes;
 use codecs::body::Arrival;
 use codecs::{Backend, Body};
-use payloads::Workload;
+use payloads::{Expect, Workload};
 use serde_json::{Value, json};
 
 use crate::modes;
-use crate::verify::{Verdict, compare};
+use crate::verify::{Verdict, judge_decode, judge_encoding};
 
 /// Which operation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,7 +68,8 @@ pub trait Job {
     /// Make `n` operations' inputs ready. Never measured.
     fn prepare(&mut self, n: u64);
     /// Perform one operation on the next prepared input. This is what is
-    /// measured, including dropping whatever it produced.
+    /// measured, including dropping whatever it produced: the value, or for
+    /// a workload whose bytes must be refused, the error.
     fn run(&mut self);
     /// Run once and check the result.
     fn verify(&mut self) -> Verdict;
@@ -125,6 +126,11 @@ impl<B: Backend> payloads::Visit for ByWorkload<B> {
             (Op::Decode, Form::Owned) => modes::run(&spec, &mut DecodeOwned::<B, W>::new(spec.arrival)),
             (Op::Decode, Form::Borrowed) => modes::run(&spec, &mut DecodeBorrowed::<B, W>::new(spec.arrival)),
             (Op::Encode | Op::EncodeInto, _) if !B::ENCODES => json!({ "verdict": "unsupported" }),
+            // A body that must be refused encodes no value: nothing to encode.
+            (Op::Encode | Op::EncodeInto, _) if W::EXPECT != Expect::Value => json!({
+                "verdict": "unsupported",
+                "detail": "decode-only workload: its bytes must be refused",
+            }),
             (Op::Encode, _) => modes::run(&spec, &mut Encode::<B, W>::new(false)),
             (Op::EncodeInto, _) => modes::run(&spec, &mut Encode::<B, W>::new(true)),
         };
@@ -204,10 +210,7 @@ impl<B: Backend, W: Workload> Job for DecodeOwned<B, W> {
 
     fn verify(&mut self) -> Verdict {
         self.prepare(1);
-        match B::decode::<W::Owned>(self.inputs.next()) {
-            Ok(value) => compare(&to_value(&value), &to_value(&W::value())),
-            Err(failure) => Verdict::Rejected(failure.to_string()),
-        }
+        judge_decode::<W, _>(B::decode::<W::Owned>(self.inputs.next()))
     }
 
     fn size(&self) -> usize {
@@ -245,10 +248,7 @@ impl<B: Backend, W: Workload> Job for DecodeBorrowed<B, W> {
     fn verify(&mut self) -> Verdict {
         self.prepare(1);
         let mut body = Body::new(self.inputs.next());
-        match B::decode_borrowed::<W::Borrowed<'_>>(&mut body) {
-            Ok(value) => compare(&to_value(&value), &to_value(&W::value())),
-            Err(failure) => Verdict::Rejected(failure.to_string()),
-        }
+        judge_decode::<W, _>(B::decode_borrowed::<W::Borrowed<'_>>(&mut body))
     }
 
     fn size(&self) -> usize {
@@ -300,14 +300,7 @@ impl<B: Backend, W: Workload> Job for Encode<B, W> {
             B::encode(&self.value)
         };
         match encoded {
-            Ok(bytes) => match serde_json::from_slice::<Value>(&bytes) {
-                Ok(parsed) => {
-                    let reference = serde_json::from_slice::<Value>(&payloads::encode_canonical(&self.value))
-                        .unwrap_or_else(|e| unreachable!("baseline re-parses its own output: {e}"));
-                    compare(&parsed, &reference)
-                }
-                Err(e) => Verdict::Wrong(format!("output is not JSON: {e}")),
-            },
+            Ok(bytes) => judge_encoding::<W>(&bytes, &payloads::encode_canonical(&self.value)),
             Err(failure) => Verdict::Rejected(failure.to_string()),
         }
     }
@@ -317,6 +310,112 @@ impl<B: Backend, W: Workload> Job for Encode<B, W> {
     }
 }
 
-fn to_value<T: serde::Serialize>(value: &T) -> Value {
-    serde_json::to_value(value).unwrap_or_else(|e| unreachable!("a decoded value re-serializes: {e}"))
+#[cfg(test)]
+mod tests {
+    use bytes::Bytes;
+    use codecs::backend::serde_json::SerdeJson;
+    use codecs::{Class, Failure, Visit};
+    use payloads::families::Defaults;
+    use payloads::reject::{RejectShape, RejectTruncated};
+    use serde::{Deserialize, Serialize, de::DeserializeOwned};
+
+    use super::*;
+
+    /// serde_json, but every refusal is answered 400: blind to the shape
+    /// errors a server answers 422.
+    #[derive(Debug)]
+    struct StatusBlind;
+
+    fn blind(failure: Failure) -> Failure {
+        Failure::new(Class::Syntax, failure.message)
+    }
+
+    impl Backend for StatusBlind {
+        const NAME: &'static str = "status-blind";
+        const CRATE: &'static str = "serde_json";
+        const ENCODES: bool = true;
+        const ELIGIBLE: bool = false;
+
+        fn decode<T: DeserializeOwned>(body: Bytes) -> Result<T, Failure> {
+            SerdeJson::decode(body).map_err(blind)
+        }
+
+        fn decode_borrowed<'a, T: Deserialize<'a>>(body: &'a mut Body) -> Result<T, Failure> {
+            SerdeJson::decode_borrowed(body).map_err(blind)
+        }
+
+        fn encode<T: Serialize>(value: &T) -> Result<Vec<u8>, Failure> {
+            SerdeJson::encode(value)
+        }
+
+        fn encode_into<T: Serialize>(value: &T, out: &mut Vec<u8>) -> Result<(), Failure> {
+            SerdeJson::encode_into(value, out)
+        }
+    }
+
+    /// What the `cell` binary prints for `mode` on backend `B`.
+    fn cell<B: Backend>(mode: &str, op: Op, form: Form, workload: &str) -> Value {
+        ByBackend {
+            spec: Spec {
+                mode: mode.to_owned(),
+                op,
+                form,
+                arrival: Arrival::Shared,
+                iters: Some(2),
+            },
+            workload,
+        }
+        .visit::<B>()
+        .unwrap_or_else(|| panic!("no workload {workload}"))
+    }
+
+    #[test]
+    fn a_refusal_with_the_expected_status_is_exact_and_measured() {
+        for workload in [RejectTruncated::NAME, RejectShape::NAME] {
+            for form in [Form::Owned, Form::Borrowed] {
+                for mode in ["check", "callgrind", "alloc"] {
+                    let out = cell::<SerdeJson>(mode, Op::Decode, form, workload);
+                    assert_eq!(out["verdict"], "exact", "{workload} {form:?} {mode}: {out}");
+                    assert_eq!(out["iters"], 2, "{workload} {form:?} {mode}: {out}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn another_status_is_wrong_and_not_measured() {
+        for mode in ["check", "callgrind", "alloc", "hw", "time"] {
+            for form in [Form::Owned, Form::Borrowed] {
+                let out = cell::<StatusBlind>(mode, Op::Decode, form, RejectShape::NAME);
+                assert_eq!(out["verdict"], "wrong", "{mode} {form:?}: {out}");
+                assert!(out.get("iters").is_none(), "{mode} {form:?} was measured: {out}");
+                let detail = out["detail"].as_str().unwrap_or_default();
+                assert!(detail.starts_with("answered 400, expected 422"), "{detail}");
+            }
+        }
+        // Where 400 is the expected answer, the same backend is right.
+        let out = cell::<StatusBlind>("check", Op::Decode, Form::Owned, RejectTruncated::NAME);
+        assert_eq!(out["verdict"], "exact", "{out}");
+    }
+
+    #[test]
+    fn a_body_that_must_be_refused_has_no_encode() {
+        for op in [Op::Encode, Op::EncodeInto] {
+            for workload in [RejectTruncated::NAME, RejectShape::NAME] {
+                let out = cell::<SerdeJson>("check", op, Form::Owned, workload);
+                assert_eq!(out["verdict"], "unsupported", "{workload} {op:?}: {out}");
+                assert!(out.get("iters").is_none(), "{out}");
+            }
+        }
+    }
+
+    /// The encode is judged against the value's own encoding, which writes
+    /// every member, not against the input, which omits half of them.
+    #[test]
+    fn defaults_encode_every_member_and_still_match_the_value() {
+        let out = cell::<SerdeJson>("check", Op::Encode, Form::Owned, Defaults::NAME);
+        assert_eq!(out["verdict"], "exact", "{out}");
+        let input = Defaults::bytes().len();
+        assert!(out["size"].as_u64().is_some_and(|size| size as usize > input), "{out}");
+    }
 }

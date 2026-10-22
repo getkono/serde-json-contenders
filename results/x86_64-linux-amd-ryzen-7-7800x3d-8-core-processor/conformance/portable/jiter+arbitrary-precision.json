@@ -4,16 +4,17 @@
     "boost": "1",
     "container_image": null,
     "cpu": "AMD Ryzen 7 7800X3D 8-Core Processor",
-    "git_commit": "429dbc42e1ba98e81b69d224c78b094499ad4f34",
+    "fingerprint": "cf070453554890eb",
+    "git_commit": "f0dd0a671e7ea6711f15c19d4d2ce79e7f3f7cfb",
     "git_dirty": false,
     "governor": "powersave",
     "host": "x86_64-linux-amd-ryzen-7-7800x3d-8-core-processor",
     "kernel": "7.2.4-200.fc44.x86_64",
-    "loadavg": "5.70 10.14 12.58 4/4236 496669",
+    "loadavg": "2.65 3.29 3.28 2/3047 2779682",
     "microcode": "microcode\t: 0xa60120c",
     "os": "linux",
     "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n",
-    "timestamp": "2026-09-28T07:03:41Z",
+    "timestamp": "2026-10-15T18:09:16Z",
     "valgrind": null
   },
   "report": {
@@ -22,23 +23,63 @@
         "gate": "fail",
         "gating_failures": [
           {
-            "case": "shape/variant-wrong-type",
-            "detail": "status Some(422), serde_json Some(400)",
-            "section": "status"
-          },
-          {
-            "case": "shape/u64-out-of-range",
-            "detail": "status Some(400), serde_json Some(422)",
-            "section": "status"
-          },
-          {
             "case": "shape/negative-zero-into-u64",
             "detail": "status Some(200), serde_json Some(422)",
             "section": "status"
           },
           {
+            "case": "u64-max#u64",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "u64-max#f64",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "u64-max#value",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "2^64#f64",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "2^64#value",
+            "detail": "serde_json accepts, the backend refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "negative-zero-int#u64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
+            "case": "negative-zero-int#i64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
             "case": "negative-zero-int#f64",
             "detail": "both accept, values differ, and the backend's is not correctly rounded",
+            "section": "numbers"
+          },
+          {
+            "case": "1e400#u64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "1e400#i64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "1e400#f64",
+            "detail": "the backend accepts what serde_json refuses",
             "section": "numbers"
           },
           {
@@ -47,8 +88,43 @@
             "section": "numbers"
           },
           {
+            "case": "-1e400#u64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "-1e400#i64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "-1e400#f64",
+            "detail": "the backend accepts what serde_json refuses",
+            "section": "numbers"
+          },
+          {
             "case": "-1e400#value",
             "detail": "both accept, values differ, and the backend's is not correctly rounded",
+            "section": "numbers"
+          },
+          {
+            "case": "1000-digit-integer#u64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "1000-digit-integer#i64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "1000-digit-integer#f64",
+            "detail": "both refuse, with a different status",
+            "section": "numbers"
+          },
+          {
+            "case": "1000-digit-integer#value",
+            "detail": "serde_json accepts, the backend refuses",
             "section": "numbers"
           },
           {
@@ -232,24 +308,14 @@
             "section": "attributes"
           },
           {
-            "case": "externally-tagged/6#owned#unique",
+            "case": "y_structure_lonely_null.json#map/owned",
             "detail": "outcome differs from serde_json",
-            "section": "attributes"
+            "section": "value_targets"
           },
           {
-            "case": "externally-tagged/6#owned#shared",
+            "case": "y_structure_lonely_null.json#map/borrowed",
             "detail": "outcome differs from serde_json",
-            "section": "attributes"
-          },
-          {
-            "case": "externally-tagged/6#borrowed#unique",
-            "detail": "outcome differs from serde_json",
-            "section": "attributes"
-          },
-          {
-            "case": "externally-tagged/6#borrowed#shared",
-            "detail": "outcome differs from serde_json",
-            "section": "attributes"
+            "section": "value_targets"
           },
           {
             "case": "ints#decode/owned#unique",
@@ -270,6 +336,26 @@
             "case": "ints#decode/borrowed#shared",
             "detail": "decode differs from serde_json",
             "section": "encode_diff"
+          },
+          {
+            "case": "ints-extremes#decode/owned#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "ints-extremes#decode/borrowed#unique",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "ints-extremes#decode/owned#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
+          },
+          {
+            "case": "ints-extremes#decode/borrowed#shared",
+            "detail": "decode differs from serde_json",
+            "section": "encode_diff"
           }
         ],
         "sections": {
@@ -279,9 +365,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 22 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "flatten-map/2#owned#unique",
@@ -299,9 +385,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 22 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "flatten-map/2#owned#shared",
@@ -319,9 +405,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 22 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "flatten-map/2#borrowed#unique",
@@ -339,9 +425,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 22 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "flatten-map/2#borrowed#shared",
@@ -647,9 +733,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "untagged/4#owned#unique",
@@ -663,9 +749,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "untagged/4#owned#shared",
@@ -679,9 +765,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "untagged/4#borrowed#unique",
@@ -695,9 +781,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "untagged/4#borrowed#shared",
@@ -923,91 +1009,11 @@
                     }
                   }
                 }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "Enum { kind: NotSingleKey, index: 16 }",
-                    "status": 422
-                  }
-                },
-                "case": "externally-tagged/6#owned#unique",
-                "reference": {
-                  "input": "{\"New\":1,\"Unit\":null}",
-                  "outcome": {
-                    "reject": {
-                      "class": "syntax",
-                      "message": "expected value at line 1 column 8",
-                      "status": 400
-                    }
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "Enum { kind: NotSingleKey, index: 16 }",
-                    "status": 422
-                  }
-                },
-                "case": "externally-tagged/6#owned#shared",
-                "reference": {
-                  "input": "{\"New\":1,\"Unit\":null}",
-                  "outcome": {
-                    "reject": {
-                      "class": "syntax",
-                      "message": "expected value at line 1 column 8",
-                      "status": 400
-                    }
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "Enum { kind: NotSingleKey, index: 16 }",
-                    "status": 422
-                  }
-                },
-                "case": "externally-tagged/6#borrowed#unique",
-                "reference": {
-                  "input": "{\"New\":1,\"Unit\":null}",
-                  "outcome": {
-                    "reject": {
-                      "class": "syntax",
-                      "message": "expected value at line 1 column 8",
-                      "status": 400
-                    }
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "Enum { kind: NotSingleKey, index: 16 }",
-                    "status": 422
-                  }
-                },
-                "case": "externally-tagged/6#borrowed#shared",
-                "reference": {
-                  "input": "{\"New\":1,\"Unit\":null}",
-                  "outcome": {
-                    "reject": {
-                      "class": "syntax",
-                      "message": "expected value at line 1 column 8",
-                      "status": 400
-                    }
-                  }
-                }
               }
             ],
-            "disagreements": 40,
+            "disagreements": 36,
             "gating": true,
-            "gating_failure_count": 40,
+            "gating_failure_count": 36,
             "notes": []
           },
           "depth": {
@@ -1288,58 +1294,58 @@
             "notes": []
           },
           "encode_diff": {
-            "cases": 96,
+            "cases": 152,
             "differences": [
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 254 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "ints#decode/owned#unique",
                 "reference": {
-                  "accept": "{\"signed\":[44236,-95297479014572784,-8341,2912621235409727,-283732124,-47870,-7762365930029636,-653482580,-93,-2912453148716,-440046176452484368,5018766820960,-1,-70585304715051272,-4261,25539167121643,517397888,-24561157638,-27545,-66686734177367,-4496274821,873910641920,-513529665479,-588202,-2,-6237073520916,29294009629812240,-3696948081856658,-19576535626,5946,-7690842170,892,-9255136767229210... (14548 bytes, depth 2)"
+                  "accept": "{\"signed\":[54144236,-4,-341,235409727,-9074350634428956316,-36818747870,-29636,-893189653482580,-9326280877775893,-2912453148716,-484368,820960,-1124820850061,-70585304715051272,-8148994261,121643,97888,-561157638,-278095527545,-4177367,-6274821,3910641920,-29665479,-44183398900588202,-676846599401955932,-73520916,2205921972775036432,-1856658,-76535626,47795946,-37597690842170,83393892,-3676722921... (15013 bytes, depth 2)"
                 }
               },
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 254 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "ints#decode/borrowed#unique",
                 "reference": {
-                  "accept": "{\"signed\":[44236,-95297479014572784,-8341,2912621235409727,-283732124,-47870,-7762365930029636,-653482580,-93,-2912453148716,-440046176452484368,5018766820960,-1,-70585304715051272,-4261,25539167121643,517397888,-24561157638,-27545,-66686734177367,-4496274821,873910641920,-513529665479,-588202,-2,-6237073520916,29294009629812240,-3696948081856658,-19576535626,5946,-7690842170,892,-9255136767229210... (14548 bytes, depth 2)"
+                  "accept": "{\"signed\":[54144236,-4,-341,235409727,-9074350634428956316,-36818747870,-29636,-893189653482580,-9326280877775893,-2912453148716,-484368,820960,-1124820850061,-70585304715051272,-8148994261,121643,97888,-561157638,-278095527545,-4177367,-6274821,3910641920,-29665479,-44183398900588202,-676846599401955932,-73520916,2205921972775036432,-1856658,-76535626,47795946,-37597690842170,83393892,-3676722921... (15013 bytes, depth 2)"
                 }
               },
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 254 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "ints#decode/owned#shared",
                 "reference": {
-                  "accept": "{\"signed\":[44236,-95297479014572784,-8341,2912621235409727,-283732124,-47870,-7762365930029636,-653482580,-93,-2912453148716,-440046176452484368,5018766820960,-1,-70585304715051272,-4261,25539167121643,517397888,-24561157638,-27545,-66686734177367,-4496274821,873910641920,-513529665479,-588202,-2,-6237073520916,29294009629812240,-3696948081856658,-19576535626,5946,-7690842170,892,-9255136767229210... (14548 bytes, depth 2)"
+                  "accept": "{\"signed\":[54144236,-4,-341,235409727,-9074350634428956316,-36818747870,-29636,-893189653482580,-9326280877775893,-2912453148716,-484368,820960,-1124820850061,-70585304715051272,-8148994261,121643,97888,-561157638,-278095527545,-4177367,-6274821,3910641920,-29665479,-44183398900588202,-676846599401955932,-73520916,2205921972775036432,-1856658,-76535626,47795946,-37597690842170,83393892,-3676722921... (15013 bytes, depth 2)"
                 }
               },
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 254 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "ints#decode/borrowed#shared",
                 "reference": {
-                  "accept": "{\"signed\":[44236,-95297479014572784,-8341,2912621235409727,-283732124,-47870,-7762365930029636,-653482580,-93,-2912453148716,-440046176452484368,5018766820960,-1,-70585304715051272,-4261,25539167121643,517397888,-24561157638,-27545,-66686734177367,-4496274821,873910641920,-513529665479,-588202,-2,-6237073520916,29294009629812240,-3696948081856658,-19576535626,5946,-7690842170,892,-9255136767229210... (14548 bytes, depth 2)"
+                  "accept": "{\"signed\":[54144236,-4,-341,235409727,-9074350634428956316,-36818747870,-29636,-893189653482580,-9326280877775893,-2912453148716,-484368,820960,-1124820850061,-70585304715051272,-8148994261,121643,97888,-561157638,-278095527545,-4177367,-6274821,3910641920,-29665479,-44183398900588202,-676846599401955932,-73520916,2205921972775036432,-1856658,-76535626,47795946,-37597690842170,83393892,-3676722921... (15013 bytes, depth 2)"
                 }
               },
               {
@@ -1432,6 +1438,58 @@
               },
               {
                 "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 601 })",
+                    "status": 422
+                  }
+                },
+                "case": "ints-extremes#decode/owned#unique",
+                "reference": {
+                  "accept": "{\"signed\":[0,9,2,0,-9,-2,10,99,75,-10,-99,-75,100,999,628,-100,-999,-628,1000,9999,9149,-1000,-9999,-9149,10000,99999,12467,-10000,-99999,-12467,100000,999999,772204,-100000,-999999,-772204,1000000,9999999,1542500,-1000000,-9999999,-1542500,10000000,99999999,54714675,-10000000,-99999999,-54714675,100000000,999999999,795227584,-100000000,-999999999,-795227584,1000000000,9999999999,9728358393,-10000... (2094 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 601 })",
+                    "status": 422
+                  }
+                },
+                "case": "ints-extremes#decode/borrowed#unique",
+                "reference": {
+                  "accept": "{\"signed\":[0,9,2,0,-9,-2,10,99,75,-10,-99,-75,100,999,628,-100,-999,-628,1000,9999,9149,-1000,-9999,-9149,10000,99999,12467,-10000,-99999,-12467,100000,999999,772204,-100000,-999999,-772204,1000000,9999999,1542500,-1000000,-9999999,-1542500,10000000,99999999,54714675,-10000000,-99999999,-54714675,100000000,999999999,795227584,-100000000,-999999999,-795227584,1000000000,9999999999,9728358393,-10000... (2094 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 601 })",
+                    "status": 422
+                  }
+                },
+                "case": "ints-extremes#decode/owned#shared",
+                "reference": {
+                  "accept": "{\"signed\":[0,9,2,0,-9,-2,10,99,75,-10,-99,-75,100,999,628,-100,-999,-628,1000,9999,9149,-1000,-9999,-9149,10000,99999,12467,-10000,-99999,-12467,100000,999999,772204,-100000,-999999,-772204,1000000,9999999,1542500,-1000000,-9999999,-1542500,10000000,99999999,54714675,-10000000,-99999999,-54714675,100000000,999999999,795227584,-100000000,-999999999,-795227584,1000000000,9999999999,9728358393,-10000... (2094 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 601 })",
+                    "status": 422
+                  }
+                },
+                "case": "ints-extremes#decode/borrowed#shared",
+                "reference": {
+                  "accept": "{\"signed\":[0,9,2,0,-9,-2,10,99,75,-10,-99,-75,100,999,628,-100,-999,-628,1000,9999,9149,-1000,-9999,-9149,10000,99999,12467,-10000,-99999,-12467,100000,999999,772204,-100000,-999999,-772204,1000000,9999999,1542500,-1000000,-9999999,-1542500,10000000,99999999,54714675,-10000000,-99999999,-54714675,100000000,999999999,795227584,-100000000,-999999999,-795227584,1000000000,9999999999,9728358393,-10000... (2094 bytes, depth 2)"
+                }
+              },
+              {
+                "backend": {
                   "accept": "{\"features\":[{\"geometry\":{\"coordinates\":[[[-133.47035145759895,78.53503225561042],[-135.48734783145244,62.07840900590142],[-97.08679618614315,61.111565171809026],[-121.6864386027464,79.00016869168071],[-89.05286211146534,62.114555052799794],[-57.7728349856374,82.10598612366918],[-61.660138471932754,74.28822487871457],[-59.98909280758319,53.31864112261178],[-58.76694232326743,63.19793192873587],[-1... (2212322 bytes, depth 7)"
                 },
                 "case": "canada-like#decode/owned#unique",
@@ -1467,9 +1525,9 @@
                 }
               }
             ],
-            "disagreements": 16,
+            "disagreements": 20,
             "gating": true,
-            "gating_failure_count": 4,
+            "gating_failure_count": 8,
             "notes": [
               "decode-only backend: encode checks skipped, decode checks run",
               "floats#decode/owned#unique: the backend's value is the source's exactly; serde_json's is not",
@@ -1491,7 +1549,7 @@
             "data": {
               "line_column": {
                 "backend_has_none": 0,
-                "different": 38,
+                "different": 39,
                 "mismatches": [
                   {
                     "backend": [
@@ -1554,6 +1612,17 @@
                       4
                     ],
                     "case": "n_array_unclosed_with_object_inside.json",
+                    "reference": [
+                      1,
+                      3
+                    ]
+                  },
+                  {
+                    "backend": [
+                      1,
+                      4
+                    ],
+                    "case": "n_object_lone_continuation_byte_in_key_and_trailing_comma.json",
                     "reference": [
                       1,
                       3
@@ -1912,7 +1981,7 @@
                     ]
                   }
                 ],
-                "same": 150
+                "same": 149
               }
             },
             "differences": [],
@@ -1921,7 +1990,7 @@
             "gating_failure_count": 0,
             "notes": [
               "decode-only backend: encoding checks skipped",
-              "error position: 38 n_ case(s) differ from serde_json, 0 have none (data.line_column)"
+              "error position: 39 n_ case(s) differ from serde_json, 0 have none (data.line_column)"
             ]
           },
           "grammar": {
@@ -2009,51 +2078,51 @@
                   "reference": "accept"
                 },
                 "i_number_too_big_neg_int.json#value/borrowed#shared": {
-                  "backend": "reject 400",
+                  "backend": "reject 422",
                   "reference": "accept"
                 },
                 "i_number_too_big_neg_int.json#value/borrowed#unique": {
-                  "backend": "reject 400",
+                  "backend": "reject 422",
                   "reference": "accept"
                 },
                 "i_number_too_big_neg_int.json#value/owned#shared": {
-                  "backend": "reject 400",
+                  "backend": "reject 422",
                   "reference": "accept"
                 },
                 "i_number_too_big_neg_int.json#value/owned#unique": {
-                  "backend": "reject 400",
+                  "backend": "reject 422",
                   "reference": "accept"
                 },
                 "i_number_too_big_pos_int.json#value/borrowed#shared": {
-                  "backend": "reject 400",
+                  "backend": "reject 422",
                   "reference": "accept"
                 },
                 "i_number_too_big_pos_int.json#value/borrowed#unique": {
-                  "backend": "reject 400",
+                  "backend": "reject 422",
                   "reference": "accept"
                 },
                 "i_number_too_big_pos_int.json#value/owned#shared": {
-                  "backend": "reject 400",
+                  "backend": "reject 422",
                   "reference": "accept"
                 },
                 "i_number_too_big_pos_int.json#value/owned#unique": {
-                  "backend": "reject 400",
+                  "backend": "reject 422",
                   "reference": "accept"
                 },
                 "i_number_very_big_negative_int.json#value/borrowed#shared": {
-                  "backend": "reject 400",
+                  "backend": "reject 422",
                   "reference": "accept"
                 },
                 "i_number_very_big_negative_int.json#value/borrowed#unique": {
-                  "backend": "reject 400",
+                  "backend": "reject 422",
                   "reference": "accept"
                 },
                 "i_number_very_big_negative_int.json#value/owned#shared": {
-                  "backend": "reject 400",
+                  "backend": "reject 422",
                   "reference": "accept"
                 },
                 "i_number_very_big_negative_int.json#value/owned#unique": {
-                  "backend": "reject 400",
+                  "backend": "reject 422",
                   "reference": "accept"
                 },
                 "i_object_key_lone_2nd_surrogate.json#ignored/borrowed#shared": {
@@ -2498,9 +2567,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 3 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "i_number_too_big_neg_int.json#value/owned#unique",
@@ -2513,9 +2582,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 3 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "i_number_too_big_neg_int.json#value/owned#shared",
@@ -2528,9 +2597,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 3 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "i_number_too_big_neg_int.json#value/borrowed#unique",
@@ -2543,9 +2612,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 3 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "i_number_too_big_neg_int.json#value/borrowed#shared",
@@ -2558,9 +2627,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 2 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "i_number_too_big_pos_int.json#value/owned#unique",
@@ -2573,9 +2642,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 2 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "i_number_too_big_pos_int.json#value/owned#shared",
@@ -2588,9 +2657,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 2 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "i_number_too_big_pos_int.json#value/borrowed#unique",
@@ -2603,9 +2672,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 2 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "i_number_too_big_pos_int.json#value/borrowed#shared",
@@ -2618,9 +2687,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 3 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "i_number_very_big_negative_int.json#value/owned#unique",
@@ -2633,9 +2702,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 3 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "i_number_very_big_negative_int.json#value/owned#shared",
@@ -2648,9 +2717,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 3 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "i_number_very_big_negative_int.json#value/borrowed#unique",
@@ -2663,9 +2732,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 3 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "i_number_very_big_negative_int.json#value/borrowed#shared",
@@ -2916,7 +2985,7 @@
             "notes": []
           },
           "numbers": {
-            "cases": 1475642,
+            "cases": 2836258,
             "data": {
               "random": {
                 "backend_not_correctly_rounded": 0,
@@ -2925,15 +2994,23 @@
                 "samples": 1000000,
                 "seed": 24301,
                 "texts": 1475586
+              },
+              "random_f32": {
+                "backend_not_correctly_rounded": 0,
+                "backend_rejected": 0,
+                "reference_not_correctly_rounded": 0,
+                "samples": 1000000,
+                "seed": 254959341,
+                "texts": 1360608
               }
             },
             "differences": [
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "u64-max#u64",
@@ -2944,26 +3021,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
-                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
-                    "status": 400
-                  }
-                },
-                "case": "u64-max#i64",
-                "reference": {
-                  "reject": {
                     "class": "data",
-                    "message": "invalid value: integer `18446744073709551615`, expected i64 at line 1 column 20",
-                    "status": 422
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "syntax",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "u64-max#f64",
@@ -2977,9 +3037,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "u64-max#value",
@@ -2990,43 +3050,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
-                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
-                    "status": 400
-                  }
-                },
-                "case": "2^64#u64",
-                "reference": {
-                  "reject": {
                     "class": "data",
-                    "message": "invalid type: floating point `1.8446744073709552e+19`, expected u64 at line 1 column 20",
-                    "status": 422
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "syntax",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
-                    "status": 400
-                  }
-                },
-                "case": "2^64#i64",
-                "reference": {
-                  "reject": {
-                    "class": "data",
-                    "message": "invalid type: floating point `1.8446744073709552e+19`, expected i64 at line 1 column 20",
                     "status": 422
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
-                    "status": 400
                   }
                 },
                 "case": "2^64#f64",
@@ -3040,9 +3066,9 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
-                    "status": 400
+                    "status": 422
                   }
                 },
                 "case": "2^64#value",
@@ -3227,9 +3253,60 @@
               {
                 "backend": {
                   "reject": {
-                    "class": "syntax",
+                    "class": "data",
                     "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
+                    "status": 422
+                  }
+                },
+                "case": "1000-digit-integer#u64",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 1000",
                     "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
+                    "status": 422
+                  }
+                },
+                "case": "1000-digit-integer#i64",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 1000",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
+                    "status": 422
+                  }
+                },
+                "case": "1000-digit-integer#f64",
+                "reference": {
+                  "reject": {
+                    "class": "syntax",
+                    "message": "number out of range at line 1 column 1000",
+                    "status": 400
+                  }
+                }
+              },
+              {
+                "backend": {
+                  "reject": {
+                    "class": "data",
+                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 1 })",
+                    "status": 422
                   }
                 },
                 "case": "1000-digit-integer#value",
@@ -3385,7 +3462,7 @@
             ],
             "disagreements": 438746,
             "gating": true,
-            "gating_failure_count": 3,
+            "gating_failure_count": 20,
             "notes": [
               "decode-only backend: encoder round trips skipped"
             ]
@@ -3393,40 +3470,6 @@
           "status": {
             "cases": 66959,
             "differences": [
-              {
-                "backend": {
-                  "reject": {
-                    "class": "data",
-                    "message": "Enum { kind: NotStringOrSingleKeyObject, index: 110 }",
-                    "status": 422
-                  }
-                },
-                "case": "shape/variant-wrong-type",
-                "reference": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "expected value at line 1 column 111",
-                    "status": 400
-                  }
-                }
-              },
-              {
-                "backend": {
-                  "reject": {
-                    "class": "syntax",
-                    "message": "Syntax(JsonError { error_type: NumberOutOfRange, index: 60 })",
-                    "status": 400
-                  }
-                },
-                "case": "shape/u64-out-of-range",
-                "reference": {
-                  "reject": {
-                    "class": "data",
-                    "message": "invalid type: floating point `1.8446744073709552e+19`, expected u64 at line 1 column 79",
-                    "status": 422
-                  }
-                }
-              },
               {
                 "backend": {
                   "accept": {
@@ -3460,9 +3503,9 @@
                 }
               }
             ],
-            "disagreements": 3,
+            "disagreements": 1,
             "gating": true,
-            "gating_failure_count": 3,
+            "gating_failure_count": 1,
             "notes": []
           },
           "strings": {
@@ -3498,7 +3541,7 @@
             "notes": []
           },
           "structs": {
-            "cases": 128,
+            "cases": 160,
             "differences": [],
             "disagreements": 0,
             "gating": false,
@@ -3536,12 +3579,9 @@
               }
             ],
             "disagreements": 2,
-            "gating": false,
-            "gating_failure_count": 0,
-            "notes": [
-              "y_structure_lonely_null.json#map/owned: differs under arbitrary_precision",
-              "y_structure_lonely_null.json#map/borrowed: differs under arbitrary_precision"
-            ]
+            "gating": true,
+            "gating_failure_count": 2,
+            "notes": []
           }
         }
       }

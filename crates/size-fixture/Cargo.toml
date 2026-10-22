@@ -20,7 +20,13 @@ float-roundtrip = ["codecs/float-roundtrip"]
 [dependencies]
 bytes.workspace = true
 codecs.workspace = true
+serde.workspace = true
+
+# Only to hold the copied body types to the originals; a dev-dependency is
+# never part of the measured build.
+[dev-dependencies]
 payloads.workspace = true
+serde_json.workspace = true
 
 [lints]
 workspace = true

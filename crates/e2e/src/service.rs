@@ -150,6 +150,8 @@ impl<B: Backend> Handler for Codec<B> {
 
 /// The same server with the codec removed: echoes bodies, serves bytes
 /// encoded once at startup by serde_json, and discards what it would decode.
+/// An echo is checksummed as a codec build checksums its payload, so the
+/// difference between the two is the codec, not the handler's own work.
 #[derive(Debug)]
 pub struct Floor {
     large: Bytes,
@@ -188,7 +190,11 @@ impl Handler for Floor {
 
     fn handle(&self, route: Route, body: Bytes) -> Response<Full<Bytes>> {
         match route {
-            Route::EchoPost => json(body),
+            Route::EchoPost => {
+                // As many bytes as a codec build checksums: the payload.
+                std::hint::black_box(checksum(&body[..body.len().min(payloads::kynos::ECHO_PAYLOAD)]));
+                json(body)
+            }
             Route::JsonLargeGet => json(self.large.clone()),
             Route::JsonLargePost => {
                 drop(body);

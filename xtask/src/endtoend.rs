@@ -20,7 +20,7 @@ pub const ROUTES: &[(&str, &str, &str, Option<&str>)] = &[
 ];
 
 /// Backends a set serves end to end; the baseline also serves the floor.
-fn backends(set: &crate::matrix::Set) -> Vec<&'static str> {
+pub fn backends(set: &crate::matrix::Set) -> Vec<&'static str> {
     let mut b: Vec<&'static str> = set.backends.to_vec();
     if set.name == "baseline" {
         b.push("floor");
@@ -29,7 +29,7 @@ fn backends(set: &crate::matrix::Set) -> Vec<&'static str> {
 }
 
 /// Routes a backend can serve: decode-only backends only the decode route.
-fn routes_for(backend: &str) -> Vec<&'static (&'static str, &'static str, &'static str, Option<&'static str>)> {
+pub fn routes_for(backend: &str) -> Vec<&'static (&'static str, &'static str, &'static str, Option<&'static str>)> {
     let decode_only = matches!(backend, "jiter" | "hifijson");
     ROUTES
         .iter()
@@ -40,6 +40,7 @@ fn routes_for(backend: &str) -> Vec<&'static (&'static str, &'static str, &'stat
 /// `xtask e2e-count`: callgrind instructions per request, in the container.
 pub fn count(args: &[String]) -> Result<()> {
     if std::env::var_os("SJC_IN_CONTAINER").is_none() {
+        crate::doctor::require()?;
         return crate::container::reexec("e2e-count", args);
     }
     let filter = Filter::parse(args);
@@ -67,6 +68,11 @@ pub fn count(args: &[String]) -> Result<()> {
                             .arg(&exe)
                             .args([backend, route.0, &requests.to_string()]);
                         match capture(&mut cmd) {
+                            Ok((false, stdout, _)) if stdout.contains("\"verdict\":\"wrong\"") => {
+                                let v: Value = stdout.lines().rev().find_map(|l| serde_json::from_str(l).ok()).unwrap_or(Value::Null);
+                                row["verdict"] = json!("wrong");
+                                row["detail"] = v["detail"].clone();
+                            }
                             Ok((true, _, _)) => match std::fs::read_to_string(&out).map_err(anyhow::Error::from).and_then(|t| parse_callgrind(&t)) {
                                 Ok(e) => {
                                     row["ir"] = json!(e.ir as f64 / f64::from(requests));
@@ -113,17 +119,41 @@ impl Drop for Server {
 }
 
 fn taskset(cores: &str, program: &std::path::Path) -> Command {
-    if cfg!(target_os = "linux") {
-        let mut cmd = Command::new("taskset");
-        cmd.args(["-c", cores]).arg(program);
-        cmd
-    } else {
-        Command::new(program)
-    }
+    let mut cmd = Command::new("taskset");
+    cmd.args(["-c", cores]).arg(program);
+    cmd
+}
+
+/// The cores the server runs on.
+const SERVER_CORES: &str = "0-3";
+
+/// The cores the load generator runs on: every online CPU that is neither a
+/// server core nor an SMT sibling of one, so the two never share a physical
+/// core.
+fn load_cores() -> String {
+    let online = std::fs::read_to_string("/sys/devices/system/cpu/online").unwrap_or_default();
+    let server = crate::timed::cpu_list(SERVER_CORES);
+    let taken: Vec<usize> = server
+        .iter()
+        .flat_map(|c| {
+            let mut s = crate::timed::siblings(&c.to_string())
+                .iter()
+                .filter_map(|x| x.parse().ok())
+                .collect::<Vec<usize>>();
+            s.push(*c);
+            s
+        })
+        .collect();
+    crate::timed::cpu_list(online.trim())
+        .into_iter()
+        .filter(|c| !taken.contains(c))
+        .map(|c| c.to_string())
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 fn start(exe: &std::path::Path, backend: &str, port: u16) -> Result<Server> {
-    let mut child = taskset("0-3", exe)
+    let mut child = taskset(SERVER_CORES, exe)
         .args([backend, &port.to_string(), "4"])
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -136,9 +166,17 @@ fn start(exe: &std::path::Path, backend: &str, port: u16) -> Result<Server> {
     Ok(Server(child))
 }
 
+/// One oha run. A run in which any request failed records an error. One in
+/// which every request was answered, but not with the route's status,
+/// records the verdict `wrong`: a server that answers every request with a
+/// 400 is fast, and nothing about its timing is a figure, but the wrong
+/// answer is a result (rule 2 reads it). An open-loop run
+/// the server could not keep up with is marked `saturated`: its latency is
+/// that of an overloaded server, not of the rate, so it is no p99 figure,
+/// but a backend too slow for the rate is a result, not a failed run.
 fn oha(route: &(&str, &str, &str, Option<&str>), port: u16, seconds: u64, rate: Option<f64>) -> Result<Value> {
     let program = which("oha")?;
-    let mut cmd = taskset("8-15", &program);
+    let mut cmd = taskset(&load_cores(), &program);
     cmd.args([
         "--no-tui",
         "--output-format",
@@ -162,7 +200,28 @@ fn oha(route: &(&str, &str, &str, Option<&str>), port: u16, seconds: u64, rate: 
     anyhow::ensure!(ok, "oha failed: {stderr}");
     let v: Value = serde_json::from_str(&stdout)?;
     let codes = v["statusCodeDistribution"].clone();
+    // `POST /json/large` decodes and answers 204; the others answer 200.
+    let expected = if route.0 == "json-large-post" { "204" } else { "200" };
+    let only_expected = codes
+        .as_object()
+        .is_some_and(|c| !c.is_empty() && c.keys().all(|k| k == expected));
+    // A `-z` run ends by cutting off the requests in flight, which oha counts
+    // as "aborted due to deadline"; every other error kind is a failure.
+    let errors = v["errorDistribution"]
+        .as_object()
+        .map_or(0, |e| e.keys().filter(|k| *k != "aborted due to deadline").count());
+    let rps = v["summary"]["requestsPerSec"].as_f64();
+    // Every request answered, but not with the route's status: the backend
+    // answered wrongly, which is a result (rule 2 reads it), not a failed
+    // run. Failed requests are a failed run.
+    let answered = v["summary"]["successRate"].as_f64() == Some(1.0) && errors == 0;
+    let verdict = (answered && !only_expected).then_some("wrong");
+    let error = (!answered).then(|| format!("failed requests: status {codes}, {errors} error kinds"));
+    let saturated = matches!((rate, rps), (Some(offered), Some(achieved)) if achieved < offered * 0.99);
     Ok(json!({
+        "error": error,
+        "verdict": verdict,
+        "saturated": saturated,
         "rps": v["summary"]["requestsPerSec"],
         "success_rate": v["summary"]["successRate"],
         "p50_ms": v["latencyPercentiles"]["p50"].as_f64().map(|s| s * 1e3),
@@ -172,12 +231,73 @@ fn oha(route: &(&str, &str, &str, Option<&str>), port: u16, seconds: u64, rate: 
     }))
 }
 
+/// The medians and spreads of a backend's reps. One saturated open-loop rep
+/// and the backend has no p99 at the rate; a wrong answer in any rep, and no
+/// throughput or latency of it is a figure.
+fn summarize(reps: &[Value]) -> Value {
+    if let Some(run) = reps
+        .iter()
+        .flat_map(|r| [&r["closed"], &r["open"]])
+        .find(|run| run["verdict"] == "wrong")
+    {
+        return json!({
+            "verdict": "wrong",
+            "detail": format!("answered other than the route's status: {}", run["status_codes"]),
+        });
+    }
+    let saturated = reps.iter().any(|r| r["open"]["saturated"] == true);
+    let sorted = |f: &dyn Fn(&Value) -> Option<f64>| {
+        let mut v: Vec<f64> = reps.iter().filter_map(f).collect();
+        v.sort_by(f64::total_cmp);
+        v
+    };
+    let rps = sorted(&|r| r["closed"]["rps"].as_f64());
+    let p99 = if saturated {
+        Vec::new()
+    } else {
+        sorted(&|r| r["open"]["p99_ms"].as_f64())
+    };
+    let spread = |v: &[f64]| v.last().zip(v.first()).map(|(a, b)| a - b);
+    json!({
+        "rps": rps.get(rps.len() / 2), "rps_spread": spread(&rps),
+        "p99_ms": p99.get(p99.len() / 2), "p99_spread": spread(&p99), "saturated": saturated,
+    })
+}
+
 fn which(name: &str) -> Result<std::path::PathBuf> {
     let (ok, out, _) = capture(Command::new("mise").args(["which", name]))?;
     if ok {
         return Ok(out.trim().into());
     }
     Ok(name.into())
+}
+
+/// The open-loop rate for `route`: 70 % of the median of three closed-loop
+/// runs of serde_json, not of one, which a disturbed run would set above
+/// capacity. Returns the runs and the rate.
+fn open_loop_rate(
+    route: &(&str, &str, &str, Option<&str>),
+    serde_json: Option<&std::path::Path>,
+    seconds: u64,
+) -> Result<(Vec<f64>, Option<f64>)> {
+    let mut calibration: Vec<f64> = Vec::new();
+    if let Some(exe) = serde_json {
+        for _ in 0..3 {
+            let server = start(exe, "serde_json", 17_999)?;
+            let closed = oha(route, 17_999, seconds, None)?;
+            drop(server);
+            anyhow::ensure!(
+                closed["error"].is_null(),
+                "calibrating {}: {}",
+                route.0,
+                closed["error"]
+            );
+            calibration.extend(closed["rps"].as_f64());
+        }
+    }
+    calibration.sort_by(f64::total_cmp);
+    let rate = calibration.get(calibration.len() / 2).map(|r| r * 0.7);
+    Ok((calibration, rate))
 }
 
 /// Reps per route and seconds per load phase unless `--reps` and `--seconds`
@@ -201,11 +321,18 @@ pub fn time(args: &[String]) -> Result<()> {
     };
     let reps = flag("--reps").unwrap_or(REPS);
     let seconds = flag("--seconds").unwrap_or(SECONDS);
-    let trust = if args.iter().any(|a| a == "--canonical") {
-        "canonical"
-    } else {
-        "solo"
-    };
+    crate::doctor::require()?;
+    let trust = crate::timed::trust(args);
+    crate::timed::check_trust(&trust)?;
+    anyhow::ensure!(
+        filter.sets().iter().any(|s| s.name == "baseline"),
+        "e2e-time compares every backend with serde_json in the same session, so the baseline set must run too"
+    );
+    let trust = trust.as_str();
+    // The load generator's version is part of what a percentile means.
+    let oha_version = crate::util::output(Command::new(which("oha")?).arg("--version"))?
+        .trim()
+        .to_owned();
     let bodies = root().join("target/e2e-bodies");
     std::fs::create_dir_all(&bodies)?;
     std::fs::write(
@@ -234,26 +361,20 @@ pub fn time(args: &[String]) -> Result<()> {
                 .filter(|(_, b, _)| routes_for(server_name(b)).iter().any(|r| r.0 == route.0))
                 .collect();
             let mut results: Vec<Vec<Value>> = vec![Vec::new(); eligible.len()];
-            let mut rate = None;
+            let serde_json = eligible
+                .iter()
+                .find(|(_, b, _)| b == "serde_json")
+                .map(|(_, _, exe)| exe.as_path());
+            let (calibration, rate) = open_loop_rate(route, serde_json, seconds)?;
             for rep in 0..reps {
                 let mut order: Vec<usize> = (0..eligible.len()).collect();
                 shuffle(&mut order, 0xe2e + rep);
-                // The open-loop rate is fixed from serde_json's first closed-loop run.
-                if rate.is_none()
-                    && let Some(i) = eligible.iter().position(|(_, b, _)| b == "serde_json")
-                {
-                    order.retain(|&j| j != i);
-                    order.insert(0, i);
-                }
                 for &i in &order {
                     let (_, backend, exe) = eligible[i];
                     eprintln!("e2e-time: {} rep {}/{reps} {}", route.0, rep + 1, backend);
                     let port = 18_000 + u16::try_from(i).unwrap_or(0);
                     let server = start(exe, server_name(backend), port)?;
                     let closed = oha(route, port, seconds, None)?;
-                    if rate.is_none() && backend == "serde_json" {
-                        rate = closed["rps"].as_f64().map(|r| r * 0.7);
-                    }
                     let open = match rate {
                         Some(r) => oha(route, port, seconds, Some(r))?,
                         None => Value::Null,
@@ -263,16 +384,20 @@ pub fn time(args: &[String]) -> Result<()> {
                 }
             }
             for ((set, backend, _), reps) in eligible.iter().zip(results) {
-                let mut rps: Vec<f64> = reps.iter().filter_map(|r| r["closed"]["rps"].as_f64()).collect();
-                let mut p99: Vec<f64> = reps.iter().filter_map(|r| r["open"]["p99_ms"].as_f64()).collect();
-                rps.sort_by(f64::total_cmp);
-                p99.sort_by(f64::total_cmp);
-                rows.push(json!({
+                let failed = reps
+                    .iter()
+                    .find_map(|r| r["closed"]["error"].as_str().or(r["open"]["error"].as_str()))
+                    .map(str::to_owned);
+                let mut row = summarize(&reps);
+                let extra = json!({
                     "variant": variant.name, "set": set, "backend": backend, "route": route.0, "trust": trust, "seconds": seconds,
-                    "rps": rps.get(rps.len() / 2), "rps_spread": rps.last().zip(rps.first()).map(|(a, b)| a - b),
-                    "open_loop_rate": rate, "p99_ms": p99.get(p99.len() / 2), "p99_spread": p99.last().zip(p99.first()).map(|(a, b)| a - b),
-                    "reps": reps,
-                }));
+                    "open_loop_rate": rate, "calibration_rps": calibration, "error": failed, "oha": oha_version,
+                    "load_cores": load_cores(), "reps": reps,
+                });
+                if let (Value::Object(row), Value::Object(extra)) = (&mut row, extra) {
+                    row.extend(extra);
+                }
+                rows.push(row);
             }
         }
     }
@@ -280,11 +405,32 @@ pub fn time(args: &[String]) -> Result<()> {
         .join("results")
         .join(crate::provenance::host_slug())
         .join("e2e-time.json");
-    crate::util::merge_write(
-        &path,
-        "e2e-time",
-        &rows,
-        &["variant", "set", "backend", "route"],
-        json!({}),
-    )
+    crate::util::replace_write(&path, "e2e-time", &rows)
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::summarize;
+
+    #[test]
+    fn a_wrong_answer_in_any_run_leaves_no_figure() {
+        let ok = json!({ "rps": 100.0, "p99_ms": 1.0, "status_codes": { "200": 10 } });
+        let wrong = json!({ "verdict": "wrong", "rps": 900.0, "p99_ms": 0.1, "status_codes": { "400": 10 } });
+        let row = summarize(&[json!({ "closed": ok, "open": wrong })]);
+        assert_eq!(row["verdict"], "wrong");
+        assert!(row["rps"].is_null() && row["p99_ms"].is_null(), "{row}");
+        assert!(row["detail"].as_str().unwrap().contains("400"), "{row}");
+    }
+
+    #[test]
+    fn one_saturated_rep_leaves_no_p99() {
+        let rep =
+            |saturated: bool| json!({ "closed": { "rps": 100.0 }, "open": { "p99_ms": 2.0, "saturated": saturated } });
+        let row = summarize(&[rep(false), rep(true), rep(false)]);
+        assert_eq!(row["saturated"], true);
+        assert!(row["p99_ms"].is_null(), "{row}");
+        assert_eq!(row["rps"], 100.0);
+    }
 }

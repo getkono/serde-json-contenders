@@ -13,7 +13,10 @@ const CONFIG: &str = if cfg!(feature = "flexon-rt") { "rt" } else { "ct" };
 
 fn failure(error: &flexon::serde::de::Error) -> Failure {
     // `Message` is what serde's `de::Error::custom` builds, which is how a
-    // derived `Deserialize` reports a wrong shape.
+    // derived `Deserialize` reports a wrong shape. flexon's typed paths
+    // report a value of the wrong type (`"1"` into `u32`, `null` into a
+    // struct; serde_json: 422) as `InvalidLiteral` or `UnexpectedToken`, the
+    // kinds it also uses for malformed input, so those stay syntax errors.
     let class = match error.kind() {
         Kind::Message(_) => Class::Data,
         Kind::Eof => Class::Eof,

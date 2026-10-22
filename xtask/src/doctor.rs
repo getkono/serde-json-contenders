@@ -29,32 +29,56 @@ fn rustc_features(rustflags: &str) -> Result<Vec<String>> {
 }
 
 /// What each backend's path must be, given the CPU and the build's features.
-fn expected_path(set: &str, backend: &str, compiled: &[String], detected: &[String], arch: &str) -> Option<String> {
+fn expected_path(set: &str, backend: &str, compiled: &[String], detected: &[String]) -> Option<String> {
     let has = |list: &[String], f: &str| list.iter().any(|x| x == f);
-    Some(match (backend, arch) {
-        ("sonic-rs", "aarch64") => "neon".into(),
-        ("sonic-rs", _) if has(compiled, "avx2") && has(compiled, "pclmulqdq") => "avx2+pclmulqdq".into(),
-        ("sonic-rs", _) => "sse2 (fallback scanner)".into(),
-        ("simd-json", "aarch64") => "NEON".into(),
-        ("simd-json", _) if has(detected, "avx2") => "AVX2".into(),
-        ("simd-json", _) if has(detected, "sse4.2") => "SSE42".into(),
-        ("flexon", "aarch64") => "swar (no aarch64 SIMD)".into(),
-        ("flexon", _) if set == "flexon-rt" && has(detected, "avx2") => "rt: avx2 skip, sse2 scan".into(),
-        ("flexon", _) if set == "flexon-ct" && has(compiled, "avx2") && has(compiled, "pclmulqdq") => {
+    Some(match backend {
+        "sonic-rs" if has(compiled, "avx2") && has(compiled, "pclmulqdq") => "avx2+pclmulqdq".into(),
+        "sonic-rs" => "sse2 (fallback scanner)".into(),
+        "simd-json" if has(detected, "avx2") => "AVX2".into(),
+        "simd-json" if has(detected, "sse4.2") => "SSE42".into(),
+        "flexon" if set == "flexon-rt" && has(detected, "avx2") => "rt: avx2 skip, sse2 scan".into(),
+        "flexon" if set == "flexon-ct" && has(compiled, "avx2") && has(compiled, "pclmulqdq") => {
             "ct: avx2+pclmulqdq".into()
         }
-        ("flexon", _) if set == "flexon-ct" && has(compiled, "sse4.2") => "ct: sse4.2".into(),
+        "flexon" if set == "flexon-ct" && has(compiled, "sse4.2") => "ct: sse4.2".into(),
         _ => return None,
     })
 }
 
+/// Refuse to measure unless `doctor` passed on this host for the code about
+/// to be measured. A dirty checkout is let through with a warning: nothing it
+/// measures is accepted by the report anyway.
+pub fn require() -> Result<()> {
+    let stamp = crate::provenance::stamp();
+    if stamp["git_dirty"] != false {
+        eprintln!("doctor: the checkout is dirty, so these results are drafts; doctor is not required");
+        return Ok(());
+    }
+    let path = root()
+        .join("results")
+        .join(crate::provenance::host_slug())
+        .join("doctor.json");
+    let doc = crate::util::read_json(&path)
+        .map_err(|_| anyhow::anyhow!("no doctor result: run `cargo xtask doctor` first"))?;
+    anyhow::ensure!(
+        doc["provenance"]["fingerprint"] == stamp["fingerprint"] && doc["provenance"]["git_dirty"] == false,
+        "doctor ran on other code ({}); run `cargo xtask doctor` first",
+        doc["provenance"]["fingerprint"]
+    );
+    let failures = doc["failures"].as_array().map_or(0, Vec::len);
+    anyhow::ensure!(
+        failures == 0,
+        "doctor found {failures} builds that do not run the path they claim"
+    );
+    Ok(())
+}
+
 /// `xtask doctor`: build every set at every variant on this host, ask each
 /// `cell` what it compiled and what it will run, and check both.
-pub fn doctor(args: &[String]) -> Result<()> {
-    let only_native = args.iter().any(|a| a == "--native");
+pub fn doctor(_args: &[String]) -> Result<()> {
     let mut report = Vec::new();
     let mut failures = Vec::new();
-    for variant in variants().into_iter().filter(|v| !only_native || v.name == "native") {
+    for variant in variants() {
         let expected = rustc_features(variant.rustflags)?;
         for set in SETS {
             let release = build(Place::Host, "cell", set, &variant)?;
@@ -83,7 +107,6 @@ pub fn doctor(args: &[String]) -> Result<()> {
                 "bmi2",
                 "pclmulqdq",
                 "avx512f",
-                "neon",
             ];
             for f in probed {
                 let want = expected.iter().any(|e| e == f);
@@ -97,7 +120,7 @@ pub fn doctor(args: &[String]) -> Result<()> {
             }
             if let Value::Object(paths) = &doc["paths"] {
                 for (backend, path) in paths {
-                    if let Some(want) = expected_path(set.name, backend, &compiled, &detected, std::env::consts::ARCH)
+                    if let Some(want) = expected_path(set.name, backend, &compiled, &detected)
                         && path.as_str() != Some(want.as_str())
                     {
                         failures.push(format!(
@@ -116,7 +139,7 @@ pub fn doctor(args: &[String]) -> Result<()> {
         .join("doctor.json");
     write_json(
         &path,
-        &json!({ "schema": 1, "kind": "doctor", "provenance": crate::provenance::stamp(), "failures": failures, "builds": report }),
+        &json!({ "schema": 1, "kind": "doctor", "provenance": crate::provenance::stamp_checked()?, "failures": failures, "builds": report }),
     )?;
     if failures.is_empty() {
         eprintln!(

@@ -9,6 +9,10 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   NEXTEST_PROFILE: ci
+  # mise pinned, not latest: 2026.10.17 rejects the nextest `exe` option in
+  # mise.toml, and mise.toml is measured code, so dropping the option there
+  # would stale every committed result until the next full rerun.
+  MISE_VERSION: 2026.10.11
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -46,6 +50,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
+        with:
+          version: ${{ env.MISE_VERSION }}
       - uses: Swatinem/rust-cache@v2
       # Findings are the product, so this job fails only when the suite
       # itself cannot run; the gate outcomes are in the uploaded reports.

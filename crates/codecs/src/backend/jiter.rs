@@ -16,10 +16,12 @@ fn failure(error: &jiter::serde::Error) -> Failure {
             | JsonErrorType::EofWhileParsingValue => Class::Eof,
             // Without `num-bigint` this is only ever a well-formed integer
             // outside `i64`. serde_json reads one as an `f64` and refuses it
-            // by type (`2^64` into `u64`), a shape error. Past 308 digits
-            // that `f64` overflows and serde_json answers 400 instead, which
-            // this error cannot tell apart, so such integers differ the other
-            // way. (jiter parses `1e400` to infinity rather than failing.)
+            // by type (`2^64` into `u64`), a shape error, and 422 is what this
+            // answers, as flexon's adapter does for its `NumberOverflow`. An
+            // integer of more than 308 digits overflows serde_json's `f64`
+            // too, and serde_json answers 400 for it; this error cannot tell
+            // the two apart, so that difference is accepted. (jiter parses
+            // `1e400` to infinity rather than failing.)
             JsonErrorType::NumberOutOfRange => Class::Data,
             _ => Class::Syntax,
         },

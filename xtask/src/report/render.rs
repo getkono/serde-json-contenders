@@ -199,6 +199,21 @@ fn outstanding(out: &mut String, data: &Data, verdicts: &[Verdict]) {
     out.push('\n');
 }
 
+/// A timed stage's 1, 5 and 15 minute load averages as it started (stamped
+/// once the load had settled) and as it finished; a stage stamped before the
+/// start was recorded has only the end.
+fn stage_load(prov: &Value) -> Option<String> {
+    let three = |k: &str| {
+        prov[k]
+            .as_str()
+            .map(|l| l.split_whitespace().take(3).collect::<Vec<_>>().join(" "))
+    };
+    three("loadavg").map(|end| match three("loadavg_start") {
+        Some(start) => format!("{start} as it started and {end}"),
+        None => end,
+    })
+}
+
 /// What the recorded results leave unmeasured or weakly measured, each
 /// derived from `results/` so a longer or quieter run retires its own note.
 fn limitations(data: &Data) -> Vec<String> {
@@ -215,11 +230,6 @@ fn limitations(data: &Data) -> Vec<String> {
         c.sort();
         c.dedup();
         c
-    };
-    let load = |t: &Value| {
-        t["loadavg"]
-            .as_str()
-            .map(|l| l.split_whitespace().take(3).collect::<Vec<_>>().join(" "))
     };
     for (name, classes, prov) in [
         (
@@ -238,7 +248,7 @@ fn limitations(data: &Data) -> Vec<String> {
             notes.push(format!(
                 "{name} is {}`solo` class: taken on a shared machine{}, not a quieted one. Its A/A band says how much of a difference is noise.",
                 if classes.iter().any(|c| c == "canonical") { "partly " } else { "" },
-                load(prov).map_or_else(String::new, |l| format!(
+                stage_load(prov).map_or_else(String::new, |l| format!(
                     " (1, 5 and 15 minute load average {l} as it finished; governor {})",
                     prov["governor"].as_str().unwrap_or("?")
                 ))
@@ -719,6 +729,7 @@ fn exports(out: &mut String, exports: &[super::export::Export]) {
 fn costs(out: &mut String, data: &Data) {
     let host = &data.host;
     section(out, "costs", "What adopting it costs besides CPU");
+    out.push_str("Build times are adoption context only: they are timed with no A/A control, so they weigh in no verdict and are not a dominance axis.\n\n");
     out.push_str(&header(&[
         "Set",
         "`.text` +full (native)",
@@ -1299,6 +1310,22 @@ mod tests {
         assert!(notes.contains("end to end 5 reps of 10 s (reduced from the default 30) per load phase"));
         assert!(notes.contains("fuzzing 1800 s per target"));
         assert!(!notes.contains("1800 s (reduced"));
+    }
+
+    /// A stage stamped with its load as it started states both ends.
+    #[test]
+    fn states_the_load_at_both_ends_of_a_timed_stage() {
+        let mut host = host("AMD X", "solo", (3, 30));
+        host.time.provenance["loadavg_start"] = json!("0.90 2.10 3.00 1/900 1");
+        let data = Data {
+            host,
+            ..Data::default()
+        };
+        let notes = limitations(&data).join("\n");
+        assert!(
+            notes.contains("load average 0.90 2.10 3.00 as it started and 41.20 38.00 35.10 as it finished"),
+            "{notes}"
+        );
     }
 
     #[test]

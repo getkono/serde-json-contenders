@@ -17,8 +17,15 @@ fn failure(error: &flexon::serde::de::Error) -> Failure {
     // report a value of the wrong type (`"1"` into `u32`, `null` into a
     // struct; serde_json: 422) as `InvalidLiteral` or `UnexpectedToken`, the
     // kinds it also uses for malformed input, so those stay syntax errors.
+    //
+    // `NumberOverflow` is a well-formed number whose `f64` is not finite: an
+    // integer of more than 308 digits, or `1e400`. It answers 422, as jiter's
+    // adapter does for `NumberOutOfRange`, the class serde_json gives a
+    // well-formed number outside the target's range. serde_json answers 400
+    // for these, since its own `f64` overflows too; that difference is
+    // accepted.
     let class = match error.kind() {
-        Kind::Message(_) => Class::Data,
+        Kind::Message(_) | Kind::NumberOverflow => Class::Data,
         Kind::Eof => Class::Eof,
         _ => Class::Syntax,
     };

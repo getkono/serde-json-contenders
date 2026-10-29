@@ -162,7 +162,7 @@ A fuzz input that crashes a backend with a stack overflow, where serde_json refu
 Hardware cycles, wall-clock time and end-to-end timing all carry a trust class:
 
 - **`solo`**: a shared machine, with the sample checks above.
-- **`canonical`**: a quiet, dedicated machine, stated with `--trust canonical`, which is refused unless the 1-minute load average is at most 1.0 and the CPU governor is `performance`.
+- **`canonical`**: a quiet, dedicated machine, stated with `--trust canonical`, which is refused unless the 1-minute load average is at most 1.0 and every CPU's governor is `performance`. Before each timed stage (`hw`, `time`, `e2e-time`) a `canonical` run waits, for at most 15 minutes, for the 1-minute load to fall to 1.0, so the stage before it (fuzzing, in `mise run all`) does not refuse it. Each timed result file is stamped with the load as the stage started, once settled, and as it finished.
 
 Only timed claims are provisional: a pass under rule 1 or rule 4 that rests on a `solo` cycles or wall-clock win is reported as provisional. A heap win rests on deterministic allocation counts, and a "deserves to exist" answer that rests on a stated capability on that capability's evidence, so both are settled whatever the trust class. Wall-clock time per operation uses the hardware-cycles protocol, with 100 samples of 20 ms after a 3 s warm-up in place of counters. It covers the Kynos, sweep and real-world workloads at the server's own shapes; the families and rejections are counted and cycle-measured, not timed. It replaces criterion: rejecting a disturbed sample and interleaving processes across rounds are the two things the protocol needs, and neither can be done inside one criterion run.
 
@@ -230,7 +230,7 @@ cargo xtask report        # regenerate report/ from results/
 cargo xtask report --check
 ```
 
-Individual tasks are listed by `cargo xtask`. Every measured result file under `results/` (all but the hand-written `notes.toml`, `soundness.toml` and `skipped.toml`) records its commit, measured-code fingerprint, host, compiler, governor, load and container image; the report's [provenance table](report/README.md#provenance) lists them.
+Individual tasks are listed by `cargo xtask`. Every measured result file under `results/` (all but the hand-written `notes.toml`, `soundness.toml` and `skipped.toml`) records its commit, measured-code fingerprint, host, compiler, every distinct CPU governor, load and container image; the report's [provenance table](report/README.md#provenance) lists them.
 
 ## Findings
 

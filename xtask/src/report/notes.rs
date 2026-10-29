@@ -8,6 +8,12 @@
 //! A note whose prose asserts a comparison ("cuts the bytes") states it as
 //! `holds = "mine < plain"` (comparisons joined by ` and `); where the
 //! results contradict it, the merit is not claimed.
+//!
+//! A merit is a capability, and its figures come from deterministic results
+//! (allocation counts, the footprint), never from timing: the "deserves to
+//! exist" answer it supports is settled whatever trust class the timing
+//! has. That is why a figure can query only the `alloc` and `footprint`
+//! tables, and never a timed one.
 
 use super::data::{Data, Key};
 

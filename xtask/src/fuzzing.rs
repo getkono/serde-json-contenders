@@ -209,7 +209,9 @@ fn hex(bytes: &[u8]) -> String {
 /// A sanitizer's memory-error line. A leak (`LeakSanitizer`) and a
 /// `stack-overflow` are left out: safe Rust leaks, and safe recursion on
 /// deeply nested input overflows its stack and aborts; neither is a
-/// soundness defect. Both still crash, so both still count against rule 2.
+/// soundness defect. Both still crash, so both still count against rule 2:
+/// serde_json refuses such input at its recursion limit, and a server whose
+/// codec aborts the process instead has diverged from it.
 fn is_sanitizer_error(line: &str) -> bool {
     line.contains("ERROR:")
         && line.contains("Sanitizer:")

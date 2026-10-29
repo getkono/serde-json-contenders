@@ -3,10 +3,16 @@
 //! Dominance is ε-dominance with ε = 5 %: `a` dominates `b` when `a` is no
 //! more than 5 % worse than `b` on every axis and more than 5 % better on at
 //! least one. Without a materiality threshold a 0.1 % difference would decide
-//! a frontier; with one, compile times (which are timed) cannot flip it
-//! either. Hardware cycles, which decide, must also clear the A/A band (the
-//! distance between two copies of serde_json at that cell), and a CPU win
-//! must be borne out by callgrind's deterministic count at v3.
+//! a frontier. Hardware cycles, which decide, must also clear the A/A band
+//! (the distance between two copies of serde_json at that cell), and a CPU
+//! win must be borne out by callgrind's deterministic count at v3. Compile
+//! time is not an axis: it has no A/A control, so it is reported as adoption
+//! context and weighs in no verdict.
+//!
+//! Only timed claims are provisional under `solo` trust: a cycles or
+//! wall-clock win. A heap win rests on deterministic allocation counts, and
+//! a stated capability on its own evidence, so both are settled whatever
+//! the timing's trust class.
 
 use serde_json::{Value, json};
 
@@ -368,7 +374,6 @@ fn axes(data: &Data, p: Point, e: &Entry, workload: &str, encode: bool) -> Vec<A
         v.push(Axis::plain(heap(data, p.variant, e.backend, workload, "encode")));
     }
     v.push(Axis::plain(text(data, e.set, p.variant, encode)));
-    v.push(Axis::plain(compile(data, e.set)));
     v
 }
 
@@ -435,6 +440,24 @@ pub fn on_frontier(data: &Data, p: Point, e: &Entry, workload: &str, pool: &[&En
 /// Whether `e` is on the frontier at `p` for `workload` among `pool`, and
 /// the best material win over serde_json on a CPU or heap axis if so.
 pub fn frontier_win(data: &Data, p: Point, e: &Entry, workload: &str, pool: &[&Entry]) -> Option<(String, f64)> {
+    frontier_win_on(data, p, e, workload, pool, &|_| true)
+}
+
+/// Whether a win on `axis` rests on deterministic counts alone (heap
+/// bytes), so no trust class of timing makes it provisional.
+fn settled_axis(axis: &str) -> bool {
+    axis.ends_with("heap")
+}
+
+/// [`frontier_win`], among the axes `keep` accepts.
+fn frontier_win_on(
+    data: &Data,
+    p: Point,
+    e: &Entry,
+    workload: &str,
+    pool: &[&Entry],
+    keep: &dyn Fn(&str) -> bool,
+) -> Option<(String, f64)> {
     if !on_frontier(data, p, e, workload, pool) {
         return None;
     }
@@ -451,6 +474,7 @@ pub fn frontier_win(data: &Data, p: Point, e: &Entry, workload: &str, pool: &[&E
     names
         .iter()
         .enumerate()
+        .filter(|(_, name)| keep(name))
         .filter_map(|(i, name)| {
             let (m, t) = (mine[i], theirs[i]);
             let (Some(mv), Some(tv)) = (m.value, t.value) else {
@@ -531,26 +555,33 @@ fn rule1(data: &Data, e: &Entry, pool: &[&Entry]) -> Outcome {
             }
         ));
     }
-    let best = KYNOS
-        .iter()
-        .filter_map(|w| frontier_win(data, X86_NATIVE, e, w, pool).map(|(axis, r)| (*w, axis, r)))
-        .min_by(|a, b| a.2.total_cmp(&b.2));
-    match best {
-        // Frontier membership rests on cycles even when the win is heap, so
-        // the trust class of the cycles governs every win.
-        Some((w, axis, r)) => {
-            let win = format!("{w} {axis} {r:.2}× at {}", X86_NATIVE.win_label(&axis));
-            match hw_trust(data) {
-                "canonical" => Outcome::Pass(win),
-                trust => Outcome::Pending(format!(
-                    "provisional pass: {win} ({trust}); awaits a quiet-host rerun"
-                )),
-            }
-        }
+    let best_on = |keep: &dyn Fn(&str) -> bool| {
+        KYNOS
+            .iter()
+            .filter_map(|w| frontier_win_on(data, X86_NATIVE, e, w, pool, keep).map(|(axis, r)| (*w, axis, r)))
+            .min_by(|a, b| a.2.total_cmp(&b.2))
+    };
+    let label = |(w, axis, r): (&str, String, f64)| format!("{w} {axis} {r:.2}× at {}", X86_NATIVE.win_label(&axis));
+    let canonical = hw_trust(data) == "canonical";
+    // Only a timed win is provisional under `solo` trust: a heap win rests
+    // on deterministic allocation counts, so it is settled and preferred.
+    let settled = if canonical {
+        best_on(&|_| true)
+    } else {
+        best_on(&settled_axis)
+    };
+    match (settled, best_on(&|_| true)) {
+        (Some(win), _) => Outcome::Pass(label(win)),
+        (None, Some(win)) => Outcome::Pending(format!(
+            "provisional pass: {} ({}); awaits a quiet-host rerun",
+            label(win),
+            hw_trust(data)
+        )),
         // On `solo` timing a wide A/A band can hide a real win: that is no
         // failure until a quiet host has measured it.
-        None if hw_trust(data) != "canonical"
-            && KYNOS
+        (None, None)
+            if !canonical
+                && KYNOS
                 .iter()
                 .any(|w| frontier_win(data, X86_NATIVE.without_band(), e, w, pool).is_some()) =>
         {
@@ -559,7 +590,7 @@ fn rule1(data: &Data, e: &Entry, pool: &[&Entry]) -> Outcome {
                 hw_trust(data)
             ))
         }
-        None => Outcome::Fail(
+        (None, None) => Outcome::Fail(
             "not on the frontier with a CPU or heap win beyond ε and the A/A band, corroborated at v3, on any Kynos shape"
                 .into(),
         ),
@@ -657,8 +688,8 @@ fn reference_rule2(e: &Entry, failures: &[String], miri: Option<&Value>) -> Outc
         Outcome::Fail(failures.join("; "))
     } else if e.backend != "serde_json" {
         Outcome::Pending("not run through conformance or fuzzing as a backend of its own".into())
-    } else if matches!(miri.and_then(|m| m["outcome"].as_str()), None | Some("error")) {
-        Outcome::Pending("the reference; Miri did not run".into())
+    } else if let Some(gap) = miri_gap(miri) {
+        Outcome::Pending(format!("the reference; {gap}"))
     } else {
         Outcome::Pass("reference".into())
     }
@@ -749,18 +780,24 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
             "{runs} conformance runs agree; {finished} of {expected} fuzz runs finished"
         ));
     }
-    match miri.and_then(|m| m["outcome"].as_str()) {
-        None | Some("error") => Outcome::Pending(format!(
-            "{runs} conformance runs and {finished} fuzz runs agree; Miri did not run"
-        )),
-        Some(outcome) => Outcome::Pass(format!(
+    match miri_gap(miri) {
+        Some(gap) => Outcome::Pending(format!("{runs} conformance runs and {finished} fuzz runs agree; {gap}")),
+        None => Outcome::Pass(format!(
             "{runs} conformance runs, {finished} fuzz runs, Miri {}",
-            if outcome == "unsupported" {
-                "cannot run this backend's intrinsics"
-            } else {
-                outcome
-            }
+            miri.and_then(|m| m["outcome"].as_str()).unwrap_or("?")
         )),
+    }
+}
+
+/// Why a Miri row is no evidence, if it is none: Miri did not run (no row,
+/// or an error), or it cannot execute the backend's intrinsics
+/// (`unsupported`). Neither found undefined behaviour, and neither showed
+/// there is none, so the component stays unverified and rule 2 pending.
+fn miri_gap(miri: Option<&Value>) -> Option<&'static str> {
+    match miri.and_then(|m| m["outcome"].as_str()) {
+        None | Some("error") => Some("Miri did not run"),
+        Some("unsupported") => Some("Miri cannot run this backend's intrinsics, so it is unverified"),
+        Some(_) => None,
     }
 }
 
@@ -966,15 +1003,19 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
 /// Whether `e` deserves to exist. Its frontier is drawn among `pool`: every
 /// entry, eligible or not, that has not failed conformance. A win is read at
 /// `native` hardware cycles (or heap) over every workload, gated as rule 1's
-/// is (A/A band, counts pointing the same way, and a timed win marked
-/// provisional unless taken on a quiet host), and a CPU win is stated with
-/// its v3 count beside it.
+/// is (A/A band, counts pointing the same way, and a cycles win marked
+/// provisional unless taken on a quiet host, while a heap win, read from
+/// deterministic counts, is settled and preferred), and a CPU win is stated
+/// with its v3 count beside it.
 fn exists(data: &Data, e: &Entry, pool: &[&Entry]) -> Exists {
     if e.backend == "serde_json" {
         return Exists::new(true, "the baseline".into(), false);
     }
     let solo = hw_trust(data) != "canonical";
-    let mut best: Option<(f64, String)> = None;
+    // The best win, as (provisional, ratio, text): a settled win (any win on
+    // canonical timing, a heap win on any) is preferred over a provisional
+    // one, then the smaller ratio.
+    let mut best: Option<(bool, f64, String)> = None;
     let mut unweighed = Vec::new();
     let mut hidden = false;
     for w in payloads::ALL {
@@ -984,9 +1025,18 @@ fn exists(data: &Data, e: &Entry, pool: &[&Entry]) -> Exists {
             continue;
         }
         hidden |= solo && frontier_win(data, X86_NATIVE.without_band(), e, w, pool).is_some();
-        if let Some((axis, r)) = frontier_win(data, X86_NATIVE, e, w, pool)
-            && best.as_ref().is_none_or(|(b, _)| r < *b)
-        {
+        let wins = [
+            frontier_win(data, X86_NATIVE, e, w, pool),
+            frontier_win_on(data, X86_NATIVE, e, w, pool, &settled_axis),
+        ];
+        for (axis, r) in wins.into_iter().flatten() {
+            let provisional = solo && !settled_axis(&axis);
+            if best
+                .as_ref()
+                .is_some_and(|(p, b, _)| (*p, *b).partial_cmp(&(provisional, r)) != Some(std::cmp::Ordering::Greater))
+            {
+                continue;
+            }
             let op = axis.split(' ').next().unwrap_or("decode");
             let count = match (
                 axis.ends_with("CPU"),
@@ -997,6 +1047,7 @@ fn exists(data: &Data, e: &Entry, pool: &[&Entry]) -> Exists {
                 _ => String::new(),
             };
             best = Some((
+                provisional,
                 r,
                 format!(
                     "{w} {axis} {r:.2}× serde_json at {}{count}",
@@ -1007,12 +1058,19 @@ fn exists(data: &Data, e: &Entry, pool: &[&Entry]) -> Exists {
     }
     let note = super::notes::merit(data, e.backend);
     let trust = hw_trust(data);
-    let best = best.map(|(_, b)| if solo { format!("{b}, provisional ({trust})") } else { b });
+    let best = best.map(|(provisional, _, b)| {
+        if provisional {
+            (format!("{b}, provisional ({trust})"), true)
+        } else {
+            (b, false)
+        }
+    });
     match (best, note) {
-        // A merit stands whatever the timing, so the "yes" is not
-        // provisional even where the timed clause beside it is.
-        (Some(b), Some(n)) => Exists::new(true, format!("{b}. {n}"), false),
-        (Some(b), None) => Exists::new(true, b, solo),
+        // A merit is a capability, settled on its own evidence, so the "yes"
+        // is not provisional even where the timed clause beside it is.
+        (Some((b, _)), Some(n)) => Exists::new(true, format!("{b}. {n}"), false),
+        // Only a timed win is provisional; a heap win is settled.
+        (Some((b, provisional)), None) => Exists::new(true, b, provisional),
         // A merit stands on counts or conformance, not on timing.
         (None, Some(n)) => Exists::new(true, n, false),
         (None, None) if hidden || !unweighed.is_empty() => Exists::new(
@@ -1123,7 +1181,7 @@ pub fn outstanding(data: &Data, verdicts: &[Verdict]) -> Vec<String> {
         };
         if trust != "canonical" {
             out.push(format!(
-                "Canonical-trust rerun of {stage} (`SJC_TRUST=canonical mise run {task}`): {}; it needs a quiet host (1-minute load average at most 1.0, CPU governor `performance`).",
+                "Canonical-trust rerun of {stage} (`SJC_TRUST=canonical mise run {task}`): {}; it needs a quiet host (1-minute load average at most 1.0, every CPU's governor `performance`).",
                 if trust == "no" { "not recorded".to_owned() } else { format!("recorded at `{trust}` trust") }
             ));
         }
@@ -1745,6 +1803,127 @@ pub(super) mod tests {
             simd.rules[0],
             Outcome::Pass("json-small decode heap 0.50× at native".into())
         );
+    }
+
+    /// The same heap win on `solo` cycles: the heap figure is a
+    /// deterministic count, so the win is settled, not provisional.
+    #[test]
+    fn a_solo_heap_win_is_settled() {
+        let mut data = measured(
+            &[
+                ("serde_json", 100.0, 100.0),
+                ("serde_json#aa", 100.0, 100.0),
+                ("simd-json", 100.0, 100.0),
+            ],
+            "solo",
+        );
+        for (backend, bytes) in [("serde_json", 100.0), ("simd-json", 50.0)] {
+            data.host.alloc.rows.insert(
+                Key::new("native", backend, "json-small", "decode"),
+                json!({ "bytes": bytes }),
+            );
+        }
+        let verdicts = super::judge(&data);
+        let simd = verdicts.iter().find(|v| v.entry.backend == "simd-json").unwrap();
+        assert_eq!(
+            simd.rules[0],
+            Outcome::Pass("json-small decode heap 0.50× at native".into())
+        );
+        assert!(simd.exists.0 && !simd.exists.2, "{:?}", simd.exists);
+        assert_eq!(simd.exists.1, "json-small decode heap 0.50× serde_json at native");
+    }
+
+    /// On `solo` cycles a larger cycles win is provisional, so a smaller
+    /// heap win, which is settled, is the one stated.
+    #[test]
+    fn a_settled_heap_win_is_preferred_over_a_provisional_cycles_win() {
+        let mut data = measured(
+            &[
+                ("serde_json", 100.0, 100.0),
+                ("serde_json#aa", 100.0, 100.0),
+                ("simd-json", 50.0, 50.0),
+            ],
+            "solo",
+        );
+        for (backend, bytes) in [("serde_json", 100.0), ("simd-json", 80.0)] {
+            data.host.alloc.rows.insert(
+                Key::new("native", backend, "json-small", "decode"),
+                json!({ "bytes": bytes }),
+            );
+        }
+        let verdicts = super::judge(&data);
+        let simd = verdicts.iter().find(|v| v.entry.backend == "simd-json").unwrap();
+        assert_eq!(
+            simd.rules[0],
+            Outcome::Pass("json-small decode heap 0.80× at native".into())
+        );
+        assert!(!simd.exists.2, "{:?}", simd.exists);
+    }
+
+    /// Compile time weighs in no verdict: an entry that matches another on
+    /// every measured axis but builds ten times slower is not dominated.
+    #[test]
+    fn compile_time_is_not_an_axis() {
+        let mut data = measured(
+            &[
+                ("serde_json", 100.0, 100.0),
+                ("serde_json#aa", 100.0, 100.0),
+                ("simd-json", 80.0, 80.0),
+                ("sonic-rs", 80.0, 80.0),
+            ],
+            "canonical",
+        );
+        for (set, secs) in [("simd-json", 100.0), ("sonic-rs", 10.0)] {
+            data.host.compile.push(json!({ "set": set, "release_s": secs }));
+        }
+        let pool: Vec<&Entry> = ENTRIES.iter().collect();
+        assert!(super::on_frontier(
+            &data,
+            super::X86_NATIVE,
+            simd(),
+            "json-small",
+            &pool
+        ));
+    }
+
+    /// A conformance and fuzzing record with nothing gating for `e`, so
+    /// Miri alone decides rule 2.
+    fn clean_but_for_miri(e: &Entry) -> Data {
+        let mut data = Data::default();
+        let mut variants: Vec<String> = crate::matrix::variants().iter().map(|v| v.name.to_owned()).collect();
+        variants.push("arbitrary_precision".into());
+        for v in variants {
+            data.host.conformance.insert(
+                (v, e.set.to_owned()),
+                json!({ "backends": { e.backend: { "gate": "pass" } } }),
+            );
+        }
+        for (config, _) in crate::fuzzing::configs(e.set) {
+            for target in crate::fuzzing::FUZZ_TARGETS {
+                data.fuzz
+                    .push(json!({ "set": e.set, "backend": e.backend, "config": config,
+                    "target": target, "finished": true, "divergence_found": false }));
+            }
+        }
+        data
+    }
+
+    /// A Miri the backend's intrinsics keep from running is no evidence:
+    /// rule 2 stays pending, for a contender and for the reference.
+    #[test]
+    fn miri_unsupported_is_pending_not_a_pass() {
+        for e in [sonic(), &ENTRIES[0]] {
+            let mut data = clean_but_for_miri(e);
+            data.miri.push(json!({ "set": e.set, "outcome": "unsupported" }));
+            let outcome = rule2(&data, e);
+            assert!(
+                matches!(&outcome, Outcome::Pending(d) if d.ends_with("Miri cannot run this backend's intrinsics, so it is unverified")),
+                "{}: {outcome:?}",
+                e.backend
+            );
+            data.miri[0]["outcome"] = json!("pass");
+            assert!(matches!(rule2(&data, e), Outcome::Pass(_)), "{}", e.backend);
+        }
     }
 
     #[test]

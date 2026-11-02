@@ -1968,6 +1968,55 @@ pub(super) mod tests {
         assert_eq!(rule2(&data, e), Outcome::Fail("fuzz roundtrip (v3)".into()));
     }
 
+    /// `arbitrary_precision` makes serde_json accept what it refuses by
+    /// default. A backend failing that case first is stated by what it gets
+    /// wrong itself, and with nothing else against it, that run does not fail
+    /// rule 2.
+    #[test]
+    fn a_case_serde_json_itself_changes_does_not_gate_rule2() {
+        let e = sonic();
+        let moved = |reference: &str| json!({ "case": "1e400#value", "reference": { reference: { "status": 400 } }, "backend": {} });
+        let run = |also: Option<serde_json::Value>| {
+            let mut failures = vec![json!({ "section": "numbers", "case": "1e400#value" })];
+            let mut sections = json!({ "numbers": {
+                "gating_failure_count": 1, "differences": [moved("accept")] } });
+            if let Some(failure) = also {
+                failures.push(failure);
+                sections["status"] = json!({ "gating_failure_count": 1, "differences": [] });
+            }
+            json!({ "backends": { e.backend: {
+                "gate": "fail", "gating_failures": failures, "sections": sections } } })
+        };
+        let judged = |ap: serde_json::Value| {
+            let mut data = Data::default();
+            let conformance = &mut data.host.conformance;
+            conformance.insert(
+                ("portable".into(), e.set.into()),
+                json!({ "backends": { e.backend: { "gate": "pass", "gating_failures": [] } } }),
+            );
+            conformance.insert(("portable".into(), format!("{}+arbitrary-precision", e.set)), ap);
+            // Another backend's default run records serde_json refusing it.
+            conformance.insert(
+                ("portable".into(), "other".into()),
+                json!({ "backends": { "other": { "gate": "fail",
+                    "gating_failures": [{ "section": "numbers", "case": "1e400#value" }],
+                    "sections": { "numbers": { "gating_failure_count": 1, "differences": [moved("reject")] } } } } }),
+            );
+            conformance.insert(
+                ("portable".into(), "other+arbitrary-precision".into()),
+                json!({ "backends": { "other": { "gate": "pass", "gating_failures": [],
+                    "sections": { "numbers": { "gating_failure_count": 0, "differences": [] } } } } }),
+            );
+            crate::report::data::excuse_reference_moves(conformance);
+            rule2(&data, e)
+        };
+        assert_eq!(
+            judged(run(Some(json!({ "section": "status", "case": "shape/y" })))),
+            Outcome::Fail("status shape/y fails 1 of 2 conformance runs".into())
+        );
+        assert!(matches!(judged(run(None)), Outcome::Pending(_)));
+    }
+
     #[test]
     fn a_conformance_failure_is_stated_once_with_its_run_count() {
         let e = sonic();

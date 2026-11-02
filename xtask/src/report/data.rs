@@ -337,6 +337,185 @@ impl Data {
     }
 }
 
+/// The name suffix of a run with serde_json's `arbitrary_precision` unified in.
+const ARBITRARY_PRECISION: &str = "+arbitrary-precision";
+
+/// A case of a section: (section, case).
+type Case = (String, String);
+
+/// A recorded reference outcome as the suite's `agree` tells outcomes apart:
+/// accept, reject at a status, or panic. `None` for a reference that is not an
+/// outcome (a rendered float, a limit). Two accepted values are the same
+/// outcome here: how a number is held is the suite's own question to settle.
+fn outcome_kind(reference: &Value) -> Option<String> {
+    let outcome = reference.get("outcome").unwrap_or(reference);
+    if outcome.get("accept").is_some() {
+        Some("accept".to_owned())
+    } else if outcome.get("panic").is_some() {
+        Some("panic".to_owned())
+    } else {
+        outcome.get("reject").map(|r| format!("reject {}", r["status"]))
+    }
+}
+
+/// Every backend entry of a report.
+fn entries(report: &Value) -> impl Iterator<Item = &Value> {
+    report["backends"].as_object().into_iter().flat_map(|b| b.values())
+}
+
+/// serde_json's recorded outcome for every case any backend disagreed with it
+/// on, in `reports`. `None` where the record is not an outcome.
+fn recorded_references<'a>(reports: impl Iterator<Item = &'a Value>) -> BTreeMap<Case, Option<String>> {
+    let mut recorded = BTreeMap::new();
+    for (section, s) in reports
+        .flat_map(entries)
+        .flat_map(|b| b["sections"].as_object().into_iter().flatten())
+    {
+        for d in s["differences"].as_array().into_iter().flatten() {
+            if let Some(case) = d["case"].as_str() {
+                recorded
+                    .entry((section.clone(), case.to_owned()))
+                    .or_insert_with(|| outcome_kind(&d["reference"]));
+            }
+        }
+    }
+    recorded
+}
+
+/// The cases a backend entry lists as gating.
+fn listed_failures(backend: &Value) -> impl Iterator<Item = Case> + '_ {
+    backend["gating_failures"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|f| Some((f["section"].as_str()?.to_owned(), f["case"].as_str()?.to_owned())))
+}
+
+/// The cases where `arbitrary_precision` changes serde_json's own outcome.
+/// The suite compares each backend with serde_json in the same build and
+/// records no outcome of serde_json's on its own, so the evidence is what the
+/// reports hold, and a case is taken only on one of two proofs:
+///
+/// 1. Its reference outcome is recorded in both builds, and they differ.
+/// 2. No outcome is recorded by default, because no backend of any set failed
+///    the case there (in sections whose failure lists are complete), and every
+///    backend of at least two sets fails it with `arbitrary_precision`. Backends
+///    that share nothing but serde_json do not all change together.
+fn reference_moves(conformance: &BTreeMap<(String, String), Value>) -> std::collections::BTreeSet<Case> {
+    let portable = |name: &str| conformance.get(&("portable".to_owned(), name.to_owned()));
+    let has_backends = |report: &Value| entries(report).next().is_some();
+    // Each measured build with `arbitrary_precision`, beside its default run.
+    let mut pairs = Vec::new();
+    let mut paired = true;
+    for ((variant, name), report) in conformance {
+        let Some(set) = name.strip_suffix(ARBITRARY_PRECISION).filter(|_| variant == "portable") else {
+            continue;
+        };
+        match portable(set) {
+            Some(default) if has_backends(report) && has_backends(default) => pairs.push((report, default)),
+            // A serde_json-only set measures no backend in either build.
+            Some(default) if !has_backends(report) && !has_backends(default) => {}
+            _ => paired = false,
+        }
+    }
+    let by_default = recorded_references(pairs.iter().map(|(_, d)| *d));
+    let with_ap = recorded_references(pairs.iter().map(|(a, _)| *a));
+    let mut moves: std::collections::BTreeSet<Case> = with_ap
+        .iter()
+        .filter(|(case, kind)| kind.is_some() && matches!(by_default.get(*case), Some(d) if d.is_some() && d != *kind))
+        .map(|(case, _)| case.clone())
+        .collect();
+    if !paired || pairs.len() < 2 {
+        return moves;
+    }
+    // A section's list is complete when it holds as many as were counted.
+    let complete = |backend: &Value, section: &str| {
+        let listed = listed_failures(backend).filter(|(s, _)| s == section).count() as u64;
+        backend["sections"][section]["gating_failure_count"].as_u64() == Some(listed)
+    };
+    let mut everywhere: Option<std::collections::BTreeSet<Case>> = None;
+    for backend in pairs.iter().flat_map(|(a, _)| entries(a)) {
+        let cases = listed_failures(backend).collect();
+        everywhere = Some(match everywhere {
+            Some(common) => common.intersection(&cases).cloned().collect(),
+            None => cases,
+        });
+    }
+    moves.extend(everywhere.into_iter().flatten().filter(|case| {
+        !by_default.contains_key(case)
+            && pairs
+                .iter()
+                .flat_map(|(_, d)| entries(d))
+                .all(|backend| complete(backend, &case.0) && listed_failures(backend).all(|listed| listed != *case))
+    }));
+    moves
+}
+
+/// Whether this backend panicked on the case: a panic is the backend's defect
+/// whatever serde_json answers.
+fn panicked(backend: &Value, section: &str, case: &str, detail: &Value) -> bool {
+    detail.as_str().is_some_and(|d| d.starts_with("panicked"))
+        || backend["sections"][section]["differences"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|d| d["case"] == case && d["backend"].get("panic").is_some())
+}
+
+/// Drop from one backend's entry the failures on `moves`, and restate its
+/// counts and gate from what is left. Its `differences` keep the disagreement.
+fn excuse(backend: &mut Value, moves: &std::collections::BTreeSet<Case>) {
+    let Some(failures) = backend["gating_failures"].as_array() else {
+        return;
+    };
+    let (excused, kept): (Vec<&Value>, Vec<&Value>) = failures.iter().partition(|f| {
+        let (Some(section), Some(case)) = (f["section"].as_str(), f["case"].as_str()) else {
+            return false;
+        };
+        moves.contains(&(section.to_owned(), case.to_owned())) && !panicked(backend, section, case, &f["detail"])
+    });
+    let sections: Vec<String> = excused
+        .iter()
+        .filter_map(|f| f["section"].as_str().map(str::to_owned))
+        .collect();
+    let kept: Vec<Value> = kept.into_iter().cloned().collect();
+    for section in sections {
+        let s = &mut backend["sections"][section.as_str()];
+        if let Some(count) = s["gating_failure_count"].as_u64() {
+            let count = count.saturating_sub(1);
+            s["gating_failure_count"] = count.into();
+            s["gating"] = (count > 0).into();
+        }
+    }
+    // Failures past a section's listing cap are still failures.
+    let unlisted = backend["sections"]
+        .as_object()
+        .is_some_and(|s| s.values().any(|s| s["gating_failure_count"].as_u64().unwrap_or(0) > 0));
+    if kept.is_empty() && !unlisted {
+        backend["gate"] = "pass".into();
+    }
+    backend["gating_failures"] = kept.into();
+}
+
+/// A backend matching serde_json is not at fault where `arbitrary_precision`
+/// changes serde_json's own answer, so those cases do not gate in that build.
+/// Applied as the results load, so the verdict and every report table read one
+/// account of what gates; the default runs are never changed.
+pub(crate) fn excuse_reference_moves(conformance: &mut BTreeMap<(String, String), Value>) {
+    let moves = reference_moves(conformance);
+    for ((variant, name), report) in conformance.iter_mut() {
+        if variant != "portable" || !name.ends_with(ARBITRARY_PRECISION) {
+            continue;
+        }
+        let Some(backends) = report["backends"].as_object_mut() else {
+            continue;
+        };
+        for backend in backends.values_mut() {
+            excuse(backend, &moves);
+        }
+    }
+}
+
 fn load_host(load: &mut Loader, slug: &str) -> Result<Host> {
     let at = |file: &str| format!("{slug}/{file}");
     let (e2e_time, e2e_time_provenance) = load.stamped_rows(&at("e2e-time.json"))?;
@@ -345,7 +524,7 @@ fn load_host(load: &mut Loader, slug: &str) -> Result<Host> {
         for set in crate::matrix::SETS {
             let mut names = vec![set.name.to_owned()];
             if variant.name == "portable" {
-                names.push(format!("{}+arbitrary-precision", set.name));
+                names.push(format!("{}{ARBITRARY_PRECISION}", set.name));
             }
             for name in names {
                 if let Some(doc) = load.doc(&at(&format!("conformance/{}/{name}.json", variant.name)))? {
@@ -354,6 +533,7 @@ fn load_host(load: &mut Loader, slug: &str) -> Result<Host> {
             }
         }
     }
+    excuse_reference_moves(&mut conformance);
     let alloc = load.table(&at("alloc.json"))?;
     let provenance = alloc.provenance.clone();
     Ok(Host {
@@ -699,11 +879,294 @@ fn end_to_end(rows: &[Value], name: &str, variants: &[&str], aa: bool) -> Option
 
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
+    use std::collections::BTreeMap;
 
-    use super::{Source, stale};
+    use serde_json::{Value, json};
+
+    use super::{Source, excuse_reference_moves, stale};
 
     const HOST: &str = "x86_64-linux-cpu";
+
+    /// A backend entry failing `cases` in `section`, each recorded as a
+    /// difference with `reference` and `outcome`.
+    fn failing(section: &str, cases: &[&str], reference: &Value, outcome: &Value) -> Value {
+        let failures: Vec<Value> = cases
+            .iter()
+            .map(|c| json!({ "section": section, "case": c, "detail": "outcome differs from serde_json" }))
+            .collect();
+        let differences: Vec<Value> = cases
+            .iter()
+            .map(|c| json!({ "case": c, "reference": reference, "backend": outcome }))
+            .collect();
+        json!({
+            "gate": if cases.is_empty() { "pass" } else { "fail" },
+            "gating_failures": failures,
+            "sections": { section: {
+                "gating": !cases.is_empty(),
+                "gating_failure_count": cases.len(),
+                "differences": differences,
+            } },
+        })
+    }
+
+    fn accept() -> Value {
+        json!({ "accept": 1 })
+    }
+
+    fn reject() -> Value {
+        json!({ "reject": { "status": 400 } })
+    }
+
+    /// Portable reports for each (set, default entry, `arbitrary_precision` entry).
+    fn reports(sets: Vec<(&str, Value, Value)>) -> BTreeMap<(String, String), Value> {
+        let mut reports = BTreeMap::new();
+        for (set, default, ap) in sets {
+            reports.insert(
+                ("portable".to_owned(), set.to_owned()),
+                json!({ "backends": { set: default } }),
+            );
+            reports.insert(
+                ("portable".to_owned(), format!("{set}+arbitrary-precision")),
+                json!({ "backends": { set: ap } }),
+            );
+        }
+        reports
+    }
+
+    fn ap_entry<'a>(reports: &'a BTreeMap<(String, String), Value>, set: &str) -> &'a Value {
+        &reports[&("portable".to_owned(), format!("{set}+arbitrary-precision"))]["backends"][set]
+    }
+
+    /// serde_json refuses by default and accepts with `arbitrary_precision`,
+    /// and both builds' outcomes are on record: the backend matched the
+    /// default and is excused in the other build only.
+    #[test]
+    fn a_recorded_change_of_serde_jsons_outcome_is_excused() {
+        let mut reports = reports(vec![
+            (
+                "a",
+                failing("numbers", &[], &reject(), &accept()),
+                failing("numbers", &["1e400#value"], &accept(), &reject()),
+            ),
+            (
+                "b",
+                failing("numbers", &["1e400#value"], &reject(), &accept()),
+                failing("numbers", &[], &accept(), &accept()),
+            ),
+        ]);
+        excuse_reference_moves(&mut reports);
+        let a = ap_entry(&reports, "a");
+        assert_eq!(a["gate"], "pass");
+        assert_eq!(a["gating_failures"], json!([]));
+        assert_eq!(a["sections"]["numbers"]["gating_failure_count"], 0);
+        assert_eq!(a["sections"]["numbers"]["gating"], false);
+        // The disagreement stays on record.
+        assert_eq!(a["sections"]["numbers"]["differences"][0]["case"], "1e400#value");
+        // The default run gates what it gated.
+        let b = &reports[&("portable".to_owned(), "b".to_owned())]["backends"]["b"];
+        assert_eq!(b["gate"], "fail");
+    }
+
+    /// serde_json gave the same outcome in both builds, so the failure is the
+    /// backend's own, even though it fails only with `arbitrary_precision`.
+    #[test]
+    fn a_failure_with_the_same_reference_in_both_builds_stays() {
+        let mut reports = reports(vec![
+            (
+                "a",
+                failing("numbers", &[], &accept(), &accept()),
+                failing("numbers", &["x#value"], &accept(), &reject()),
+            ),
+            (
+                "b",
+                failing("numbers", &["x#value"], &accept(), &reject()),
+                failing("numbers", &[], &accept(), &accept()),
+            ),
+        ]);
+        excuse_reference_moves(&mut reports);
+        assert_eq!(ap_entry(&reports, "a")["gate"], "fail");
+    }
+
+    /// The same case, with two different accepted values: how a number is held
+    /// is not a change of outcome.
+    #[test]
+    fn two_accepted_values_are_the_same_outcome() {
+        let mut reports = reports(vec![
+            (
+                "a",
+                failing("numbers", &[], &json!({ "accept": 1.0 }), &accept()),
+                failing("numbers", &["x#value"], &json!({ "accept": "1.0" }), &reject()),
+            ),
+            (
+                "b",
+                failing("numbers", &["x#value"], &json!({ "accept": 1.0 }), &reject()),
+                failing("numbers", &[], &accept(), &accept()),
+            ),
+        ]);
+        excuse_reference_moves(&mut reports);
+        assert_eq!(ap_entry(&reports, "a")["gate"], "fail");
+    }
+
+    /// No backend failed by default, so serde_json's default outcome is not
+    /// on record: every backend of every set failing only with
+    /// `arbitrary_precision` is the proof.
+    #[test]
+    fn every_set_failing_only_with_arbitrary_precision_is_excused() {
+        let flatten = |r: Value| {
+            failing(
+                "attributes",
+                &["flatten/0"],
+                &json!({ "input": "{}", "outcome": r }),
+                &accept(),
+            )
+        };
+        let clean = || failing("attributes", &[], &accept(), &accept());
+        let mut reports = reports(vec![
+            ("a", clean(), flatten(reject())),
+            ("b", clean(), flatten(reject())),
+        ]);
+        excuse_reference_moves(&mut reports);
+        assert_eq!(ap_entry(&reports, "a")["gate"], "pass");
+        assert_eq!(ap_entry(&reports, "b")["gate"], "pass");
+    }
+
+    /// One library failing alone is that library's change, not serde_json's.
+    #[test]
+    fn one_set_failing_alone_stays() {
+        let clean = || failing("attributes", &[], &accept(), &accept());
+        let mut reports = reports(vec![
+            (
+                "a",
+                clean(),
+                failing("attributes", &["c/0"], &json!({ "outcome": reject() }), &accept()),
+            ),
+            ("b", clean(), clean()),
+        ]);
+        excuse_reference_moves(&mut reports);
+        assert_eq!(ap_entry(&reports, "a")["gate"], "fail");
+    }
+
+    /// A single set has no other backend to compare with.
+    #[test]
+    fn a_lone_set_proves_nothing() {
+        let mut reports = reports(vec![(
+            "a",
+            failing("attributes", &[], &accept(), &accept()),
+            failing("attributes", &["c/0"], &json!({ "outcome": reject() }), &accept()),
+        )]);
+        excuse_reference_moves(&mut reports);
+        assert_eq!(ap_entry(&reports, "a")["gate"], "fail");
+    }
+
+    /// A default run whose failure list was capped might hold the case past
+    /// the cap, so its absence proves nothing.
+    #[test]
+    fn a_capped_default_list_proves_nothing() {
+        let flatten = || failing("attributes", &["c/0"], &json!({ "outcome": reject() }), &accept());
+        let clean = || failing("attributes", &[], &accept(), &accept());
+        let mut capped = clean();
+        capped["sections"]["attributes"]["gating_failure_count"] = 101.into();
+        let mut reports = reports(vec![("a", capped, flatten()), ("b", clean(), flatten())]);
+        excuse_reference_moves(&mut reports);
+        assert_eq!(ap_entry(&reports, "b")["gate"], "fail");
+    }
+
+    /// A set with no default run to compare with leaves the second proof
+    /// without its evidence.
+    #[test]
+    fn a_missing_default_run_proves_nothing() {
+        let flatten = || failing("attributes", &["c/0"], &json!({ "outcome": reject() }), &accept());
+        let clean = || failing("attributes", &[], &accept(), &accept());
+        let mut reports = reports(vec![("a", clean(), flatten()), ("b", clean(), flatten())]);
+        reports.remove(&("portable".to_owned(), "b".to_owned()));
+        excuse_reference_moves(&mut reports);
+        assert_eq!(ap_entry(&reports, "a")["gate"], "fail");
+    }
+
+    /// A panic is the backend's defect whatever serde_json answers.
+    #[test]
+    fn a_panic_on_a_moved_case_stays() {
+        let mut reports = reports(vec![
+            (
+                "a",
+                failing("numbers", &[], &reject(), &accept()),
+                failing("numbers", &["x#value"], &accept(), &json!({ "panic": "boom" })),
+            ),
+            (
+                "b",
+                failing("numbers", &["x#value"], &reject(), &accept()),
+                failing("numbers", &[], &accept(), &accept()),
+            ),
+        ]);
+        excuse_reference_moves(&mut reports);
+        assert_eq!(ap_entry(&reports, "a")["gate"], "fail");
+    }
+
+    /// Failures past the listing cap still gate once every listed one is
+    /// excused.
+    #[test]
+    fn unlisted_failures_keep_the_gate() {
+        let mut capped = failing("numbers", &["x#value"], &accept(), &reject());
+        capped["sections"]["numbers"]["gating_failure_count"] = 5.into();
+        let mut reports = reports(vec![
+            ("a", failing("numbers", &[], &reject(), &accept()), capped),
+            (
+                "b",
+                failing("numbers", &["x#value"], &reject(), &accept()),
+                failing("numbers", &[], &accept(), &accept()),
+            ),
+        ]);
+        excuse_reference_moves(&mut reports);
+        let a = ap_entry(&reports, "a");
+        assert_eq!(a["gate"], "fail");
+        assert_eq!(a["sections"]["numbers"]["gating_failure_count"], 4);
+    }
+
+    /// Every backend's suite crashing with `arbitrary_precision` is not
+    /// serde_json changing an answer: a crash records no section to compare.
+    #[test]
+    fn a_crashed_suite_stays() {
+        let crashed = || {
+            json!({ "gate": "fail", "sections": {},
+                "gating_failures": [{ "section": "process", "case": "suite", "detail": "signal 11" }] })
+        };
+        let clean = || failing("numbers", &[], &accept(), &accept());
+        let mut reports = reports(vec![("a", clean(), crashed()), ("b", clean(), crashed())]);
+        excuse_reference_moves(&mut reports);
+        assert_eq!(ap_entry(&reports, "a")["gate"], "fail");
+        assert_eq!(ap_entry(&reports, "b")["gate"], "fail");
+    }
+
+    /// The default builds, at every variant, gate what they gated.
+    #[test]
+    fn only_the_arbitrary_precision_run_at_portable_is_excused() {
+        let moved_default = failing("numbers", &["x#value"], &reject(), &accept());
+        let mut reports = reports(vec![
+            (
+                "a",
+                failing("numbers", &[], &reject(), &accept()),
+                failing("numbers", &["x#value"], &accept(), &reject()),
+            ),
+            (
+                "b",
+                moved_default.clone(),
+                failing("numbers", &[], &accept(), &accept()),
+            ),
+        ]);
+        reports.insert(
+            ("native".to_owned(), "b".to_owned()),
+            json!({ "backends": { "b": moved_default.clone() } }),
+        );
+        excuse_reference_moves(&mut reports);
+        assert_eq!(
+            reports[&("native".to_owned(), "b".to_owned())]["backends"]["b"],
+            moved_default
+        );
+        assert_eq!(
+            reports[&("portable".to_owned(), "b".to_owned())]["backends"]["b"],
+            moved_default
+        );
+    }
 
     fn source(name: &str, host: Option<&str>) -> Source {
         Source {

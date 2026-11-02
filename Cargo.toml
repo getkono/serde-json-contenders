@@ -59,12 +59,23 @@ cast_possible_wrap = "allow"
 
 # The profile Kynos ships. Line tables only: they change no code generation and
 # let callgrind resolve the symbol its collection is toggled on.
+#
+# Every stable setting is spelled out, defaults included: `xtask` passes this
+# table to each measured build as `--config`, which is what outranks a setting
+# in a user's `~/.cargo/config.toml`, so a key left out here could be set there.
+# `build.incremental` outranks `incremental` below, so `xtask` pins it as well.
 [profile.release]
 opt-level = 3
 lto = "fat"
 codegen-units = 1
 panic = "unwind"
 debug = "line-tables-only"
+strip = "none"
+split-debuginfo = "off"
+debug-assertions = false
+overflow-checks = false
+incremental = false
+rpath = false
 
 # Tests only: the conformance harness decodes a million floats per backend,
 # which takes minutes unoptimized. The dev profile, whose build time is a

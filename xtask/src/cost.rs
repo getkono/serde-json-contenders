@@ -1,13 +1,12 @@
 //! What adopting a backend costs besides CPU: binary size, compile time, MSRV.
 
-use std::process::Command;
 use std::time::Instant;
 
 use anyhow::{Context, Result};
 use object::{Object, ObjectSection};
 use serde_json::{Value, json};
 
-use crate::build::{Place, bin, build};
+use crate::build::{Place, bin, build, cargo, pinned_profile};
 use crate::counted::Filter;
 use crate::util::{capture, root};
 
@@ -47,20 +46,27 @@ fn write(kind: &str, rows: &[Value]) -> Result<()> {
     crate::util::merge_write(&path, kind, rows, &["set", "variant"], json!({}))
 }
 
-fn timed_build(dir: &std::path::Path, set: &crate::matrix::Set, release: bool) -> Result<f64> {
-    let mut cmd = Command::new("cargo");
+/// The build `compile-time` times. A dev build stays incremental whatever a
+/// user's config says, since its rebuild is what `incremental_s` measures.
+fn timed_command(dir: &std::path::Path, set: &crate::matrix::Set, release: bool) -> Result<std::process::Command> {
+    let mut cmd = cargo();
     cmd.current_dir(root())
         .args(["build", "--locked", "-p", "size-fixture", "--bin", "fixture-full"])
+        .args(pinned_profile(!release)?)
         .env("CARGO_TARGET_DIR", dir)
         // A compiler cache would measure the cache.
-        .env("RUSTC_WRAPPER", "")
-        .env_remove("RUSTFLAGS");
+        .env("RUSTC_WRAPPER", "");
     if release {
         cmd.arg("--release");
     }
     if !set.features.is_empty() {
         cmd.args(["--features", set.features]);
     }
+    Ok(cmd)
+}
+
+fn timed_build(dir: &std::path::Path, set: &crate::matrix::Set, release: bool) -> Result<f64> {
+    let mut cmd = timed_command(dir, set, release)?;
     let start = Instant::now();
     let (ok, _, stderr) = capture(&mut cmd)?;
     anyhow::ensure!(ok, "build failed: {stderr}");
@@ -122,7 +128,7 @@ pub const MSRV: &str = "1.85.0";
 pub fn msrv(args: &[String]) -> Result<()> {
     let filter = Filter::parse(args);
     let metadata: Value = serde_json::from_str(
-        &crate::util::output(Command::new("cargo").current_dir(root()).args([
+        &crate::util::output(cargo().current_dir(root()).args([
             "metadata",
             "--format-version",
             "1",
@@ -132,12 +138,11 @@ pub fn msrv(args: &[String]) -> Result<()> {
         .or_else(|_| {
             // `--all-features` would unify flexon-rt and flexon-ct, which refuse
             // each other; the dependency list is the same either way.
-            crate::util::output(Command::new("cargo").current_dir(root()).args([
-                "metadata",
-                "--format-version",
-                "1",
-                "--locked",
-            ]))
+            crate::util::output(
+                cargo()
+                    .current_dir(root())
+                    .args(["metadata", "--format-version", "1", "--locked"]),
+            )
         })?,
     )?;
     let declared = |name: &str| {
@@ -151,13 +156,12 @@ pub fn msrv(args: &[String]) -> Result<()> {
     let mut rows = Vec::new();
     for set in filter.sets() {
         let dir = root().join("target/msrv").join(set.name);
-        let mut cmd = Command::new("cargo");
+        let mut cmd = cargo();
         cmd.current_dir(root())
             .arg(format!("+{MSRV}"))
             .args(["check", "--locked", "-p", "codecs", "--ignore-rust-version"])
             .env("CARGO_TARGET_DIR", &dir)
-            .env("RUSTC_WRAPPER", "")
-            .env_remove("RUSTFLAGS");
+            .env("RUSTC_WRAPPER", "");
         if !set.features.is_empty() {
             cmd.args(["--features", set.features]);
         }
@@ -178,4 +182,31 @@ pub fn msrv(args: &[String]) -> Result<()> {
         }));
     }
     write("msrv", &rows)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{pinned_profile, timed_command};
+
+    fn args(release: bool) -> Vec<String> {
+        let set = &crate::matrix::SETS[0];
+        timed_command(std::path::Path::new("t"), set, release)
+            .unwrap()
+            .get_args()
+            .map(|a| a.to_str().unwrap().to_owned())
+            .collect()
+    }
+
+    /// The dev build must stay incremental, or `incremental_s` times a full
+    /// rebuild of the fixture.
+    #[test]
+    fn a_timed_build_is_pinned_and_only_dev_is_incremental() {
+        for (release, incremental) in [(true, "build.incremental=false"), (false, "build.incremental=true")] {
+            let args = args(release);
+            let pin = pinned_profile(!release).unwrap();
+            assert!(args.windows(pin.len()).any(|w| w == pin), "{args:?}");
+            assert!(args.iter().any(|a| a == incremental), "{args:?}");
+            assert_eq!(args.iter().any(|a| a == "--release"), release, "{args:?}");
+        }
+    }
 }

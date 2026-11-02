@@ -854,7 +854,9 @@ fn conformance(out: &mut String, data: &Data) {
         let mine: Vec<(&(String, String), &Value)> = reports
             .iter()
             .map(|(k, r)| (*k, &r["backends"][e.backend]))
-            .filter(|(_, b)| !b.is_null())
+            // A harness failure says nothing of the gate: the report's
+            // incomplete list names it.
+            .filter(|(_, b)| !b.is_null() && !b["error"].is_string())
             .collect();
         if mine.is_empty() {
             continue;
@@ -1280,9 +1282,26 @@ mod tests {
     use serde_json::{Value, json};
 
     use super::super::verdict::tests::measured;
-    use super::{cpu_block, depth_cell, depth_limits, limitations, points, provenance};
+    use super::{conformance, cpu_block, depth_cell, depth_limits, limitations, points, provenance};
     use crate::report::data::{Data, Host, Key, Source};
     use crate::report::verdict::ENTRIES;
+
+    /// A harness failure is left out of the gate column, not shown as a fail.
+    #[test]
+    fn a_harness_failure_does_not_read_as_a_failed_gate() {
+        let mut data = Data::default();
+        data.host.conformance.insert(
+            ("portable".into(), "jiter".into()),
+            json!({ "backends": { "jiter": { "gate": "pass" } } }),
+        );
+        data.host.conformance.insert(
+            ("v3".into(), "jiter".into()),
+            json!({ "backends": { "jiter": { "gate": "error", "error": "wait failed" } } }),
+        );
+        let mut out = String::new();
+        conformance(&mut out, &data);
+        assert!(out.contains("| `jiter` | ✅ pass |"), "{out}");
+    }
 
     fn host(cpu: &str, trust: &str, (rounds, seconds): (usize, u64)) -> Host {
         let mut host = Host {

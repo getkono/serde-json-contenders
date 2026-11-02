@@ -170,6 +170,12 @@ fn conformance(data: &Data) -> Conformance {
             continue;
         };
         for (backend, b) in backends {
+            if let Some(e) = b["error"].as_str() {
+                notes.push(serde_json::json!({
+                    "variant": variant, "set": set, "backend": backend, "section": "run",
+                    "note": format!("the suite did not finish: {e}"),
+                }));
+            }
             // Every gating failure, a crashed suite's ("process") included,
             // which has no section of its own.
             for f in b["gating_failures"].as_array().into_iter().flatten() {
@@ -276,7 +282,21 @@ fn field(s: &str) -> String {
 mod tests {
     use serde_json::json;
 
-    use super::export;
+    use super::{conformance, export};
+    use crate::report::data::Data;
+
+    #[test]
+    fn a_harness_failure_is_a_note() {
+        let mut data = Data::default();
+        data.host.conformance.insert(
+            ("v3".into(), "jiter".into()),
+            json!({ "backends": { "jiter": { "gate": "error", "error": "wait failed" } } }),
+        );
+        let notes = conformance(&data).notes;
+        assert_eq!(notes.len(), 1, "{notes:?}");
+        assert_eq!(notes[0]["backend"], "jiter");
+        assert_eq!(notes[0]["note"], "the suite did not finish: wait failed");
+    }
 
     #[test]
     fn rows_become_csv_with_identity_first_and_nested_values_as_json() {

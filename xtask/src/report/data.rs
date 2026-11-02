@@ -169,7 +169,7 @@ impl Loader {
 
 /// Every conformance run, at every variant and with `arbitrary_precision` at
 /// portable, finished and reported every backend of its set: one that
-/// errored left a SIMD path unchecked.
+/// errored, as a run or for one backend, left a SIMD path unchecked.
 fn conformance_gaps(data: &Data) -> Vec<String> {
     let host = &data.host;
     let mut gaps = Vec::new();
@@ -184,13 +184,16 @@ fn conformance_gaps(data: &Data) -> Vec<String> {
                 let Some(report) = host.conformance.get(&(variant.name.to_owned(), name.clone())) else {
                     continue; // missing or skipped: the loader has said so
                 };
-                if let Some(e) = report["error"].as_str() {
+                let run_error = report["error"].as_str();
+                if let Some(e) = run_error {
                     gaps.push(format!("{file}: the suite did not finish ({e})"));
-                    continue;
                 }
                 for b in set.backends.iter().filter(|b| !b.starts_with("serde_json")) {
                     let label = crate::matrix::label(set, b);
-                    if report["backends"][label.as_str()].is_null() {
+                    let backend = &report["backends"][label.as_str()];
+                    if let Some(e) = backend["error"].as_str() {
+                        gaps.push(format!("{file}: the {label} suite did not finish ({e})"));
+                    } else if backend.is_null() && run_error.is_none() {
                         gaps.push(format!("{file}: no result for {label}"));
                     }
                 }

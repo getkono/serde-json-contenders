@@ -950,10 +950,10 @@ fn rule4(data: &Data, e: &Entry) -> Outcome {
         };
         // The count and the timing must agree on direction, and only on
         // that: the count is of the `v3` build in callgrind estimated cycles
-        // and the timing of `native` in hardware cycles, so it bounds no
-        // gain's or loss's size. A count predicting a material gain contradicts
-        // a timed loss beyond the noise, and one predicting a material loss a
-        // timed gain.
+        // and the timing of `native` in throughput and p99 latency, so it
+        // bounds no gain's or loss's size. A count predicting a material gain
+        // contradicts a timed loss beyond the noise, and one predicting a
+        // material loss a timed gain.
         let slack = EPSILON.max(aa_rps);
         if (predicted > EPSILON && g.rps < -slack) || (predicted < -EPSILON && g.rps > slack) {
             inconsistent.push(format!(

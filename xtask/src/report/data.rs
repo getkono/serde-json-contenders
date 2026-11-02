@@ -399,8 +399,10 @@ fn listed_failures(backend: &Value) -> impl Iterator<Item = Case> + '_ {
 /// 1. Its reference outcome is recorded in both builds, and they differ.
 /// 2. No outcome is recorded by default, because no backend of any set failed
 ///    the case there (in sections whose failure lists are complete), and every
-///    backend of at least two sets fails it with `arbitrary_precision`. Backends
-///    that share nothing but serde_json do not all change together.
+///    backend of every set fails it with `arbitrary_precision`, with at least
+///    two sets measuring a backend. Backends that share nothing but serde_json
+///    do not all change together, and one backend still passing is evidence
+///    against the move, so that case stays gated.
 fn reference_moves(conformance: &BTreeMap<(String, String), Value>) -> std::collections::BTreeSet<Case> {
     let portable = |name: &str| conformance.get(&("portable".to_owned(), name.to_owned()));
     let has_backends = |report: &Value| entries(report).next().is_some();
@@ -451,10 +453,14 @@ fn reference_moves(conformance: &BTreeMap<(String, String), Value>) -> std::coll
     moves
 }
 
-/// Whether this backend panicked on the case: a panic is the backend's defect
-/// whatever serde_json answers.
+/// Whether this backend panicked or crashed on the case: either is the
+/// backend's defect whatever serde_json answers. The suite words a panic as
+/// `panicked: `, `encode panicked: `, or inside a `decoded {"error":...}`
+/// detail, and a depth probe's death as `crashed: `.
 fn panicked(backend: &Value, section: &str, case: &str, detail: &Value) -> bool {
-    detail.as_str().is_some_and(|d| d.starts_with("panicked"))
+    detail
+        .as_str()
+        .is_some_and(|d| d.contains("panicked") || d.starts_with("crashed:"))
         || backend["sections"][section]["differences"]
             .as_array()
             .into_iter()
@@ -1030,6 +1036,37 @@ mod tests {
         assert_eq!(ap_entry(&reports, "b")["gate"], "pass");
     }
 
+    /// A set measuring no backend, as `baseline` does in both builds, says
+    /// nothing about a case and does not stop the others proving it.
+    #[test]
+    fn a_serde_json_only_set_does_not_block_the_proof() {
+        let flatten = || failing("attributes", &["flatten/0"], &reject(), &accept());
+        let clean = || failing("attributes", &[], &accept(), &accept());
+        let mut reports = reports(vec![("a", clean(), flatten()), ("b", clean(), flatten())]);
+        for name in ["baseline", "baseline+arbitrary-precision"] {
+            reports.insert(("portable".to_owned(), name.to_owned()), json!({ "backends": {} }));
+        }
+        excuse_reference_moves(&mut reports);
+        assert_eq!(ap_entry(&reports, "a")["gate"], "pass");
+        assert_eq!(ap_entry(&reports, "b")["gate"], "pass");
+    }
+
+    /// Two sets failing beside a third that passes do not prove a move: the
+    /// third answers as serde_json does in that build.
+    #[test]
+    fn a_passing_set_keeps_the_others_gated() {
+        let flatten = || failing("attributes", &["flatten/0"], &reject(), &accept());
+        let clean = || failing("attributes", &[], &accept(), &accept());
+        let mut reports = reports(vec![
+            ("a", clean(), flatten()),
+            ("b", clean(), flatten()),
+            ("c", clean(), clean()),
+        ]);
+        excuse_reference_moves(&mut reports);
+        assert_eq!(ap_entry(&reports, "a")["gate"], "fail");
+        assert_eq!(ap_entry(&reports, "b")["gate"], "fail");
+    }
+
     /// One library failing alone is that library's change, not serde_json's.
     #[test]
     fn one_set_failing_alone_stays() {
@@ -1100,6 +1137,30 @@ mod tests {
         ]);
         excuse_reference_moves(&mut reports);
         assert_eq!(ap_entry(&reports, "a")["gate"], "fail");
+    }
+
+    /// A panic or crash named only by the failure detail stays too: these
+    /// fixtures list no `panic` in `differences`, as the suite's encode, random
+    /// and depth failures do not, or as a capped listing would not. The second
+    /// set is excused on the same case, so the case itself did move.
+    #[test]
+    fn a_panic_or_crash_in_the_detail_stays() {
+        for detail in [
+            "panicked: boom",
+            "encode panicked: boom",
+            "decoded {\"error\":\"panicked: boom\"}, neither the correctly rounded value nor serde_json's",
+            "crashed: signal 11",
+        ] {
+            let failed = || failing("numbers", &["x#value"], &reject(), &accept());
+            let clean = || failing("numbers", &[], &accept(), &accept());
+            let mut own = failed();
+            own["gating_failures"][0]["detail"] = detail.into();
+            own["sections"]["numbers"]["differences"] = json!([]);
+            let mut reports = reports(vec![("a", clean(), own), ("b", clean(), failed())]);
+            excuse_reference_moves(&mut reports);
+            assert_eq!(ap_entry(&reports, "a")["gate"], "fail", "{detail}");
+            assert_eq!(ap_entry(&reports, "b")["gate"], "pass", "{detail}");
+        }
     }
 
     /// Failures past the listing cap still gate once every listed one is

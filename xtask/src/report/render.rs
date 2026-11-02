@@ -199,6 +199,21 @@ fn outstanding(out: &mut String, data: &Data, verdicts: &[Verdict]) {
     out.push('\n');
 }
 
+/// A timed stage's 1, 5 and 15 minute load averages as it started (stamped
+/// once the load had settled) and as it finished; a stage stamped before the
+/// start was recorded has only the end.
+fn stage_load(prov: &Value) -> Option<String> {
+    let three = |k: &str| {
+        prov[k]
+            .as_str()
+            .map(|l| l.split_whitespace().take(3).collect::<Vec<_>>().join(" "))
+    };
+    three("loadavg").map(|end| match three("loadavg_start") {
+        Some(start) => format!("{start} as it started and {end}"),
+        None => end,
+    })
+}
+
 /// What the recorded results leave unmeasured or weakly measured, each
 /// derived from `results/` so a longer or quieter run retires its own note.
 fn limitations(data: &Data) -> Vec<String> {
@@ -216,11 +231,6 @@ fn limitations(data: &Data) -> Vec<String> {
         c.dedup();
         c
     };
-    let load = |t: &Value| {
-        t["loadavg"]
-            .as_str()
-            .map(|l| l.split_whitespace().take(3).collect::<Vec<_>>().join(" "))
-    };
     for (name, classes, prov) in [
         (
             "Hardware cycles",
@@ -232,13 +242,17 @@ fn limitations(data: &Data) -> Vec<String> {
             class(&mut host.time.rows.values()),
             &host.time.provenance,
         ),
-        ("End-to-end timing", class(&mut host.e2e_time.iter()), &Value::Null),
+        (
+            "End-to-end timing",
+            class(&mut host.e2e_time.iter()),
+            &host.e2e_time_provenance,
+        ),
     ] {
         if classes.iter().any(|c| c != "canonical") {
             notes.push(format!(
                 "{name} is {}`solo` class: taken on a shared machine{}, not a quieted one. Its A/A band says how much of a difference is noise.",
                 if classes.iter().any(|c| c == "canonical") { "partly " } else { "" },
-                load(prov).map_or_else(String::new, |l| format!(
+                stage_load(prov).map_or_else(String::new, |l| format!(
                     " (1, 5 and 15 minute load average {l} as it finished; governor {})",
                     prov["governor"].as_str().unwrap_or("?")
                 ))
@@ -719,6 +733,7 @@ fn exports(out: &mut String, exports: &[super::export::Export]) {
 fn costs(out: &mut String, data: &Data) {
     let host = &data.host;
     section(out, "costs", "What adopting it costs besides CPU");
+    out.push_str("Build times are adoption context only: they are timed with no A/A control, so they weigh in no verdict and are not a dominance axis.\n\n");
     out.push_str(&header(&[
         "Set",
         "`.text` +full (native)",
@@ -1207,11 +1222,11 @@ fn provenance(out: &mut String, data: &Data, stale: &[String]) {
             p["kernel"].as_str().unwrap_or("?"),
             p["governor"].as_str().unwrap_or("?"),
             p["boost"].as_str().unwrap_or("?"),
-            p["loadavg"].as_str().map_or("?".to_owned(), |l| l
-                .split_whitespace()
-                .take(3)
-                .collect::<Vec<_>>()
-                .join(" ")),
+            stage_load(p).map_or("?".to_owned(), |l| if p["loadavg_start"].is_string() {
+                format!("{l} as it finished")
+            } else {
+                l
+            }),
         );
         if let Some(v) = p["valgrind"].as_str().filter(|_| p["container_image"].is_string()) {
             let _ = write!(conditions, "; {v} in the container");
@@ -1262,11 +1277,11 @@ fn collapse(sources: &[Source]) -> Vec<Source> {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
+    use serde_json::{Value, json};
 
     use super::super::verdict::tests::measured;
-    use super::{cpu_block, depth_cell, depth_limits, limitations, points};
-    use crate::report::data::{Data, Host, Key};
+    use super::{cpu_block, depth_cell, depth_limits, limitations, points, provenance};
+    use crate::report::data::{Data, Host, Key, Source};
     use crate::report::verdict::ENTRIES;
 
     fn host(cpu: &str, trust: &str, (rounds, seconds): (usize, u64)) -> Host {
@@ -1299,6 +1314,72 @@ mod tests {
         assert!(notes.contains("end to end 5 reps of 10 s (reduced from the default 30) per load phase"));
         assert!(notes.contains("fuzzing 1800 s per target"));
         assert!(!notes.contains("1800 s (reduced"));
+    }
+
+    /// A stage stamped with its load as it started states both ends.
+    #[test]
+    fn states_the_load_at_both_ends_of_a_timed_stage() {
+        let mut host = host("AMD X", "solo", (3, 30));
+        host.time.provenance["loadavg_start"] = json!("0.90 2.10 3.00 1/900 1");
+        let data = Data {
+            host,
+            ..Data::default()
+        };
+        let notes = limitations(&data).join("\n");
+        assert!(
+            notes.contains("load average 0.90 2.10 3.00 as it started and 41.20 38.00 35.10 as it finished"),
+            "{notes}"
+        );
+    }
+
+    /// End-to-end timing is a timed stage too: its note states both loads.
+    #[test]
+    fn states_the_load_at_both_ends_of_end_to_end_timing() {
+        let mut host = host("AMD X", "solo", (3, 30));
+        host.e2e_time_provenance = json!({
+            "loadavg_start": "0.80 1.00 1.20 1/900 1",
+            "loadavg": "6.00 5.00 4.00 3/900 1",
+            "governor": "performance",
+        });
+        let data = Data {
+            host,
+            ..Data::default()
+        };
+        let notes = limitations(&data).join("\n");
+        assert!(
+            notes.contains(
+                "End-to-end timing is `solo` class: taken on a shared machine (1, 5 and 15 minute load average 0.80 1.00 1.20 as it started and 6.00 5.00 4.00 as it finished; governor performance)"
+            ),
+            "{notes}"
+        );
+    }
+
+    /// The Conditions column states a timed stage's start load, and leaves a
+    /// stage stamped with one load as it was.
+    #[test]
+    fn the_provenance_table_states_a_stages_start_load() {
+        let source = |provenance: Value| Source {
+            name: "x/e2e-time.json".into(),
+            provenance,
+            skipped: None,
+        };
+        let data = Data {
+            sources: vec![
+                source(json!({ "loadavg_start": "0.80 1.00 1.20 1/9 1", "loadavg": "6.00 5.00 4.00 3/9 1" })),
+                source(json!({ "loadavg": "7.00 8.00 9.00 3/9 1" })),
+            ],
+            ..Data::default()
+        };
+        let mut out = String::new();
+        provenance(&mut out, &data, &[]);
+        assert!(
+            out.contains("load 0.80 1.00 1.20 as it started and 6.00 5.00 4.00 as it finished"),
+            "{out}"
+        );
+        assert!(
+            out.contains("load 7.00 8.00 9.00 |") || out.contains("load 7.00 8.00 9.00;"),
+            "{out}"
+        );
     }
 
     #[test]

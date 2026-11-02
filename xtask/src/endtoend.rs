@@ -322,13 +322,11 @@ pub fn time(args: &[String]) -> Result<()> {
     let reps = flag("--reps").unwrap_or(REPS);
     let seconds = flag("--seconds").unwrap_or(SECONDS);
     crate::doctor::require()?;
-    let trust = crate::timed::trust(args);
-    crate::timed::check_trust(&trust)?;
+    let trust = crate::timed::trust(args)?;
     anyhow::ensure!(
         filter.sets().iter().any(|s| s.name == "baseline"),
         "e2e-time compares every backend with serde_json in the same session, so the baseline set must run too"
     );
-    let trust = trust.as_str();
     // The load generator's version is part of what a percentile means.
     let oha_version = crate::util::output(Command::new(which("oha")?).arg("--version"))?
         .trim()
@@ -343,7 +341,7 @@ pub fn time(args: &[String]) -> Result<()> {
         bodies.join("json-large.json"),
         <payloads::kynos::JsonLarge as payloads::Workload>::bytes(),
     )?;
-    let mut rows = Vec::new();
+    let mut built = Vec::new();
     for variant in filter.variants() {
         let mut servers = Vec::new();
         for set in filter.sets() {
@@ -355,6 +353,12 @@ pub fn time(args: &[String]) -> Result<()> {
                 }
             }
         }
+        built.push((variant, servers));
+    }
+    crate::timed::check_trust(&trust)?;
+    let trust = trust.as_str();
+    let mut rows = Vec::new();
+    for (variant, servers) in built {
         for route in ROUTES {
             let eligible: Vec<_> = servers
                 .iter()

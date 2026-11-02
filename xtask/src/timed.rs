@@ -77,35 +77,99 @@ pub fn hw(args: &[String]) -> Result<()> {
 }
 
 /// The trust class a run claims: `--trust`, else `SJC_TRUST` (so `mise run
-/// all` can pass it to every timed task), else `solo`.
-pub fn trust(args: &[String]) -> String {
-    flag(args, "--trust")
+/// all` can pass it to every timed task), else `solo`. Anything else is
+/// refused here, before a stage spends its builds on it.
+pub fn trust(args: &[String]) -> Result<String> {
+    let trust = flag(args, "--trust")
         .map(str::to_owned)
         .or_else(|| std::env::var("SJC_TRUST").ok())
-        .unwrap_or_else(|| "solo".into())
+        .unwrap_or_else(|| "solo".into());
+    anyhow::ensure!(
+        matches!(trust.as_str(), "solo" | "canonical"),
+        "--trust is solo or canonical"
+    );
+    Ok(trust)
 }
 
 /// The 1-minute load average above which a run cannot be `canonical`.
 const QUIET_LOAD: f64 = 1.0;
 
-/// Refuse `canonical` on a host that is not quiet: a busy machine, or a
-/// governor that moves the clock under the measurement.
-pub fn check_trust(trust: &str) -> Result<()> {
-    anyhow::ensure!(matches!(trust, "solo" | "canonical"), "--trust is solo or canonical");
-    if trust == "canonical" {
-        let load: f64 = std::fs::read_to_string("/proc/loadavg")?
-            .split_whitespace()
-            .next()
-            .and_then(|l| l.parse().ok())
-            .unwrap_or(f64::INFINITY);
-        let governor =
-            std::fs::read_to_string("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor").unwrap_or_default();
-        anyhow::ensure!(
-            load <= QUIET_LOAD && governor.trim() == "performance",
-            "--trust canonical needs a quiet host: load {load} (at most {QUIET_LOAD}), governor {} (performance)",
-            governor.trim()
+/// How long a `canonical` stage waits for the load to settle before it is
+/// refused: long enough for the 1-minute average to decay after the stage
+/// before it (fuzzing, on every core, in `mise run all`).
+const SETTLE_LIMIT: std::time::Duration = std::time::Duration::from_mins(15);
+/// How often the load is read while waiting.
+const SETTLE_STEP: std::time::Duration = std::time::Duration::from_secs(15);
+
+/// The 1-minute load average; unreadable counts as busy.
+fn load_now() -> f64 {
+    std::fs::read_to_string("/proc/loadavg")
+        .ok()
+        .and_then(|l| l.split_whitespace().next().and_then(|l| l.parse().ok()))
+        .unwrap_or(f64::INFINITY)
+}
+
+/// Wait, at most `limit`, for `load` to fall to [`QUIET_LOAD`], reading it
+/// every `step`; the last reading.
+fn settle(
+    load: &mut dyn FnMut() -> f64,
+    pause: &mut dyn FnMut(std::time::Duration),
+    limit: std::time::Duration,
+    step: std::time::Duration,
+) -> f64 {
+    let mut waited = std::time::Duration::ZERO;
+    loop {
+        let now = load();
+        if now <= QUIET_LOAD || waited >= limit {
+            return now;
+        }
+        eprintln!(
+            "canonical: waiting for the 1-minute load ({now}) to fall to {QUIET_LOAD} ({}s of at most {}s)",
+            waited.as_secs(),
+            limit.as_secs()
         );
+        pause(step);
+        waited += step;
     }
+}
+
+/// Whether a host is quiet: the 1-minute load at most [`QUIET_LOAD`] and
+/// every CPU's governor `performance` (one CPU in another mode moves the
+/// clock of whatever runs on it, and a host that reports none is not shown
+/// to be pinned).
+fn quiet(load: f64, governors: &[(usize, String)]) -> Result<()> {
+    let off: Vec<String> = governors
+        .iter()
+        .filter(|(_, g)| g != "performance")
+        .map(|(cpu, g)| format!("cpu{cpu} {g}"))
+        .collect();
+    anyhow::ensure!(
+        load <= QUIET_LOAD && !governors.is_empty() && off.is_empty(),
+        "--trust canonical needs a quiet host: load {load} (at most {QUIET_LOAD}), every CPU's governor performance ({})",
+        if governors.is_empty() {
+            "no CPU reports one".to_owned()
+        } else if off.is_empty() {
+            "all are".to_owned()
+        } else {
+            format!("not {}", off.join(", "))
+        }
+    );
+    Ok(())
+}
+
+/// Refuse `canonical` on a host that is not quiet: a busy machine, or a
+/// governor on any CPU that moves the clock under the measurement. A
+/// `canonical` stage first waits, bounded by [`SETTLE_LIMIT`], for the load
+/// the stage before it left to settle. Either way the load the stage starts
+/// at is recorded, to be stamped beside the load it ends at. A stage calls
+/// this once it has built what it runs, so its own builds are settled too and
+/// the recorded load is the one its measurement starts at.
+pub fn check_trust(trust: &str) -> Result<()> {
+    if trust == "canonical" {
+        let load = settle(&mut load_now, &mut std::thread::sleep, SETTLE_LIMIT, SETTLE_STEP);
+        quiet(load, &crate::provenance::governors())?;
+    }
+    crate::provenance::stage_started();
     Ok(())
 }
 
@@ -256,14 +320,13 @@ fn rounds(
     let rounds: u64 = flag(args, "--rounds").and_then(|v| v.parse().ok()).unwrap_or(ROUNDS);
     let core = flag(args, "--core").unwrap_or("2").to_owned();
     crate::doctor::require()?;
-    let trust = trust(args);
-    check_trust(&trust)?;
+    let trust = trust(args)?;
     anyhow::ensure!(
         filter.sets().iter().any(|s| s.name == "baseline"),
         "{mode} compares every backend with serde_json in the same session, so the baseline set must run too"
     );
     let sibling = siblings(&core);
-    let mut rows = Vec::new();
+    let mut built = Vec::new();
     for variant_name in filter.variants.clone().unwrap_or_default() {
         let variant = variant(&variant_name)?;
         let mut cells: Vec<(Cell, String, std::path::PathBuf)> = Vec::new();
@@ -276,6 +339,11 @@ fn rounds(
                 }
             }
         }
+        built.push((variant, cells));
+    }
+    check_trust(&trust)?;
+    let mut rows = Vec::new();
+    for (variant, cells) in built {
         let mut per_round: Vec<Vec<Value>> = vec![Vec::new(); cells.len()];
         for round in 0..rounds {
             let mut order: Vec<usize> = (0..cells.len()).collect();
@@ -343,4 +411,67 @@ fn rounds(
         mode,
         &rows,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::{quiet, settle, trust};
+
+    fn govs(g: &[&str]) -> Vec<(usize, String)> {
+        g.iter().enumerate().map(|(i, g)| (i, (*g).to_owned())).collect()
+    }
+
+    /// A class that does not exist is refused when it is read, which is
+    /// before a stage builds anything.
+    #[test]
+    fn an_unknown_trust_class_is_refused_when_read() {
+        let args = |class: &str| ["--trust".to_owned(), class.to_owned()];
+        assert_eq!(trust(&args("canonical")).unwrap(), "canonical");
+        assert_eq!(trust(&args("solo")).unwrap(), "solo");
+        assert!(trust(&args("quiet")).is_err());
+    }
+
+    /// Every CPU is checked, not only cpu0.
+    #[test]
+    fn a_quiet_host_needs_every_cpu_at_performance() {
+        assert!(quiet(0.5, &govs(&["performance", "performance"])).is_ok());
+        let err = quiet(0.5, &govs(&["performance", "powersave"]))
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("not cpu1 powersave"), "{err}");
+        assert!(quiet(0.5, &[]).is_err());
+        assert!(quiet(1.5, &govs(&["performance"])).is_err());
+    }
+
+    /// The wait ends as soon as the load settles, reading it each step.
+    #[test]
+    fn settling_stops_once_the_load_is_quiet() {
+        let mut readings = [6.0, 3.0, 0.9, 0.5].into_iter();
+        let mut paused = Vec::new();
+        let load = settle(
+            &mut || readings.next().unwrap_or(f64::INFINITY),
+            &mut |d| paused.push(d),
+            Duration::from_mins(1),
+            Duration::from_secs(15),
+        );
+        assert!((load - 0.9).abs() < f64::EPSILON);
+        assert_eq!(paused, vec![Duration::from_secs(15); 2]);
+    }
+
+    /// The wait is bounded: a load that never settles returns its last
+    /// reading after the limit, for the gate to refuse.
+    #[test]
+    fn settling_gives_up_at_the_limit() {
+        let mut paused = Duration::ZERO;
+        let load = settle(
+            &mut || 4.0,
+            &mut |d| paused += d,
+            Duration::from_mins(1),
+            Duration::from_secs(15),
+        );
+        assert!((load - 4.0).abs() < f64::EPSILON);
+        assert_eq!(paused, Duration::from_mins(1));
+    }
 }

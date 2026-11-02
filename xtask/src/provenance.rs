@@ -137,6 +137,46 @@ fn passed_git_state(commit: Option<&str>, dirty: Option<&str>) -> (Option<String
     (commit, dirty.map(str::trim) != Some("false"))
 }
 
+/// Every CPU's frequency governor, by CPU number, from sysfs. A CPU without
+/// cpufreq (or a host without sysfs) has none, and is left out.
+#[must_use]
+pub fn governors() -> Vec<(usize, String)> {
+    let mut out: Vec<(usize, String)> = std::fs::read_dir("/sys/devices/system/cpu")
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+        .filter_map(|e| {
+            let cpu: usize = e.file_name().to_str()?.strip_prefix("cpu")?.parse().ok()?;
+            Some((
+                cpu,
+                read(&format!("/sys/devices/system/cpu/cpu{cpu}/cpufreq/scaling_governor"))?,
+            ))
+        })
+        .collect();
+    out.sort();
+    out
+}
+
+/// The distinct governors among `governors`, joined: one word where every
+/// CPU agrees. `None` where no CPU reports one.
+fn governor_summary(governors: &[(usize, String)]) -> Option<String> {
+    let mut distinct: Vec<&str> = governors.iter().map(|(_, g)| g.as_str()).collect();
+    distinct.sort_unstable();
+    distinct.dedup();
+    (!distinct.is_empty()).then(|| distinct.join(", "))
+}
+
+/// The 1-minute load as a timed stage started, once it had settled.
+static STAGE_START_LOAD: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+/// Record the load as a timed stage starts; every stamp after it carries
+/// that load as `loadavg_start` beside `loadavg`, the load as it was written.
+pub fn stage_started() {
+    if let Some(load) = read("/proc/loadavg") {
+        let _ = STAGE_START_LOAD.set(load);
+    }
+}
+
 /// The stamp taken when the task began.
 static START: std::sync::OnceLock<Value> = std::sync::OnceLock::new();
 
@@ -182,7 +222,7 @@ pub fn stamp() -> Value {
         let (commit, dirty) = git_state();
         (commit, dirty, fingerprint())
     };
-    json!({
+    let mut stamp = json!({
         "timestamp": now(),
         "git_commit": commit,
         "git_dirty": dirty,
@@ -193,20 +233,41 @@ pub fn stamp() -> Value {
         "os": std::env::consts::OS,
         "kernel": first_line(Command::new("uname").arg("-r")),
         "rustc": capture(Command::new("rustc").arg("-vV")).map(|(_, o, _)| o).ok(),
-        "governor": read("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor"),
+        // Every CPU's, not only cpu0's: one in another mode moves the clock
+        // of whatever it runs.
+        "governor": governor_summary(&governors()),
         "boost": read("/sys/devices/system/cpu/cpufreq/boost"),
         "microcode": read("/proc/cpuinfo").and_then(|i| i.lines().find(|l| l.starts_with("microcode")).map(str::to_owned)),
         "container_image": std::env::var("SJC_IMAGE").ok(),
         "valgrind": first_line(Command::new("valgrind").arg("--version")),
         "loadavg": read("/proc/loadavg"),
-    })
+    });
+    if let Some(start) = STAGE_START_LOAD.get() {
+        stamp["loadavg_start"] = json!(start);
+    }
+    stamp
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{passed_git_state, status_is_dirty};
+    use super::{governor_summary, passed_git_state, status_is_dirty};
 
     const COMMIT: &str = "675987c9";
+
+    #[test]
+    fn summarises_every_cpus_governor() {
+        let govs =
+            |g: &[&str]| -> Vec<(usize, String)> { g.iter().enumerate().map(|(i, g)| (i, (*g).to_owned())).collect() };
+        assert_eq!(
+            governor_summary(&govs(&["performance", "performance"])).as_deref(),
+            Some("performance")
+        );
+        assert_eq!(
+            governor_summary(&govs(&["performance", "powersave", "performance"])).as_deref(),
+            Some("performance, powersave")
+        );
+        assert_eq!(governor_summary(&[]), None);
+    }
 
     #[test]
     fn records_the_commit_and_clean_flag_the_host_passed() {

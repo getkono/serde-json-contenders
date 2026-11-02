@@ -145,10 +145,14 @@ impl Loader {
     /// would leave one of them unread (lookups take the first), so that is
     /// an error.
     fn rows(&mut self, name: &str) -> Result<Vec<Value>> {
-        let rows = self
-            .doc(name)?
-            .and_then(|d| d["rows"].as_array().cloned())
-            .unwrap_or_default();
+        self.stamped_rows(name).map(|(rows, _)| rows)
+    }
+
+    /// [`Self::rows`], with the file's provenance stamp. A file is read once:
+    /// each read records a [`Source`].
+    fn stamped_rows(&mut self, name: &str) -> Result<(Vec<Value>, Value)> {
+        let doc = self.doc(name)?.unwrap_or(Value::Null);
+        let rows = doc["rows"].as_array().cloned().unwrap_or_default();
         let mut seen = std::collections::BTreeSet::new();
         for r in &rows {
             let id: Vec<String> = ["variant", "set", "backend", "route", "config", "target"]
@@ -159,7 +163,7 @@ impl Loader {
                 bail!("results/{name}: two rows for {}", id.join(" "));
             }
         }
-        Ok(rows)
+        Ok((rows, doc["provenance"].clone()))
     }
 }
 
@@ -222,6 +226,7 @@ pub struct Host {
     pub compile: Vec<Value>,
     pub msrv: Vec<Value>,
     pub e2e_time: Vec<Value>,
+    pub e2e_time_provenance: Value,
     pub doctor: Value,
     /// conformance reports: (variant, set) -> report.
     pub conformance: BTreeMap<(String, String), Value>,
@@ -334,7 +339,7 @@ impl Data {
 
 fn load_host(load: &mut Loader, slug: &str) -> Result<Host> {
     let at = |file: &str| format!("{slug}/{file}");
-    let e2e_time = load.rows(&at("e2e-time.json"))?;
+    let (e2e_time, e2e_time_provenance) = load.stamped_rows(&at("e2e-time.json"))?;
     let mut conformance = BTreeMap::new();
     for variant in crate::matrix::variants() {
         for set in crate::matrix::SETS {
@@ -360,6 +365,7 @@ fn load_host(load: &mut Loader, slug: &str) -> Result<Host> {
         compile: load.rows(&at("compile-time.json"))?,
         msrv: load.rows(&at("msrv.json"))?,
         e2e_time,
+        e2e_time_provenance,
         doctor: load.doc(&at("doctor.json"))?.unwrap_or(Value::Null),
         conformance,
         provenance,

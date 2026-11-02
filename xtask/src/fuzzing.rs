@@ -108,7 +108,7 @@ pub fn fuzz(args: &[String]) -> Result<()> {
             let artifact_prefix = format!("-artifact_prefix={}/", artifacts.display());
             let target_dir = root().join("target/fuzz").join(set.name).join(config);
             let cargo_fuzz = |sub: &str| {
-                let mut cmd = Command::new("cargo");
+                let mut cmd = crate::build::cargo();
                 cmd.current_dir(&fuzz)
                     .arg(format!("+{NIGHTLY}"))
                     .args(["fuzz", sub, "--target", &host, "--features", set.features, target])
@@ -309,13 +309,12 @@ pub fn miri(args: &[String]) -> Result<()> {
     let mut rows = Vec::new();
     for set in filter.sets() {
         eprintln!("miri: {}", set.name);
-        let mut cmd = Command::new("cargo");
+        let mut cmd = crate::build::cargo();
         cmd.current_dir(root())
             .arg(format!("+{NIGHTLY}"))
             .args(["miri", "test", "--locked", "-p", "conformance", "--test", "miri"])
             .env("CARGO_TARGET_DIR", root().join("target/miri").join(set.name))
-            .env("MIRIFLAGS", "-Zmiri-disable-isolation")
-            .env_remove("RUSTFLAGS");
+            .env("MIRIFLAGS", "-Zmiri-disable-isolation");
         if !set.features.is_empty() {
             cmd.args(["--features", set.features]);
         }

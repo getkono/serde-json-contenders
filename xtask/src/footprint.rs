@@ -17,7 +17,7 @@ pub const ADVISORY_DB_COMMIT: &str = "e2111519ba6d14a5da59a7b2e5c8083ae8a37c01";
 
 /// `name version` of every normal dependency `codecs` resolves in `set`.
 fn tree(set: &Set) -> Result<BTreeSet<(String, String)>> {
-    let mut cmd = Command::new("cargo");
+    let mut cmd = crate::build::cargo();
     cmd.current_dir(root()).args([
         "tree", "--locked", "-p", "codecs", "-e", "normal", "--prefix", "none", "--format", "{p}",
     ]);
@@ -223,7 +223,7 @@ struct Source {
 /// Package sources for `set`, from `cargo metadata` (which lists only the
 /// optional dependencies the requested features activate).
 fn sources(set: &Set) -> Result<BTreeMap<(String, String), Source>> {
-    let mut cmd = Command::new("cargo");
+    let mut cmd = crate::build::cargo();
     cmd.current_dir(root())
         .args(["metadata", "--format-version", "1", "--locked"]);
     if !set.features.is_empty() {

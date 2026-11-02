@@ -166,6 +166,15 @@ fn governor_summary(governors: &[(usize, String)]) -> Option<String> {
     (!distinct.is_empty()).then(|| distinct.join(", "))
 }
 
+/// Each variant's `RUSTFLAGS`, by variant name.
+fn variant_rustflags(variants: &[crate::matrix::Variant]) -> Value {
+    variants
+        .iter()
+        .map(|v| (v.name.to_owned(), json!(v.rustflags)))
+        .collect::<serde_json::Map<_, _>>()
+        .into()
+}
+
 /// The 1-minute load as a timed stage started, once it had settled.
 static STAGE_START_LOAD: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
@@ -193,7 +202,7 @@ pub fn begin() {
 pub fn stamp_checked() -> anyhow::Result<Value> {
     let now = stamp();
     if let Some(start) = START.get() {
-        for k in ["git_commit", "git_dirty", "fingerprint"] {
+        for k in ["git_commit", "git_dirty", "fingerprint", "cargo_profile"] {
             anyhow::ensure!(
                 start[k] == now[k],
                 "the measured code changed during the run ({k}: {} -> {}); rerun the task",
@@ -233,6 +242,10 @@ pub fn stamp() -> Value {
         "os": std::env::consts::OS,
         "kernel": first_line(Command::new("uname").arg("-r")),
         "rustc": capture(Command::new("rustc").arg("-vV")).map(|(_, o, _)| o).ok(),
+        // A measured build's flags are its variant's, and an unvaried build's
+        // are empty; `build::cargo` lets nothing inherited replace them.
+        "cargo_rustflags": variant_rustflags(&crate::matrix::variants()),
+        "cargo_profile": crate::build::effective_profile(),
         // Every CPU's, not only cpu0's: one in another mode moves the clock
         // of whatever it runs.
         "governor": governor_summary(&governors()),
@@ -250,9 +263,23 @@ pub fn stamp() -> Value {
 
 #[cfg(test)]
 mod tests {
-    use super::{governor_summary, passed_git_state, status_is_dirty};
+    use super::{governor_summary, passed_git_state, stamp, status_is_dirty, variant_rustflags};
 
     const COMMIT: &str = "675987c9";
+
+    #[test]
+    fn stamps_each_variants_rustflags_by_name() {
+        let flags = variant_rustflags(&crate::matrix::variants());
+        assert_eq!(flags["portable"], "-C target-cpu=x86-64");
+        assert_eq!(flags["native"], "-C target-cpu=native");
+    }
+
+    #[test]
+    fn stamps_the_build_environment() {
+        let stamp = stamp();
+        assert_eq!(stamp["cargo_profile"]["release"]["lto"], "fat");
+        assert_eq!(stamp["cargo_rustflags"]["portable"], "-C target-cpu=x86-64");
+    }
 
     #[test]
     fn summarises_every_cpus_governor() {

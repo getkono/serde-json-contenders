@@ -1,13 +1,12 @@
 //! What adopting a backend costs besides CPU: binary size, compile time, MSRV.
 
-use std::process::Command;
 use std::time::Instant;
 
 use anyhow::{Context, Result};
 use object::{Object, ObjectSection};
 use serde_json::{Value, json};
 
-use crate::build::{Place, bin, build};
+use crate::build::{Place, bin, build, cargo, pinned_profile};
 use crate::counted::Filter;
 use crate::util::{capture, root};
 
@@ -48,13 +47,13 @@ fn write(kind: &str, rows: &[Value]) -> Result<()> {
 }
 
 fn timed_build(dir: &std::path::Path, set: &crate::matrix::Set, release: bool) -> Result<f64> {
-    let mut cmd = Command::new("cargo");
+    let mut cmd = cargo();
     cmd.current_dir(root())
         .args(["build", "--locked", "-p", "size-fixture", "--bin", "fixture-full"])
+        .args(pinned_profile()?)
         .env("CARGO_TARGET_DIR", dir)
         // A compiler cache would measure the cache.
-        .env("RUSTC_WRAPPER", "")
-        .env_remove("RUSTFLAGS");
+        .env("RUSTC_WRAPPER", "");
     if release {
         cmd.arg("--release");
     }
@@ -122,7 +121,7 @@ pub const MSRV: &str = "1.85.0";
 pub fn msrv(args: &[String]) -> Result<()> {
     let filter = Filter::parse(args);
     let metadata: Value = serde_json::from_str(
-        &crate::util::output(Command::new("cargo").current_dir(root()).args([
+        &crate::util::output(cargo().current_dir(root()).args([
             "metadata",
             "--format-version",
             "1",
@@ -132,12 +131,11 @@ pub fn msrv(args: &[String]) -> Result<()> {
         .or_else(|_| {
             // `--all-features` would unify flexon-rt and flexon-ct, which refuse
             // each other; the dependency list is the same either way.
-            crate::util::output(Command::new("cargo").current_dir(root()).args([
-                "metadata",
-                "--format-version",
-                "1",
-                "--locked",
-            ]))
+            crate::util::output(
+                cargo()
+                    .current_dir(root())
+                    .args(["metadata", "--format-version", "1", "--locked"]),
+            )
         })?,
     )?;
     let declared = |name: &str| {
@@ -151,13 +149,12 @@ pub fn msrv(args: &[String]) -> Result<()> {
     let mut rows = Vec::new();
     for set in filter.sets() {
         let dir = root().join("target/msrv").join(set.name);
-        let mut cmd = Command::new("cargo");
+        let mut cmd = cargo();
         cmd.current_dir(root())
             .arg(format!("+{MSRV}"))
             .args(["check", "--locked", "-p", "codecs", "--ignore-rust-version"])
             .env("CARGO_TARGET_DIR", &dir)
-            .env("RUSTC_WRAPPER", "")
-            .env_remove("RUSTFLAGS");
+            .env("RUSTC_WRAPPER", "");
         if !set.features.is_empty() {
             cmd.args(["--features", set.features]);
         }

@@ -366,6 +366,17 @@ fn entries(report: &Value) -> impl Iterator<Item = &Value> {
     report["backends"].as_object().into_iter().flat_map(|b| b.values())
 }
 
+/// Every backend entry of a report that holds a result: a harness failure is
+/// no evidence for or against a case.
+fn measured(report: &Value) -> impl Iterator<Item = &Value> {
+    entries(report).filter(|b| !b["error"].is_string())
+}
+
+/// Whether a harness failure, of the run or of one backend, cut a report short.
+fn harness_failed(report: &Value) -> bool {
+    report["error"].is_string() || entries(report).any(|b| b["error"].is_string())
+}
+
 /// serde_json's recorded outcome for every case any backend disagreed with it
 /// on, in `reports`. `None` where the record is not an outcome.
 fn recorded_references<'a>(reports: impl Iterator<Item = &'a Value>) -> BTreeMap<Case, Option<String>> {
@@ -406,9 +417,14 @@ fn listed_failures(backend: &Value) -> impl Iterator<Item = Case> + '_ {
 ///    two sets measuring a backend. Backends that share nothing but serde_json
 ///    do not all change together, and one backend still passing is evidence
 ///    against the move, so that case stays gated.
+///
+/// A harness failure is a gap the report already refuses, not evidence: an
+/// errored backend or run is left out of both proofs rather than withdrawing
+/// them, so it cannot turn into a failed gate on another backend. The two sets
+/// the second proof needs must still have measured something.
 fn reference_moves(conformance: &BTreeMap<(String, String), Value>) -> std::collections::BTreeSet<Case> {
     let portable = |name: &str| conformance.get(&("portable".to_owned(), name.to_owned()));
-    let has_backends = |report: &Value| entries(report).next().is_some();
+    let has_backends = |report: &Value| measured(report).next().is_some();
     // Each measured build with `arbitrary_precision`, beside its default run.
     let mut pairs = Vec::new();
     let mut paired = true;
@@ -420,6 +436,8 @@ fn reference_moves(conformance: &BTreeMap<(String, String), Value>) -> std::coll
             Some(default) if has_backends(report) && has_backends(default) => pairs.push((report, default)),
             // A serde_json-only set measures no backend in either build.
             Some(default) if !has_backends(report) && !has_backends(default) => {}
+            // One build lost every backend to the harness: this set says nothing.
+            Some(default) if harness_failed(report) || harness_failed(default) => {}
             _ => paired = false,
         }
     }
@@ -439,7 +457,7 @@ fn reference_moves(conformance: &BTreeMap<(String, String), Value>) -> std::coll
         backend["sections"][section]["gating_failure_count"].as_u64() == Some(listed)
     };
     let mut everywhere: Option<std::collections::BTreeSet<Case>> = None;
-    for backend in pairs.iter().flat_map(|(a, _)| entries(a)) {
+    for backend in pairs.iter().flat_map(|(a, _)| measured(a)) {
         let cases = listed_failures(backend).collect();
         everywhere = Some(match everywhere {
             Some(common) => common.intersection(&cases).cloned().collect(),
@@ -450,7 +468,7 @@ fn reference_moves(conformance: &BTreeMap<(String, String), Value>) -> std::coll
         !by_default.contains_key(case)
             && pairs
                 .iter()
-                .flat_map(|(_, d)| entries(d))
+                .flat_map(|(_, d)| measured(d))
                 .all(|backend| complete(backend, &case.0) && listed_failures(backend).all(|listed| listed != *case))
     }));
     moves
@@ -1119,6 +1137,72 @@ mod tests {
         let clean = || failing("attributes", &[], &accept(), &accept());
         let mut reports = reports(vec![("a", clean(), flatten()), ("b", clean(), flatten())]);
         reports.remove(&("portable".to_owned(), "b".to_owned()));
+        excuse_reference_moves(&mut reports);
+        assert_eq!(ap_entry(&reports, "a")["gate"], "fail");
+    }
+
+    /// A harness failure says nothing about a case, so it neither vouches for
+    /// nor withdraws the second proof, in either build, for a backend or for
+    /// a whole run.
+    #[test]
+    fn a_harness_failure_does_not_withdraw_the_second_proof() {
+        let flatten = || failing("attributes", &["c/0"], &json!({ "outcome": reject() }), &accept());
+        let clean = || failing("attributes", &[], &accept(), &accept());
+        let errored = || json!({ "gate": "error", "error": "wait failed", "gating_failures": [], "sections": {} });
+        let run_error = json!({ "error": "conform exited non-zero" });
+        let cases = [
+            (
+                "the backend, with arbitrary_precision",
+                ("portable", "c+arbitrary-precision"),
+                None,
+            ),
+            ("the backend, by default", ("portable", "c"), None),
+            (
+                "the run, with arbitrary_precision",
+                ("portable", "c+arbitrary-precision"),
+                Some(run_error.clone()),
+            ),
+            ("the run, by default", ("portable", "c"), Some(run_error)),
+        ];
+        for (what, (variant, name), run) in cases {
+            let mut reports = reports(vec![
+                ("a", clean(), flatten()),
+                ("b", clean(), flatten()),
+                ("c", clean(), flatten()),
+            ]);
+            reports.insert(
+                (variant.to_owned(), name.to_owned()),
+                run.unwrap_or_else(|| json!({ "error": "conform exited non-zero", "backends": { "c": errored() } })),
+            );
+            excuse_reference_moves(&mut reports);
+            assert_eq!(ap_entry(&reports, "a")["gate"], "pass", "{what}");
+            assert_eq!(ap_entry(&reports, "b")["gate"], "pass", "{what}");
+        }
+    }
+
+    /// A set the harness lost does not count towards the two sets the second
+    /// proof needs: one measured set alone still proves nothing.
+    #[test]
+    fn a_harness_failure_does_not_stand_in_for_a_second_set() {
+        let flatten = || failing("attributes", &["c/0"], &json!({ "outcome": reject() }), &accept());
+        let clean = || failing("attributes", &[], &accept(), &accept());
+        let errored = json!({ "gate": "error", "error": "wait failed", "gating_failures": [], "sections": {} });
+        let mut reports = reports(vec![("a", clean(), flatten()), ("b", clean(), errored)]);
+        excuse_reference_moves(&mut reports);
+        assert_eq!(ap_entry(&reports, "a")["gate"], "fail");
+    }
+
+    /// A passing backend still blocks the proof beside an errored one.
+    #[test]
+    fn a_harness_failure_does_not_excuse_past_a_passing_set() {
+        let flatten = || failing("attributes", &["c/0"], &json!({ "outcome": reject() }), &accept());
+        let clean = || failing("attributes", &[], &accept(), &accept());
+        let errored = json!({ "gate": "error", "error": "wait failed", "gating_failures": [], "sections": {} });
+        let mut reports = reports(vec![
+            ("a", clean(), flatten()),
+            ("b", clean(), clean()),
+            ("c", clean(), errored),
+        ]);
         excuse_reference_moves(&mut reports);
         assert_eq!(ap_entry(&reports, "a")["gate"], "fail");
     }

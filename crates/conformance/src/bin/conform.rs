@@ -209,7 +209,15 @@ mod tests {
 
     #[test]
     fn a_fault_signal_is_a_library_crash() {
-        for signal in [libc::SIGSEGV, libc::SIGABRT, libc::SIGBUS, libc::SIGILL] {
+        for signal in [
+            libc::SIGSEGV,
+            libc::SIGABRT,
+            libc::SIGBUS,
+            libc::SIGILL,
+            libc::SIGFPE,
+            libc::SIGTRAP,
+            libc::SIGSYS,
+        ] {
             let entry = entry(Ok(signalled(signal)), "");
             assert_eq!(entry["gate"], "fail", "{entry}");
             assert_eq!(entry["gating_failures"][0]["section"], "process", "{entry}");

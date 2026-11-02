@@ -1180,6 +1180,38 @@ mod tests {
         }
     }
 
+    /// One errored backend beside a measured one, in a set of several, leaves
+    /// that set paired and is left out of the second proof, in either build:
+    /// its empty failure list and its missing sections are not evidence.
+    #[test]
+    fn an_errored_backend_beside_a_measured_one_does_not_withdraw_the_second_proof() {
+        let flatten = || failing("attributes", &["c/0"], &json!({ "outcome": reject() }), &accept());
+        let clean = || failing("attributes", &[], &accept(), &accept());
+        let errored = json!({ "gate": "error", "error": "wait failed", "gating_failures": [], "sections": {} });
+        let cases = [
+            ("with arbitrary_precision", "c+arbitrary-precision", flatten()),
+            ("by default", "c", clean()),
+        ];
+        for (what, name, measured) in cases {
+            let mut reports = reports(vec![
+                ("a", clean(), flatten()),
+                ("b", clean(), flatten()),
+                ("c", clean(), flatten()),
+            ]);
+            reports.insert(
+                ("portable".to_owned(), name.to_owned()),
+                json!({
+                    "error": "conform exited non-zero",
+                    "backends": { "c": measured, "c-lost": errored.clone() },
+                }),
+            );
+            excuse_reference_moves(&mut reports);
+            assert_eq!(ap_entry(&reports, "a")["gate"], "pass", "{what}");
+            assert_eq!(ap_entry(&reports, "b")["gate"], "pass", "{what}");
+            assert_eq!(ap_entry(&reports, "c")["gate"], "pass", "{what}");
+        }
+    }
+
     /// A set the harness lost does not count towards the two sets the second
     /// proof needs: one measured set alone still proves nothing.
     #[test]

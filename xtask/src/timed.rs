@@ -77,12 +77,18 @@ pub fn hw(args: &[String]) -> Result<()> {
 }
 
 /// The trust class a run claims: `--trust`, else `SJC_TRUST` (so `mise run
-/// all` can pass it to every timed task), else `solo`.
-pub fn trust(args: &[String]) -> String {
-    flag(args, "--trust")
+/// all` can pass it to every timed task), else `solo`. Anything else is
+/// refused here, before a stage spends its builds on it.
+pub fn trust(args: &[String]) -> Result<String> {
+    let trust = flag(args, "--trust")
         .map(str::to_owned)
         .or_else(|| std::env::var("SJC_TRUST").ok())
-        .unwrap_or_else(|| "solo".into())
+        .unwrap_or_else(|| "solo".into());
+    anyhow::ensure!(
+        matches!(trust.as_str(), "solo" | "canonical"),
+        "--trust is solo or canonical"
+    );
+    Ok(trust)
 }
 
 /// The 1-minute load average above which a run cannot be `canonical`.
@@ -155,9 +161,10 @@ fn quiet(load: f64, governors: &[(usize, String)]) -> Result<()> {
 /// governor on any CPU that moves the clock under the measurement. A
 /// `canonical` stage first waits, bounded by [`SETTLE_LIMIT`], for the load
 /// the stage before it left to settle. Either way the load the stage starts
-/// at is recorded, to be stamped beside the load it ends at.
+/// at is recorded, to be stamped beside the load it ends at. A stage calls
+/// this once it has built what it runs, so its own builds are settled too and
+/// the recorded load is the one its measurement starts at.
 pub fn check_trust(trust: &str) -> Result<()> {
-    anyhow::ensure!(matches!(trust, "solo" | "canonical"), "--trust is solo or canonical");
     if trust == "canonical" {
         let load = settle(&mut load_now, &mut std::thread::sleep, SETTLE_LIMIT, SETTLE_STEP);
         quiet(load, &crate::provenance::governors())?;
@@ -313,14 +320,13 @@ fn rounds(
     let rounds: u64 = flag(args, "--rounds").and_then(|v| v.parse().ok()).unwrap_or(ROUNDS);
     let core = flag(args, "--core").unwrap_or("2").to_owned();
     crate::doctor::require()?;
-    let trust = trust(args);
-    check_trust(&trust)?;
+    let trust = trust(args)?;
     anyhow::ensure!(
         filter.sets().iter().any(|s| s.name == "baseline"),
         "{mode} compares every backend with serde_json in the same session, so the baseline set must run too"
     );
     let sibling = siblings(&core);
-    let mut rows = Vec::new();
+    let mut built = Vec::new();
     for variant_name in filter.variants.clone().unwrap_or_default() {
         let variant = variant(&variant_name)?;
         let mut cells: Vec<(Cell, String, std::path::PathBuf)> = Vec::new();
@@ -333,6 +339,11 @@ fn rounds(
                 }
             }
         }
+        built.push((variant, cells));
+    }
+    check_trust(&trust)?;
+    let mut rows = Vec::new();
+    for (variant, cells) in built {
         let mut per_round: Vec<Vec<Value>> = vec![Vec::new(); cells.len()];
         for round in 0..rounds {
             let mut order: Vec<usize> = (0..cells.len()).collect();
@@ -406,10 +417,20 @@ fn rounds(
 mod tests {
     use std::time::Duration;
 
-    use super::{quiet, settle};
+    use super::{quiet, settle, trust};
 
     fn govs(g: &[&str]) -> Vec<(usize, String)> {
         g.iter().enumerate().map(|(i, g)| (i, (*g).to_owned())).collect()
+    }
+
+    /// A class that does not exist is refused when it is read, which is
+    /// before a stage builds anything.
+    #[test]
+    fn an_unknown_trust_class_is_refused_when_read() {
+        let args = |class: &str| ["--trust".to_owned(), class.to_owned()];
+        assert_eq!(trust(&args("canonical")).unwrap(), "canonical");
+        assert_eq!(trust(&args("solo")).unwrap(), "solo");
+        assert!(trust(&args("quiet")).is_err());
     }
 
     /// Every CPU is checked, not only cpu0.

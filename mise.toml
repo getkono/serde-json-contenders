@@ -4,7 +4,7 @@
 [tools]
 rust = { version = "1.97.1", profile = "minimal", components = ["clippy", "rustfmt", "llvm-tools-preview"] }
 hk = "1.53.0"
-"github:nextest-rs/nextest" = { version = "cargo-nextest-0.9.140", exe = "cargo-nextest" }
+"github:nextest-rs/nextest" = "cargo-nextest-0.9.140"
 "github:convco/convco" = "0.7.0"
 # The load generator for end-to-end timing, pinned: a generator that upgrades
 # itself under a parser changes what a percentile means.

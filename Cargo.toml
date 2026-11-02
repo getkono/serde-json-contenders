@@ -63,6 +63,7 @@ cast_possible_wrap = "allow"
 # Every stable setting is spelled out, defaults included: `xtask` passes this
 # table to each measured build as `--config`, which is what outranks a setting
 # in a user's `~/.cargo/config.toml`, so a key left out here could be set there.
+# `build.incremental` outranks `incremental` below, so `xtask` pins it as well.
 [profile.release]
 opt-level = 3
 lto = "fat"

@@ -10,10 +10,13 @@ use crate::matrix::{Set, Variant};
 use crate::util::{capture, root, run};
 
 /// Whether an inherited variable would override what a build was told: cargo
-/// prefers `CARGO_ENCODED_RUSTFLAGS` to `RUSTFLAGS`, and `CARGO_PROFILE_*` and
-/// `CARGO_INCREMENTAL` to the profile.
+/// prefers `CARGO_ENCODED_RUSTFLAGS` to `RUSTFLAGS`, and `CARGO_PROFILE_*`,
+/// `CARGO_INCREMENTAL` and `CARGO_BUILD_INCREMENTAL` to the profile.
 fn overrides_build(name: &str) -> bool {
-    name == "CARGO_ENCODED_RUSTFLAGS" || name == "CARGO_INCREMENTAL" || name.starts_with("CARGO_PROFILE_")
+    name == "CARGO_ENCODED_RUSTFLAGS"
+        || name == "CARGO_INCREMENTAL"
+        || name == "CARGO_BUILD_INCREMENTAL"
+        || name.starts_with("CARGO_PROFILE_")
 }
 
 /// A `cargo` whose inherited environment cannot change what it builds.
@@ -48,9 +51,15 @@ fn pin_args(manifest: &str) -> Result<Vec<String>> {
         .collect())
 }
 
-/// [`pin_args`] for this repository's manifest, as compiled in.
-pub fn pinned_profile() -> Result<Vec<String>> {
-    pin_args(include_str!("../../Cargo.toml"))
+/// [`pin_args`] for this repository's manifest, as compiled in, and
+/// `build.incremental`, which outranks any profile's `incremental` key and so
+/// has to be pinned beside it. `incremental` is its value: `false` for a release
+/// build, as the manifest says, and `true` for the dev rebuild `compile-time`
+/// times, as the dev profile defaults to.
+pub fn pinned_profile(incremental: bool) -> Result<Vec<String>> {
+    let mut args = pin_args(include_str!("../../Cargo.toml"))?;
+    args.extend(["--config".to_owned(), format!("build.incremental={incremental}")]);
+    Ok(args)
 }
 
 /// The profile settings cargo's config holds for a measured build: the pinned
@@ -64,7 +73,7 @@ pub fn effective_profile() -> Option<serde_json::Value> {
             .current_dir(root())
             .env("RUSTC_BOOTSTRAP", "1")
             .args(["-Zunstable-options", "config", "get", "profile", "--format", "json"])
-            .args(pinned_profile().ok()?),
+            .args(pinned_profile(false).ok()?),
     )
     .ok()?;
     if !ok {
@@ -97,6 +106,20 @@ pub fn target_dir(place: Place, variant: &Variant, set: &Set) -> PathBuf {
         .join(set.name)
 }
 
+/// The `cargo build --release` of `package` that a measured binary comes from.
+fn measured_build(package: &str, features: &str, rustflags: &str, dir: &Path) -> Result<Command> {
+    let mut cmd = cargo();
+    cmd.current_dir(root())
+        .args(["build", "--release", "--locked", "-p", package])
+        .args(pinned_profile(false)?)
+        .env("RUSTFLAGS", rustflags)
+        .env("CARGO_TARGET_DIR", dir);
+    if !features.is_empty() {
+        cmd.args(["--features", features]);
+    }
+    Ok(cmd)
+}
+
 /// Build `package` for `set` at `variant`; returns the release directory.
 pub fn build(place: Place, package: &str, set: &Set, variant: &Variant) -> Result<PathBuf> {
     build_with(place, package, set, variant, None)
@@ -113,12 +136,7 @@ pub fn build_featured(place: Place, package: &str, set: &Set, variant: &Variant,
         .copied()
         .collect::<Vec<_>>()
         .join(",");
-    let mut cmd = cargo();
-    cmd.current_dir(root())
-        .args(["build", "--release", "--locked", "-p", package, "--features", &features])
-        .args(pinned_profile()?)
-        .env("RUSTFLAGS", variant.rustflags)
-        .env("CARGO_TARGET_DIR", &dir);
+    let mut cmd = measured_build(package, &features, variant.rustflags, &dir)?;
     run(&mut cmd).with_context(|| format!("building {package} +{feature} for {} at {}", set.name, variant.name))?;
     check_serde_json_features(package, &features, set.name, set.serde_json_features)?;
     Ok(dir.join("release"))
@@ -145,15 +163,7 @@ pub fn build_with(
             .collect::<Vec<_>>()
             .join(",");
     }
-    let mut cmd = cargo();
-    cmd.current_dir(root())
-        .args(["build", "--release", "--locked", "-p", package])
-        .args(pinned_profile()?)
-        .env("RUSTFLAGS", variant.rustflags)
-        .env("CARGO_TARGET_DIR", &dir);
-    if !features.is_empty() {
-        cmd.args(["--features", &features]);
-    }
+    let mut cmd = measured_build(package, &features, variant.rustflags, &dir)?;
     run(&mut cmd).with_context(|| format!("building {package} for {} at {}", set.name, variant.name))?;
     let mut want: Vec<&str> = set.serde_json_features.to_vec();
     if arbitrary_precision.is_some() {
@@ -214,13 +224,33 @@ pub fn bin(release: &Path, name: &str) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
-    use super::{cargo, effective_profile, overrides_build, pin_args, pinned_profile};
+    use super::{cargo, effective_profile, measured_build, overrides_build, pin_args, pinned_profile};
+
+    /// Both measured build sites go through `measured_build`.
+    #[test]
+    fn a_measured_build_carries_the_pin_and_its_flags() {
+        let cmd = measured_build(
+            "size-fixture",
+            "jiter",
+            "-C target-cpu=x86-64",
+            std::path::Path::new("t"),
+        )
+        .unwrap();
+        let args: Vec<_> = cmd.get_args().map(|a| a.to_str().unwrap()).collect();
+        let pin = pinned_profile(false).unwrap();
+        assert!(args.windows(pin.len()).any(|w| w == pin), "{args:?}");
+        assert!(args.contains(&"build.incremental=false"), "{args:?}");
+        assert!(args.windows(2).any(|w| w == ["--features", "jiter"]), "{args:?}");
+        let flags = cmd.get_envs().find(|(k, _)| *k == "RUSTFLAGS").and_then(|(_, v)| v);
+        assert_eq!(flags, Some(std::ffi::OsStr::new("-C target-cpu=x86-64")));
+    }
 
     #[test]
     fn clears_only_what_overrides_a_build() {
         for name in [
             "CARGO_ENCODED_RUSTFLAGS",
             "CARGO_INCREMENTAL",
+            "CARGO_BUILD_INCREMENTAL",
             "CARGO_PROFILE_RELEASE_LTO",
             "CARGO_PROFILE_DEV_OPT_LEVEL",
         ] {
@@ -261,7 +291,8 @@ mod tests {
     /// to supply.
     #[test]
     fn the_manifest_pins_every_stable_release_setting() {
-        let args = pinned_profile().unwrap();
+        let args = pinned_profile(false).unwrap();
+        assert!(args.iter().any(|a| a == "profile.release.incremental=false"));
         for key in [
             "opt-level",
             "lto",

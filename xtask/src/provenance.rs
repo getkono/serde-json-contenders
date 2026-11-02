@@ -202,16 +202,22 @@ pub fn begin() {
 pub fn stamp_checked() -> anyhow::Result<Value> {
     let now = stamp();
     if let Some(start) = START.get() {
-        for k in ["git_commit", "git_dirty", "fingerprint", "cargo_profile"] {
-            anyhow::ensure!(
-                start[k] == now[k],
-                "the measured code changed during the run ({k}: {} -> {}); rerun the task",
-                start[k],
-                now[k]
-            );
-        }
+        ensure_unchanged(start, &now)?;
     }
     Ok(now)
+}
+
+/// Refuse a stamp whose code or cargo profile differs from the run's first.
+fn ensure_unchanged(start: &Value, now: &Value) -> anyhow::Result<()> {
+    for k in ["git_commit", "git_dirty", "fingerprint", "cargo_profile"] {
+        anyhow::ensure!(
+            start[k] == now[k],
+            "the measured code changed during the run ({k}: {} -> {}); rerun the task",
+            start[k],
+            now[k]
+        );
+    }
+    Ok(())
 }
 
 /// Everything that could change a number.
@@ -263,9 +269,21 @@ pub fn stamp() -> Value {
 
 #[cfg(test)]
 mod tests {
-    use super::{governor_summary, passed_git_state, stamp, status_is_dirty, variant_rustflags};
+    use serde_json::json;
+
+    use super::{ensure_unchanged, governor_summary, passed_git_state, stamp, status_is_dirty, variant_rustflags};
 
     const COMMIT: &str = "675987c9";
+
+    #[test]
+    fn refuses_a_run_whose_cargo_profile_changed() {
+        let start = json!({"git_commit": COMMIT, "cargo_profile": {"release": {"lto": "fat"}}, "loadavg": "1"});
+        let same = json!({"git_commit": COMMIT, "cargo_profile": {"release": {"lto": "fat"}}, "loadavg": "2"});
+        ensure_unchanged(&start, &same).unwrap();
+        let changed = json!({"git_commit": COMMIT, "cargo_profile": {"release": {"lto": "off"}}});
+        let err = ensure_unchanged(&start, &changed).unwrap_err().to_string();
+        assert!(err.contains("cargo_profile"), "{err}");
+    }
 
     #[test]
     fn stamps_each_variants_rustflags_by_name() {

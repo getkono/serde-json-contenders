@@ -246,6 +246,9 @@ pub struct Data {
     pub e2e_count: Vec<Value>,
     /// The zero-tolerance recount of every committed count.
     pub recount: Value,
+    /// The digest of the callgrind counts file as it stands now, which the
+    /// recount must name.
+    pub counts_digest: Option<String>,
     pub host: Host,
     pub footprint: Vec<Value>,
     pub advisory_db: String,
@@ -282,6 +285,9 @@ impl Data {
             callgrind: load.table("callgrind/x86_64.json")?,
             e2e_count: load.rows("callgrind/e2e-x86_64.json")?,
             recount: load.doc("callgrind/recount.json")?.unwrap_or(Value::Null),
+            counts_digest: std::fs::read(results.join("callgrind/x86_64.json"))
+                .ok()
+                .map(|bytes| crate::counted::counts_digest(&bytes)),
             ..Self::default()
         };
         let hosts: Vec<String> = std::fs::read_dir(&results)?
@@ -684,6 +690,7 @@ pub fn incomplete(data: &Data) -> Vec<String> {
             r["compared"], r["committed"], r["tolerance"]
         ));
     }
+    gaps.extend(recount_stamp_gap(r, data.counts_digest.as_deref()));
     let builds = host.doctor["builds"].as_array().map_or(0, Vec::len);
     let expected = crate::matrix::variants().len() * crate::matrix::SETS.len();
     if !host.doctor.is_null() && builds != expected {
@@ -717,6 +724,27 @@ pub fn incomplete(data: &Data) -> Vec<String> {
         gaps.push(format!("soundness.toml: no `open` list for {}", unreviewed.join(", ")));
     }
     gaps
+}
+
+/// A recount that does not name the counts file standing now: agreeing on the
+/// number of counts does not show it verified these ones. An absent recount is
+/// the loader's to refuse, or a declared skip.
+fn recount_stamp_gap(recount: &Value, counts: Option<&str>) -> Option<String> {
+    if recount.is_null() {
+        return None;
+    }
+    let fix = "rerun `mise run count:check`";
+    let Some(stamp) = recount["counts_sha256"].as_str() else {
+        return Some(format!(
+            "callgrind/recount.json: names no counts file (`counts_sha256`), so nothing ties it to the counts it verified; {fix}"
+        ));
+    };
+    (Some(stamp) != counts).then(|| {
+        format!(
+            "callgrind/recount.json: verified the counts file with SHA-256 {stamp}, but callgrind/x86_64.json now has {}; {fix}",
+            counts.unwrap_or("no digest (it could not be read)")
+        )
+    })
 }
 
 /// Whether `results/skipped.toml` declared `name` skipped (and it is absent).
@@ -910,9 +938,49 @@ mod tests {
 
     use serde_json::{Value, json};
 
-    use super::{Source, excuse_reference_moves, stale};
+    use super::{Data, Source, excuse_reference_moves, incomplete, recount_stamp_gap, stale};
 
     const HOST: &str = "x86_64-linux-cpu";
+
+    /// A recount agreeing on the number of counts passes only while it also
+    /// names the counts file standing now.
+    #[test]
+    fn a_recount_of_another_counts_file_is_a_gap() {
+        let stamped = json!({ "counts_sha256": "aaaa" });
+        assert_eq!(recount_stamp_gap(&stamped, Some("aaaa")), None);
+        let moved = recount_stamp_gap(&stamped, Some("bbbb")).unwrap();
+        assert!(
+            moved.contains("SHA-256 aaaa") && moved.contains("now has bbbb"),
+            "{moved}"
+        );
+        let unreadable = recount_stamp_gap(&stamped, None).unwrap();
+        assert!(unreadable.contains("no digest"), "{unreadable}");
+    }
+
+    /// A recount from before the stamp existed verifies nothing nameable; a
+    /// recount that is absent is not this check's to report.
+    #[test]
+    fn a_recount_without_a_stamp_is_a_gap() {
+        let unstamped = recount_stamp_gap(&json!({ "committed": 1 }), Some("aaaa")).unwrap();
+        assert!(unstamped.contains("names no counts file"), "{unstamped}");
+        let not_text = recount_stamp_gap(&json!({ "counts_sha256": 7 }), Some("aaaa")).unwrap();
+        assert!(not_text.contains("names no counts file"), "{not_text}");
+        assert_eq!(recount_stamp_gap(&Value::Null, Some("aaaa")), None);
+    }
+
+    /// The check reaches the report's list of gaps.
+    #[test]
+    fn the_stamp_gap_is_among_what_the_report_refuses() {
+        let names_counts = |gaps: &[String]| gaps.iter().any(|g| g.contains("verified the counts file"));
+        let mut data = Data {
+            recount: json!({ "counts_sha256": "aaaa" }),
+            counts_digest: Some("bbbb".to_owned()),
+            ..Data::default()
+        };
+        assert!(names_counts(&incomplete(&data)));
+        data.counts_digest = Some("aaaa".to_owned());
+        assert!(!names_counts(&incomplete(&data)));
+    }
 
     /// A backend entry failing `cases` in `section`, each recorded as a
     /// difference with `reference` and `outcome`.

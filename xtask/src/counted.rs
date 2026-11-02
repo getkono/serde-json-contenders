@@ -253,7 +253,9 @@ pub fn count(args: &[String]) -> Result<()> {
         .join("results/callgrind")
         .join(format!("{}.json", std::env::consts::ARCH));
     if args.iter().any(|a| a == "--check") {
-        let committed = crate::util::read_json(&path)?;
+        // One read: the digest names the bytes the comparison below used.
+        let text = std::fs::read_to_string(&path).with_context(|| format!("reading {}", path.display()))?;
+        let committed: Value = serde_json::from_str(&text)?;
         let tolerance = tolerance(args)?;
         let compared = check_reproduced(&committed, &rows, tolerance)
             .with_context(|| format!("comparing with {}", path.display()))?;
@@ -262,22 +264,49 @@ pub fn count(args: &[String]) -> Result<()> {
             tolerance * 100.0
         );
         // `--record` keeps the evidence: the report requires a recount of
-        // every committed count, at zero tolerance, on the same code.
+        // every committed count, at zero tolerance, on the same code, of the
+        // counts file committed now.
         if args.iter().any(|a| a == "--record") {
-            let counted = committed["rows"]
-                .as_array()
-                .map_or(0, |r| r.iter().filter(|r| r["ir"].is_number()).count());
             crate::util::write_json(
                 &root().join("results/callgrind/recount.json"),
-                &json!({
-                    "schema": 1, "kind": "recount", "provenance": crate::provenance::stamp_checked()?,
-                    "compared": compared, "committed": counted, "tolerance": tolerance,
-                }),
+                &recount_doc(
+                    &crate::provenance::stamp_checked()?,
+                    &text,
+                    &committed,
+                    compared,
+                    tolerance,
+                ),
             )?;
         }
         return Ok(());
     }
     merge_rows(&path, &rows, "callgrind")
+}
+
+/// The SHA-256 of a counts file's bytes: what ties a recount to the file it
+/// verified. Two files can hold the same number of counts and differ in every
+/// one of them, so the number alone says nothing about which file was checked.
+#[must_use]
+pub fn counts_digest(bytes: &[u8]) -> String {
+    use sha2::Digest as _;
+    use std::fmt::Write as _;
+    sha2::Sha256::digest(bytes).iter().fold(String::new(), |mut s, b| {
+        let _ = write!(s, "{b:02x}");
+        s
+    })
+}
+
+/// What `count --check --record` keeps: `text` is the counts file `committed`
+/// was parsed from.
+fn recount_doc(provenance: &Value, text: &str, committed: &Value, compared: usize, tolerance: f64) -> Value {
+    let counted = committed["rows"]
+        .as_array()
+        .map_or(0, |r| r.iter().filter(|r| r["ir"].is_number()).count());
+    json!({
+        "schema": 2, "kind": "recount", "provenance": provenance,
+        "compared": compared, "committed": counted, "tolerance": tolerance,
+        "counts_sha256": counts_digest(text.as_bytes()),
+    })
 }
 
 /// Instruction counts may move this much between hosts before a rerun is
@@ -539,8 +568,26 @@ fn host_mode(args: &[String], mode: &str, shapes: &[Shape], host: &str, threads:
 mod tests {
     use serde_json::{Value, json};
 
-    use super::{Cell, REPRODUCIBLE, callgrind_cell, check_reproduced, tolerance, valgrind_error};
+    use super::{
+        Cell, REPRODUCIBLE, callgrind_cell, check_reproduced, counts_digest, recount_doc, tolerance, valgrind_error,
+    };
     use crate::matrix::{SETS, SHAPES};
+
+    /// The stamp is the digest of the counts file's own bytes, and the digest
+    /// is SHA-256 in lower-case hex (the known answer for "abc").
+    #[test]
+    fn a_recount_is_stamped_with_the_counts_file_it_read() {
+        assert_eq!(
+            counts_digest(b"abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+        let text = r#"{"rows":[{"ir":1.0},{"ir":null}]}"#;
+        let committed: Value = serde_json::from_str(text).unwrap();
+        let doc = recount_doc(&json!({}), text, &committed, 1, 0.0);
+        assert_eq!(doc["counts_sha256"], counts_digest(text.as_bytes()));
+        assert_eq!(doc["committed"], 1);
+        assert_eq!(doc["compared"], 1);
+    }
 
     fn row(workload: &str, ir: Option<f64>) -> Value {
         let mut row = json!({

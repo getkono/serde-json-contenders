@@ -96,7 +96,7 @@ impl Suite {
                 .stack_size(SUITE_STACK)
                 .spawn_scoped(scope, || record::backend_entry(self.sections::<B>()))
                 .map_or_else(
-                    |error| crashed(&format!("could not spawn the suite thread: {error}")),
+                    |error| harness_failure(&format!("could not spawn the suite thread: {error}")),
                     |handle| handle.join().unwrap_or_else(|_| crashed("the suite itself panicked")),
                 )
         })
@@ -118,12 +118,26 @@ impl Suite {
     }
 }
 
-/// A backend entry for a suite that did not finish.
+/// A backend entry for a suite the backend took down: a finding against the
+/// library, which gates.
 #[must_use]
 pub fn crashed(detail: &str) -> Value {
     json!({
         "gate": "fail",
         "gating_failures": [{ "section": "process", "case": "suite", "detail": detail }],
+        "sections": {},
+    })
+}
+
+/// A backend entry for a suite the harness could not run or read: no evidence
+/// about the library either way, so it carries an `error` the report reads as
+/// a gap, and no gate failure.
+#[must_use]
+pub fn harness_failure(detail: &str) -> Value {
+    json!({
+        "gate": "error",
+        "error": detail,
+        "gating_failures": [],
         "sections": {},
     })
 }

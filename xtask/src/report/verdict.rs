@@ -703,7 +703,9 @@ fn rule2(data: &Data, e: &Entry) -> Outcome {
     {
         for report in data.host.conformance.values() {
             let b = &report["backends"][e.backend];
-            if b.is_null() {
+            // A harness failure is no evidence about the backend: the run
+            // goes uncounted, like one that never ran.
+            if b.is_null() || b["error"].is_string() {
                 continue;
             }
             runs += 1;
@@ -1558,6 +1560,81 @@ pub(super) mod tests {
                 .any(|g| g.contains("conformance/native/jiter.json: the suite did not finish")),
             "{:?}",
             crate::report::data::incomplete(&data)
+        );
+    }
+
+    /// What `xtask` differential writes for a harness failure: a run-level
+    /// `error` from `conform`'s exit, beside the backend `error` it printed.
+    /// The report names both; the run error does not hide the backend's, and
+    /// it does stand for the backend it left without an entry.
+    #[test]
+    fn a_run_error_and_a_backend_error_are_both_gaps() {
+        let mut data = Data::default();
+        let e = ENTRIES.iter().find(|e| e.backend == "simd-json").unwrap();
+        data.host.conformance.insert(
+            ("native".into(), e.set.into()),
+            json!({
+                "error": "conform exited non-zero",
+                "backends": { "simd-json": { "gate": "error", "error": "suite process failed: signal: 9",
+                    "gating_failures": [], "sections": {} } },
+            }),
+        );
+        let outcome = super::rule2(&data, e);
+        assert!(matches!(outcome, Outcome::Pending(_)), "{outcome:?}");
+        let gaps = crate::report::data::incomplete(&data);
+        let file = format!("conformance/native/{}.json", e.set);
+        for gap in [
+            format!("{file}: the suite did not finish (conform exited non-zero)"),
+            format!("{file}: the simd-json suite did not finish (suite process failed: signal: 9)"),
+        ] {
+            assert!(gaps.contains(&gap), "{gap} not in {gaps:?}");
+        }
+        assert!(
+            !gaps.iter().any(|g| g.starts_with(&file) && g.contains("no result for")),
+            "{gaps:?}"
+        );
+    }
+
+    /// A harness failure on one backend is a gap and leaves rule 2 waiting;
+    /// a suite the library took down still fails it.
+    #[test]
+    fn a_harness_failure_is_a_gap_not_a_gate_failure() {
+        let mut data = Data::default();
+        let e = ENTRIES.iter().find(|e| e.backend == "jiter").unwrap();
+        for v in ["portable", "v3"] {
+            data.host.conformance.insert(
+                (v.into(), e.set.into()),
+                json!({ "backends": { "jiter": { "gate": "pass" } } }),
+            );
+        }
+        data.host.conformance.insert(
+            ("native".into(), e.set.into()),
+            json!({ "backends": { "jiter": { "gate": "error", "error": "suite process failed: signal: 9",
+                "gating_failures": [], "sections": {} } } }),
+        );
+        let outcome = super::rule2(&data, e);
+        assert!(matches!(outcome, Outcome::Pending(_)), "{outcome:?}");
+        let gaps = crate::report::data::incomplete(&data);
+        assert!(
+            gaps.iter().any(|g| g
+                == "conformance/native/jiter.json: the jiter suite did not finish (suite process failed: signal: 9)"),
+            "{gaps:?}"
+        );
+
+        data.host.conformance.insert(
+            ("native".into(), e.set.into()),
+            json!({ "backends": { "jiter": { "gate": "fail", "sections": {},
+                "gating_failures": [{ "section": "process", "case": "suite", "detail": "signal: 11" }] } } }),
+        );
+        let outcome = super::rule2(&data, e);
+        assert_eq!(
+            outcome,
+            Outcome::Fail("process suite fails 1 of 3 conformance runs".into())
+        );
+        assert!(
+            !crate::report::data::incomplete(&data)
+                .iter()
+                .any(|g| g.contains("the jiter suite did not finish"))
         );
     }
 

@@ -367,10 +367,12 @@ fn load_host(load: &mut Loader, slug: &str) -> Result<Host> {
 }
 
 /// Why each source cannot be trusted for the code at HEAD: measured on other
-/// code (another fingerprint), or from a dirty checkout. Empty when every
-/// source was measured on exactly the committed code.
+/// code (another fingerprint), from a dirty checkout, or on a host other than
+/// `host`, the results' host directory (so every source shares one host).
+/// Empty when every source was measured on exactly the committed code, on
+/// that host.
 #[must_use]
-pub fn stale(sources: &[Source], fingerprint: Option<&str>) -> Vec<String> {
+pub fn stale(sources: &[Source], fingerprint: Option<&str>, host: &str) -> Vec<String> {
     sources
         .iter()
         .filter(|s| s.skipped.is_none())
@@ -385,6 +387,12 @@ pub fn stale(sources: &[Source], fingerprint: Option<&str>) -> Vec<String> {
                     s.name,
                     theirs.unwrap_or("without a fingerprint"),
                     fingerprint.unwrap_or("unknown")
+                ))
+            } else if p["host"].as_str() != Some(host) {
+                Some(format!(
+                    "{}: measured on host {} (results are for {host})",
+                    s.name,
+                    p["host"].as_str().unwrap_or("without a host stamp"),
                 ))
             } else {
                 None
@@ -681,4 +689,48 @@ fn end_to_end(rows: &[Value], name: &str, variants: &[&str], aa: bool) -> Option
             lacking[0]
         )
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::{Source, stale};
+
+    const HOST: &str = "x86_64-linux-cpu";
+
+    fn source(name: &str, host: Option<&str>) -> Source {
+        Source {
+            name: name.to_owned(),
+            provenance: json!({ "git_dirty": false, "fingerprint": "f", "host": host }),
+            skipped: None,
+        }
+    }
+
+    #[test]
+    fn stale_rejects_a_source_from_another_host() {
+        let sources = [
+            source("x86_64-linux-cpu/alloc.json", Some(HOST)),
+            source("callgrind/x86_64.json", Some("x86_64-linux-other-cpu")),
+            source("fuzz.json", None),
+            Source {
+                name: "miri.json".to_owned(),
+                skipped: Some("not run".to_owned()),
+                ..Source::default()
+            },
+        ];
+        assert_eq!(
+            stale(&sources, Some("f"), HOST),
+            [
+                "callgrind/x86_64.json: measured on host x86_64-linux-other-cpu (results are for x86_64-linux-cpu)",
+                "fuzz.json: measured on host without a host stamp (results are for x86_64-linux-cpu)",
+            ]
+        );
+    }
+
+    #[test]
+    fn stale_accepts_one_host_and_fingerprint() {
+        let sources = [source("a.json", Some(HOST)), source("b.json", Some(HOST))];
+        assert!(stale(&sources, Some("f"), HOST).is_empty());
+    }
 }

@@ -29,7 +29,11 @@ pub fn report(args: &[String]) -> Result<()> {
     let check = args.iter().any(|a| a == "--check");
     let allow_stale = args.iter().any(|a| a == "--allow-stale") && !check;
     let data = data::Data::load()?;
-    let stale = data::stale(&data.sources, crate::provenance::fingerprint().as_deref());
+    let stale = data::stale(
+        &data.sources,
+        crate::provenance::fingerprint().as_deref(),
+        &data.host.slug,
+    );
     if !stale.is_empty() && !allow_stale {
         bail!(
             "results not measured on the committed code (rerun the stage, or pass --allow-stale for a draft):\n{}",

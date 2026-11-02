@@ -1860,6 +1860,38 @@ pub(super) mod tests {
         assert!(!simd.exists.2, "{:?}", simd.exists);
     }
 
+    /// On `canonical` cycles both wins are settled, so the preference has
+    /// nothing to choose on and the smaller ratio is the one stated.
+    #[test]
+    fn a_canonical_cycles_win_with_the_smaller_ratio_is_stated_over_a_heap_win() {
+        let mut data = measured(
+            &[
+                ("serde_json", 100.0, 100.0),
+                ("serde_json#aa", 100.0, 100.0),
+                ("simd-json", 50.0, 50.0),
+            ],
+            "canonical",
+        );
+        for (backend, bytes) in [("serde_json", 100.0), ("simd-json", 80.0)] {
+            data.host.alloc.rows.insert(
+                Key::new("native", backend, "json-small", "decode"),
+                json!({ "bytes": bytes }),
+            );
+        }
+        let verdicts = super::judge(&data);
+        let simd = verdicts.iter().find(|v| v.entry.backend == "simd-json").unwrap();
+        assert_eq!(
+            simd.rules[0],
+            Outcome::Pass("json-small decode CPU 0.50× at native (cycles)".into())
+        );
+        assert!(
+            simd.exists.1.starts_with("json-small decode CPU 0.50× serde_json"),
+            "{:?}",
+            simd.exists
+        );
+        assert!(!simd.exists.2, "{:?}", simd.exists);
+    }
+
     /// Compile time weighs in no verdict: an entry that matches another on
     /// every measured axis but builds ten times slower is not dominated.
     #[test]

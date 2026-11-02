@@ -1186,6 +1186,19 @@ fn timed(out: &mut String, data: &Data) {
     out.push('\n');
 }
 
+fn recount_line(r: &Value) -> String {
+    if r.is_null() {
+        return String::new();
+    }
+    let of = r["counts_sha256"].as_str().map_or(String::new(), |d| {
+        format!(", checking the counts file with SHA-256 `{d}`")
+    });
+    format!(
+        "Recount: {} of the {} committed callgrind counts came back from an empty `target/` at tolerance {}{of}.\n\n",
+        r["compared"], r["committed"], r["tolerance"]
+    )
+}
+
 fn provenance(out: &mut String, data: &Data, stale: &[String]) {
     section(out, "provenance", "Provenance");
     let _ = writeln!(
@@ -1198,14 +1211,7 @@ fn provenance(out: &mut String, data: &Data, stale: &[String]) {
             None => "not run".to_owned(),
         }
     );
-    let r = &data.recount;
-    if !r.is_null() {
-        let _ = writeln!(
-            out,
-            "Recount: {} of the {} committed callgrind counts came back from an empty `target/` at tolerance {}.\n",
-            r["compared"], r["committed"], r["tolerance"]
-        );
-    }
+    out.push_str(&recount_line(&data.recount));
     out.push_str(&header(&["Source", "Commit", "Fingerprint", "Recorded", "Conditions"]));
     for s in collapse(&data.sources) {
         let p = &s.provenance;
@@ -1282,9 +1288,27 @@ mod tests {
     use serde_json::{Value, json};
 
     use super::super::verdict::tests::measured;
-    use super::{conformance, cpu_block, depth_cell, depth_limits, limitations, points, provenance};
+    use super::{conformance, cpu_block, depth_cell, depth_limits, limitations, points, provenance, recount_line};
     use crate::report::data::{Data, Host, Key, Source};
     use crate::report::verdict::ENTRIES;
+
+    /// The report names the counts file a recount verified, once it has one.
+    #[test]
+    fn the_recount_line_names_the_counts_it_checked() {
+        let base = json!({ "compared": 2, "committed": 2, "tolerance": 0.0 });
+        assert_eq!(
+            recount_line(&base),
+            "Recount: 2 of the 2 committed callgrind counts came back from an empty `target/` at tolerance 0.0.\n\n"
+        );
+        let mut stamped = base;
+        stamped["counts_sha256"] = json!("aaaa");
+        assert!(
+            recount_line(&stamped).contains("tolerance 0.0, checking the counts file with SHA-256 `aaaa`.\n\n"),
+            "{}",
+            recount_line(&stamped)
+        );
+        assert_eq!(recount_line(&Value::Null), "");
+    }
 
     /// A harness failure is left out of the gate column, not shown as a fail.
     #[test]

@@ -242,7 +242,11 @@ fn limitations(data: &Data) -> Vec<String> {
             class(&mut host.time.rows.values()),
             &host.time.provenance,
         ),
-        ("End-to-end timing", class(&mut host.e2e_time.iter()), &Value::Null),
+        (
+            "End-to-end timing",
+            class(&mut host.e2e_time.iter()),
+            &host.e2e_time_provenance,
+        ),
     ] {
         if classes.iter().any(|c| c != "canonical") {
             notes.push(format!(
@@ -1218,11 +1222,11 @@ fn provenance(out: &mut String, data: &Data, stale: &[String]) {
             p["kernel"].as_str().unwrap_or("?"),
             p["governor"].as_str().unwrap_or("?"),
             p["boost"].as_str().unwrap_or("?"),
-            p["loadavg"].as_str().map_or("?".to_owned(), |l| l
-                .split_whitespace()
-                .take(3)
-                .collect::<Vec<_>>()
-                .join(" ")),
+            stage_load(p).map_or("?".to_owned(), |l| if p["loadavg_start"].is_string() {
+                format!("{l} as it finished")
+            } else {
+                l
+            }),
         );
         if let Some(v) = p["valgrind"].as_str().filter(|_| p["container_image"].is_string()) {
             let _ = write!(conditions, "; {v} in the container");
@@ -1273,11 +1277,11 @@ fn collapse(sources: &[Source]) -> Vec<Source> {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::json;
+    use serde_json::{Value, json};
 
     use super::super::verdict::tests::measured;
-    use super::{cpu_block, depth_cell, depth_limits, limitations, points};
-    use crate::report::data::{Data, Host, Key};
+    use super::{cpu_block, depth_cell, depth_limits, limitations, points, provenance};
+    use crate::report::data::{Data, Host, Key, Source};
     use crate::report::verdict::ENTRIES;
 
     fn host(cpu: &str, trust: &str, (rounds, seconds): (usize, u64)) -> Host {
@@ -1325,6 +1329,56 @@ mod tests {
         assert!(
             notes.contains("load average 0.90 2.10 3.00 as it started and 41.20 38.00 35.10 as it finished"),
             "{notes}"
+        );
+    }
+
+    /// End-to-end timing is a timed stage too: its note states both loads.
+    #[test]
+    fn states_the_load_at_both_ends_of_end_to_end_timing() {
+        let mut host = host("AMD X", "solo", (3, 30));
+        host.e2e_time_provenance = json!({
+            "loadavg_start": "0.80 1.00 1.20 1/900 1",
+            "loadavg": "6.00 5.00 4.00 3/900 1",
+            "governor": "performance",
+        });
+        let data = Data {
+            host,
+            ..Data::default()
+        };
+        let notes = limitations(&data).join("\n");
+        assert!(
+            notes.contains(
+                "End-to-end timing is `solo` class: taken on a shared machine (1, 5 and 15 minute load average 0.80 1.00 1.20 as it started and 6.00 5.00 4.00 as it finished; governor performance)"
+            ),
+            "{notes}"
+        );
+    }
+
+    /// The Conditions column states a timed stage's start load, and leaves a
+    /// stage stamped with one load as it was.
+    #[test]
+    fn the_provenance_table_states_a_stages_start_load() {
+        let source = |provenance: Value| Source {
+            name: "x/e2e-time.json".into(),
+            provenance,
+            skipped: None,
+        };
+        let data = Data {
+            sources: vec![
+                source(json!({ "loadavg_start": "0.80 1.00 1.20 1/9 1", "loadavg": "6.00 5.00 4.00 3/9 1" })),
+                source(json!({ "loadavg": "7.00 8.00 9.00 3/9 1" })),
+            ],
+            ..Data::default()
+        };
+        let mut out = String::new();
+        provenance(&mut out, &data, &[]);
+        assert!(
+            out.contains("load 0.80 1.00 1.20 as it started and 6.00 5.00 4.00 as it finished"),
+            "{out}"
+        );
+        assert!(
+            out.contains("load 7.00 8.00 9.00 |") || out.contains("load 7.00 8.00 9.00;"),
+            "{out}"
         );
     }
 

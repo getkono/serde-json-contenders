@@ -121,7 +121,7 @@ Encoding is measured two ways: `to_vec` into a new `Vec`, and `to_writer` into a
 
 ### Conformance
 
-The differential suite is `crates/conformance`. It compares every backend with serde_json in the same build (serde_json itself passes rule 2 as the reference once Miri has run on it; `serde_json+float_roundtrip` is not run as a backend of its own by the suite or the fuzzer, so its rule 2 stays pending and it cannot be recommended), and runs at every variant, because SIMD paths differ between variants. It also runs once with serde_json's `arbitrary_precision` unified in.
+The differential suite is `crates/conformance`. It compares every backend with serde_json in the same build (serde_json itself passes rule 2 as the reference once Miri has run on it; `serde_json+float_roundtrip` is not run as a backend of its own by the suite or the fuzzer, so its rule 2 stays pending and it cannot be recommended), and runs at every variant, because SIMD paths differ between variants. It also runs once with serde_json's `arbitrary_precision` unified in. That build changes some of serde_json's own answers: it refuses `{"name":"n","version":1,"weight":0.5}` into a `#[serde(flatten)]` struct, and accepts `1e400`. A case whose serde_json outcome differs between the two builds does not gate in that run, unless the backend panicked or crashed on it; the report takes this from the outcomes the runs recorded, or, where serde_json's default outcome is not on record, from every backend of every set, with at least two sets measuring a backend, failing the case only in that build. The disagreement is still listed, and the default run still gates.
 
 | Section | What | Gates? |
 | --- | --- | --- |
@@ -132,7 +132,7 @@ The differential suite is `crates/conformance`. It compares every backend with s
 | depth | 100 up to 1 000 000 levels, run in a subprocess on 2 MiB (tokio's worker stack) and 8 MiB stacks | a crash gates; the limit itself is recorded |
 | numbers | edge values; 1 000 000 random `f64` and 1 000 000 random `f32` bit patterns; exponents with leading zeros (`1e007`). A decode passes if it is correctly rounded (the truth is `str::parse`) or bit-identical to serde_json's own decode in the same build. Encoders must round-trip exactly. | yes |
 | attributes | `flatten`, `untagged`, internally, adjacently and externally tagged enums, `alias`, `rename_all`, `default`, `skip`, `Option` | yes |
-| value_targets | decoding into `serde_json::Value` and `Map` | yes; under `arbitrary_precision` only a difference in how a number is held (the same value) is excused |
+| value_targets | decoding into `serde_json::Value` and `Map` | yes; under `arbitrary_precision` a difference in how a number is held (the same value) is excused, as is a case serde_json itself answers differently in that build (above) |
 | encoding | control characters, `/`, `<`, U+2028, U+2029, NaN, ±∞ | invalid or different output yes; byte differences, and refusing to encode NaN or ±∞ (serde_json silently writes `null`), recorded |
 | encode_diff | every workload, byte for byte against serde_json; differing bytes are compared for meaning through the workload's own types (an `f32` written with more digits reads back the same `f32`) | semantic differences yes |
 

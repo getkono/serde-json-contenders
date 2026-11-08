@@ -15,55 +15,53 @@ text{font-family:system-ui,'Segoe UI',sans-serif;font-size:12px}
 </style>
 <rect class="bg" width="720" height="440" rx="6"/>
 <text class="ink title" x="84" y="24">json-large decode: cycles at native against clean release build (s)</text>
-<line class="grid" x1="183.0" y1="48" x2="183.0" y2="384.0"/><text class="ink2" x="183.0" y="402.0" text-anchor="middle">1M</text>
-<line class="grid" x1="341.7" y1="48" x2="341.7" y2="384.0"/><text class="ink2" x="341.7" y="402.0" text-anchor="middle">2M</text>
-<line class="grid" x1="500.5" y1="48" x2="500.5" y2="384.0"/><text class="ink2" x="500.5" y="402.0" text-anchor="middle">3M</text>
-<line class="grid" x1="84" y1="328.4" x2="550.0" y2="328.4"/><text class="ink2" x="76.0" y="332.4" text-anchor="end">5</text>
-<line class="grid" x1="84" y1="257.4" x2="550.0" y2="257.4"/><text class="ink2" x="76.0" y="261.4" text-anchor="end">6</text>
-<line class="grid" x1="84" y1="186.3" x2="550.0" y2="186.3"/><text class="ink2" x="76.0" y="190.3" text-anchor="end">7</text>
-<line class="grid" x1="84" y1="115.3" x2="550.0" y2="115.3"/><text class="ink2" x="76.0" y="119.3" text-anchor="end">8</text>
+<line class="grid" x1="180.5" y1="48" x2="180.5" y2="384.0"/><text class="ink2" x="180.5" y="402.0" text-anchor="middle">1M</text>
+<line class="grid" x1="334.0" y1="48" x2="334.0" y2="384.0"/><text class="ink2" x="334.0" y="402.0" text-anchor="middle">2M</text>
+<line class="grid" x1="487.5" y1="48" x2="487.5" y2="384.0"/><text class="ink2" x="487.5" y="402.0" text-anchor="middle">3M</text>
+<line class="grid" x1="84" y1="344.8" x2="550.0" y2="344.8"/><text class="ink2" x="76.0" y="348.8" text-anchor="end">6</text>
+<line class="grid" x1="84" y1="229.1" x2="550.0" y2="229.1"/><text class="ink2" x="76.0" y="233.1" text-anchor="end">8</text>
+<line class="grid" x1="84" y1="113.5" x2="550.0" y2="113.5"/><text class="ink2" x="76.0" y="117.5" text-anchor="end">10</text>
 <line class="axis" x1="84" y1="384.0" x2="550.0" y2="384.0"/><line class="axis" x1="84" y1="48" x2="84" y2="384.0"/>
 <text class="ink2" x="317.0" y="426.0" text-anchor="middle">hardware cycles per operation, native</text>
 <text class="ink2" transform="translate(18 216.0) rotate(-90)" text-anchor="middle">clean release build (s)</text>
-<line class="ref" x1="173.7" y1="48" x2="173.7" y2="384.0"/><line class="ref" x1="84" y1="360.8" x2="550.0" y2="360.8"/>
-<path class="front" d="M116.1,331.0 H117.4 V331.0 H120.5 V330.4 H173.7 V360.8"/>
-<circle class="off hollow" cx="129.4" cy="71.2" r="5"><title>sonic-rs: 662k cycles, 8.62 (fails conformance)</title></circle>
-<circle class="ring" cx="129.4" cy="71.2" r="9"/>
-<text class="ink" x="141.4" y="75.2">sonic-rs</text>
-<circle class="off hollow" cx="141.4" cy="275.6" r="5"><title>simd-json: 738k cycles, 5.74 (fails conformance)</title></circle>
-<circle class="ring" cx="141.4" cy="275.6" r="9"/>
-<text class="ink" x="153.4" y="279.6">simd-json</text>
-<circle class="off hollow" cx="141.1" cy="275.6" r="5"><title>simd-json-buffers: 736k cycles, 5.74 (fails conformance)</title></circle>
-<circle class="ring" cx="141.1" cy="275.6" r="9"/>
-<line class="ref" x1="147.1" y1="275.6" x2="151.1" y2="262.6"/>
-<text class="ink" x="153.1" y="266.6">simd-json-buffers</text>
-<circle class="off hollow" cx="166.2" cy="308.5" r="5"><title>jiter: 895k cycles, 5.28 (fails conformance)</title></circle>
-<text class="ink" x="178.2" y="312.5">jiter</text>
-<circle class="off hollow" cx="517.9" cy="315.1" r="5"><title>struson: 3.11M cycles, 5.19 (fails conformance)</title></circle>
-<text class="ink" x="529.9" y="319.1">struson</text>
-<circle class="off hollow" cx="121.9" cy="330.4" r="5"><title>flexon-rt: 615k cycles, 4.97 (fails conformance)</title></circle>
-<circle class="ring" cx="121.9" cy="330.4" r="9"/>
-<line class="ref" x1="127.9" y1="330.4" x2="131.9" y2="291.4"/>
-<text class="ink" x="133.9" y="295.4">flexon-rt</text>
-<circle class="on hollow" cx="120.5" cy="330.4" r="5"><title>flexon-rt-mut: 607k cycles, 4.97 (fails conformance)</title></circle>
-<circle class="ring" cx="120.5" cy="330.4" r="9"/>
-<line class="ref" x1="126.5" y1="330.4" x2="130.5" y2="239.4"/>
-<text class="ink" x="132.5" y="243.4">flexon-rt-mut</text>
-<circle class="on hollow" cx="117.4" cy="331.0" r="5"><title>flexon-ct: 587k cycles, 4.96 (fails conformance)</title></circle>
-<circle class="ring" cx="117.4" cy="331.0" r="9"/>
-<line class="ref" x1="123.4" y1="331.0" x2="127.4" y2="214.0"/>
-<text class="ink" x="129.4" y="218.0">flexon-ct</text>
-<circle class="on hollow" cx="116.1" cy="331.0" r="5"><title>flexon-ct-mut: 579k cycles, 4.96 (fails conformance)</title></circle>
-<circle class="ring" cx="116.1" cy="331.0" r="9"/>
-<line class="ref" x1="122.1" y1="331.0" x2="126.1" y2="201.0"/>
-<text class="ink" x="128.1" y="205.0">flexon-ct-mut</text>
-<circle class="off hollow" cx="185.5" cy="337.5" r="5"><title>hifijson: 1.02M cycles, 4.87 (fails conformance)</title></circle>
-<text class="ink" x="197.5" y="341.5">hifijson</text>
-<circle class="off" cx="172.2" cy="345.5" r="5"><title>serde_json+float_roundtrip: 932k cycles, 4.76</title></circle>
-<line class="ref" x1="178.2" y1="345.5" x2="182.2" y2="358.5"/>
-<text class="ink" x="184.2" y="362.5">serde_json+float_roundtrip</text>
-<circle class="on" cx="173.7" cy="360.8" r="5"><title>serde_json: 941k cycles, 4.54</title></circle>
-<circle class="ring" cx="173.7" cy="360.8" r="9"/>
-<line class="ref" x1="179.7" y1="360.8" x2="183.7" y2="373.8"/>
-<text class="ink" x="185.7" y="377.8">serde_json</text>
+<line class="ref" x1="173.2" y1="48" x2="173.2" y2="384.0"/><line class="ref" x1="84" y1="360.8" x2="550.0" y2="360.8"/>
+<path class="front" d="M116.1,293.7 H116.7 V293.7 H173.2 V360.8"/>
+<circle class="off hollow" cx="128.0" cy="71.2" r="5"><title>sonic-rs: 658k cycles, 11 (fails conformance)</title></circle>
+<circle class="ring" cx="128.0" cy="71.2" r="9"/>
+<text class="ink" x="140.0" y="75.2">sonic-rs</text>
+<circle class="off hollow" cx="141.0" cy="232.0" r="5"><title>simd-json: 742k cycles, 7.95 (fails conformance)</title></circle>
+<circle class="ring" cx="141.0" cy="232.0" r="9"/>
+<line class="ref" x1="147.0" y1="232.0" x2="151.0" y2="219.0"/>
+<text class="ink" x="153.0" y="223.0">simd-json</text>
+<circle class="off hollow" cx="140.4" cy="232.0" r="5"><title>simd-json-buffers: 739k cycles, 7.95 (fails conformance)</title></circle>
+<circle class="ring" cx="140.4" cy="232.0" r="9"/>
+<line class="ref" x1="146.4" y1="232.0" x2="150.4" y2="206.0"/>
+<text class="ink" x="152.4" y="210.0">simd-json-buffers</text>
+<circle class="off hollow" cx="165.2" cy="236.2" r="5"><title>jiter: 900k cycles, 7.88 (fails conformance)</title></circle>
+<text class="ink" x="177.2" y="240.2">jiter</text>
+<circle class="off hollow" cx="517.9" cy="279.8" r="5"><title>struson: 3.2M cycles, 7.12 (fails conformance)</title></circle>
+<text class="ink" x="529.9" y="283.8">struson</text>
+<circle class="on hollow" cx="116.7" cy="293.7" r="5"><title>flexon-ct: 584k cycles, 6.88 (fails conformance)</title></circle>
+<circle class="ring" cx="116.7" cy="293.7" r="9"/>
+<line class="ref" x1="122.7" y1="293.7" x2="126.7" y2="280.7"/>
+<text class="ink" x="128.7" y="284.7">flexon-ct</text>
+<circle class="on hollow" cx="116.1" cy="293.7" r="5"><title>flexon-ct-mut: 581k cycles, 6.88 (fails conformance)</title></circle>
+<circle class="ring" cx="116.1" cy="293.7" r="9"/>
+<line class="ref" x1="122.1" y1="293.7" x2="126.1" y2="267.7"/>
+<text class="ink" x="128.1" y="271.7">flexon-ct-mut</text>
+<circle class="off hollow" cx="183.3" cy="295.1" r="5"><title>hifijson: 1.02M cycles, 6.86 (fails conformance)</title></circle>
+<text class="ink" x="195.3" y="299.1">hifijson</text>
+<circle class="off hollow" cx="122.4" cy="298.9" r="5"><title>flexon-rt: 622k cycles, 6.79 (fails conformance)</title></circle>
+<circle class="ring" cx="122.4" cy="298.9" r="9"/>
+<line class="ref" x1="128.4" y1="298.9" x2="132.4" y2="324.9"/>
+<text class="ink" x="134.4" y="328.9">flexon-rt</text>
+<circle class="off hollow" cx="121.8" cy="298.9" r="5"><title>flexon-rt-mut: 617k cycles, 6.79 (fails conformance)</title></circle>
+<circle class="ring" cx="121.8" cy="298.9" r="9"/>
+<line class="ref" x1="127.8" y1="298.9" x2="131.8" y2="337.9"/>
+<text class="ink" x="133.8" y="341.9">flexon-rt-mut</text>
+<circle class="off" cx="171.2" cy="309.8" r="5"><title>serde_json+float_roundtrip: 939k cycles, 6.61</title></circle>
+<text class="ink" x="183.2" y="313.8">serde_json+float_roundtrip</text>
+<circle class="on" cx="173.2" cy="360.8" r="5"><title>serde_json: 952k cycles, 5.72</title></circle>
+<circle class="ring" cx="173.2" cy="360.8" r="9"/>
+<text class="ink" x="185.2" y="364.8">serde_json</text>
 </svg>
